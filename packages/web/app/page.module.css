@@ -1,4 +1,51 @@
-.placeholder {
-  color: var(--color-muted);
+.boards {
+  margin-bottom: 1.75rem;
+}
+
+.heading {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 0 0 0.75rem;
+}
+
+.boardList {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  list-style: none;
   margin: 0;
+  padding: 0;
+}
+
+.board {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-surface);
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.85rem 1rem;
+  text-decoration: none;
+}
+
+.board:hover {
+  border-color: var(--color-accent);
+}
+
+.boardId {
+  font-weight: 600;
+}
+
+.boardKind {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.boardCount {
+  color: var(--color-accent);
+  font-size: 0.875rem;
 }
