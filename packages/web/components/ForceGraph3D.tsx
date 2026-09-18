@@ -34,13 +34,17 @@ export type ForceGraph3DProps = {
 };
 
 class GraphErrorBoundary extends Component<
-  { children: ReactNode; fallback: ReactNode; resetKey: number },
+  { children: ReactNode; fallback: ReactNode; resetKey: number; onError?: () => void },
   { hasError: boolean }
 > {
   state = { hasError: false };
 
   static getDerivedStateFromError(): { hasError: boolean } {
     return { hasError: true };
+  }
+
+  componentDidCatch() {
+    this.props.onError?.();
   }
 
   componentDidUpdate(prevProps: Readonly<{ resetKey: number }>) {
@@ -53,6 +57,14 @@ class GraphErrorBoundary extends Component<
     if (this.state.hasError) return this.props.fallback;
     return this.props.children;
   }
+}
+
+function isGraphRuntimeError(error: unknown): boolean {
+  const text =
+    error instanceof Error
+      ? `${error.name} ${error.message} ${error.stack ?? ""}`
+      : String(error ?? "");
+  return /webgl|three|force-graph|CONTEXT_LOST|WebGLRenderer/i.test(text);
 }
 
 function assertWebGl(): void {
@@ -139,7 +151,7 @@ function Fallback({
   const cites = uniqueNumbers(data.links.map((link) => link.target));
   const citedBy = uniqueNumbers(data.links.map((link) => link.source));
   return (
-    <div className={styles.fallback}>
+    <div className={`${styles.fallback}${variant === "graph" ? ` ${styles.pageFallback}` : ""}`}>
       <p className={styles.unavailable}>{GRAPH_UNAVAILABLE}</p>
       <div className={styles.lists}>
         <div>
@@ -168,7 +180,17 @@ function Fallback({
   );
 }
 
-function GraphCanvas({ data, heightClass }: { data: GraphRecords; heightClass: string }) {
+function GraphCanvas({
+  data,
+  heightClass,
+  fill,
+  onRuntimeError,
+}: {
+  data: GraphRecords;
+  heightClass: string;
+  fill: boolean;
+  onRuntimeError: () => void;
+}) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const fgRef = useRef<ForceGraphMethods | undefined>(undefined);
   const router = useRouter();
@@ -195,6 +217,33 @@ function GraphCanvas({ data, heightClass }: { data: GraphRecords; heightClass: s
     return () => ro.disconnect();
   }, []);
 
+  useEffect(() => {
+    const onError = (event: ErrorEvent) => {
+      const fromFile = /webgl|three|force-graph/i.test(event.filename ?? "");
+      if (fromFile || isGraphRuntimeError(event.error ?? event.message)) onRuntimeError();
+    };
+    const onRejection = (event: PromiseRejectionEvent) => {
+      if (isGraphRuntimeError(event.reason)) onRuntimeError();
+    };
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
+  }, [onRuntimeError]);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const onLost = (event: Event) => {
+      event.preventDefault();
+      onRuntimeError();
+    };
+    el.addEventListener("webglcontextlost", onLost, true);
+    return () => el.removeEventListener("webglcontextlost", onLost, true);
+  }, [onRuntimeError, size.width, size.height]);
+
   function onSearch(event: FormEvent) {
     event.preventDefault();
     const node = findNode(graphData.nodes, query);
@@ -202,7 +251,7 @@ function GraphCanvas({ data, heightClass }: { data: GraphRecords; heightClass: s
   }
 
   return (
-    <>
+    <div className={fill ? styles.graphBody : undefined}>
       <div className={styles.toolbar}>
         <form className={styles.searchForm} onSubmit={onSearch}>
           <label className={styles.filter}>
@@ -253,13 +302,14 @@ function GraphCanvas({ data, heightClass }: { data: GraphRecords; heightClass: s
           />
         ) : null}
       </div>
-    </>
+    </div>
   );
 }
 
 export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
   const [nuId, setNuId] = useState("");
   const [retry, setRetry] = useState(0);
+  const [failed, setFailed] = useState(false);
   const nuIds = useMemo(
     () => [...new Set(zips.flatMap((zip) => zip.nuIds).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
     [zips],
@@ -270,9 +320,18 @@ export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
   );
   const data = useMemo(() => graphRecords(filtered, dangling), [filtered, dangling]);
   const Heading = variant === "graph" ? "h1" : "h2";
+  const onRetry = () => {
+    setFailed(false);
+    setRetry((n) => n + 1);
+  };
+  const onRuntimeError = () => setFailed(true);
+  const fallback = <Fallback data={data} variant={variant} onRetry={onRetry} />;
 
   return (
-    <section className={styles.section} aria-labelledby="citation-graph-3d-heading">
+    <section
+      className={`${styles.section}${variant === "graph" ? ` ${styles.page}` : ""}`}
+      aria-labelledby="citation-graph-3d-heading"
+    >
       <div className={styles.header}>
         <Heading id="citation-graph-3d-heading" className={styles.heading}>
           Citation graph
@@ -309,16 +368,19 @@ export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
           </li>
         ))}
       </ul>
-      <GraphErrorBoundary
-        resetKey={retry}
-        fallback={<Fallback data={data} variant={variant} onRetry={() => setRetry((n) => n + 1)} />}
-      >
-        <GraphCanvas
-          key={retry}
-          data={data}
-          heightClass={variant === "home" ? styles.preview : styles.full}
-        />
-      </GraphErrorBoundary>
+      {failed ? (
+        fallback
+      ) : (
+        <GraphErrorBoundary resetKey={retry} fallback={fallback} onError={onRuntimeError}>
+          <GraphCanvas
+            key={retry}
+            data={data}
+            fill={variant === "graph"}
+            heightClass={variant === "home" ? styles.preview : styles.full}
+            onRuntimeError={onRuntimeError}
+          />
+        </GraphErrorBoundary>
+      )}
     </section>
   );
 }

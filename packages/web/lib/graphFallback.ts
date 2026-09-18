@@ -26,6 +26,7 @@ export function graphRecords(zips: ZipRecord[], dangling: number[]): GraphRecord
   const links: GraphRecordLink[] = [];
   const seen = new Set<string>();
 
+  const cited = new Set<number>();
   for (const zip of zips) {
     if (zip.number === null) continue;
     nodes.set(zip.number, {
@@ -34,10 +35,13 @@ export function graphRecords(zips: ZipRecord[], dangling: number[]): GraphRecord
       unassigned: false,
       status: primaryStatus(zip),
     });
+    for (const to of zip.citations) {
+      if (to !== zip.number) cited.add(to);
+    }
   }
 
   for (const id of dangling) {
-    if (!nodes.has(id)) {
+    if (!nodes.has(id) && cited.has(id)) {
       nodes.set(id, { id, title: "Unassigned", unassigned: true, status: "" });
     }
   }

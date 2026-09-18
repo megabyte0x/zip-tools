@@ -12,6 +12,15 @@ test("graphRecords builds cites edges and dangling nodes", () => {
   assert.deepEqual(g.links, [{ source: 1, target: 2 }, { source: 1, target: 99 }]);
 });
 
+test("graphRecords drops dangling with no edge to remaining zips", () => {
+  const g = graphRecords(
+    [makeZip({ number: 1, citations: [99], status: [{ label: "Final" }] })],
+    [99, 88],
+  );
+  assert.equal(g.nodes.some((n) => n.id === 99 && n.unassigned), true);
+  assert.equal(g.nodes.some((n) => n.id === 88), false);
+});
+
 test("graph copy constants match spec", () => {
   assert.equal(GRAPH_HELP, "Left-click: rotate, Mouse-wheel: zoom, Right-click: pan");
   assert.equal(GRAPH_UNAVAILABLE, "Citation graph is unavailable in this browser.");
