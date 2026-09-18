@@ -1,5 +1,7 @@
-import styles from "./page.module.css";
+import { ZipExplorer } from "../components/ZipExplorer";
+import { loadIndex } from "../lib/loadIndex";
 
 export default function HomePage() {
-  return <p className={styles.placeholder}>Search coming later.</p>;
+  const { zips } = loadIndex();
+  return <ZipExplorer zips={zips} />;
 }
