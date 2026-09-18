@@ -4,6 +4,7 @@ import { readerMode } from "../lib/readerMode";
 import { tocFromHtml, tocFromMarkdown, type TocEntry } from "../lib/toc";
 import type { ZipRecord } from "../lib/types";
 import { zipHref } from "../lib/zipHref";
+import { GeneratedSummary } from "./GeneratedSummary";
 import { ReadingListButton } from "./ReadingListButton";
 import { ZipMeta } from "./ZipMeta";
 import styles from "./ReaderShell.module.css";
@@ -98,6 +99,12 @@ export function ReaderShell({
             {tocNav}
           </details>
         ) : null}
+        <GeneratedSummary
+          id={zip.id}
+          body={zip.body}
+          bodyKind={zip.bodyKind}
+          officialUrl={zip.officialUrl}
+        />
         {children}
       </article>
       <aside className={styles.metaColumn}>
