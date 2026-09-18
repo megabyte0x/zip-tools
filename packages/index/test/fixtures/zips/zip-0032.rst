@@ -1,0 +1,14 @@
+::
+
+  ZIP: 32
+  Title: Shielded Hierarchical Deterministic Wallets
+  Owners: Jack Grigg <thestr4d@gmail.com>
+  Status: Final
+  Category: Informational
+  Created: 2018-02-11
+  License: MIT
+
+See zip-0000.
+
+Specification
+=============

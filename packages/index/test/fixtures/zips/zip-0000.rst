@@ -1,0 +1,15 @@
+::
+
+  ZIP: 0
+  Title: ZIP Process
+  Owners: Jack Grigg <thestr4d@gmail.com>
+          Arya <arya@zfnd.org>
+  Status: Active
+  Category: Process
+  Created: 2019-02-16
+  License: BSD-2-Clause
+
+See zip-0032.
+
+Terminology
+===========
