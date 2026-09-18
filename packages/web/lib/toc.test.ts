@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  activeTocId,
   allocateHeadingId,
   headingTextFromNode,
   slugifyHeading,
@@ -63,4 +64,16 @@ test("tocFromHtml unique ids when existing id collides with generated slug", () 
 test("tocFromHtml generated collisions skip reserved existing ids", () => {
   const { toc } = tocFromHtml('<h2 id="intro-2">Foo</h2><h2>Intro</h2><h2>Intro</h2>');
   assert.deepEqual(toc.map((e) => e.id), ["intro-2", "intro", "intro-3"]);
+});
+
+test("activeTocId highlights the last heading at or above the offset", () => {
+  const headings = [
+    { id: "intro", top: -40 },
+    { id: "motivation", top: 80 },
+    { id: "rationale", top: 400 },
+  ];
+  assert.equal(activeTocId([], 96), null);
+  assert.equal(activeTocId(headings, 96), "motivation");
+  assert.equal(activeTocId(headings, 40), "intro");
+  assert.equal(activeTocId(headings, 500), "rationale");
 });

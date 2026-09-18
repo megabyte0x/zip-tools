@@ -104,7 +104,7 @@ function clientIp(request: Request): string {
 export async function handleViewsPost(
   request: Request,
   env: ViewsEnv,
-  _nowMs: number,
+  nowMs: number,
 ): Promise<Response> {
   let body: unknown;
   try {
@@ -114,16 +114,28 @@ export async function handleViewsPost(
   }
   const id = requestId(body);
   if (id === null) return jsonResponse(400);
-  if (!env.KV || !env.VIEWS) return jsonResponse(204);
+  if (!env.KV && !env.VIEWS && !env.DB) return jsonResponse(204);
 
   const ipHash = await hashIp(clientIp(request));
   const key = viewDedupKey(id, ipHash);
-  const existing = await env.KV.get(key);
-  if (existing !== null) return jsonResponse(204);
+  if (env.KV) {
+    const existing = await env.KV.get(key);
+    if (existing !== null) return jsonResponse(204);
+  }
 
+  const day = new Date(nowMs).toISOString().slice(0, 10);
   try {
-    env.VIEWS.writeDataPoint({ blobs: [id], indexes: ["1"] });
-    await env.KV.put(key, "1", { expirationTtl: DEDUP_TTL_SECONDS });
+    env.VIEWS?.writeDataPoint({ blobs: [id], indexes: ["1"] });
+    if (env.DB) {
+      await env.DB.prepare(
+        "INSERT INTO view_daily (zip_id, day, count) VALUES (?, ?, 1) ON CONFLICT(zip_id, day) DO UPDATE SET count = count + 1",
+      )
+        .bind(id, day, 1)
+        .run();
+    }
+    if (env.KV) {
+      await env.KV.put(key, "1", { expirationTtl: DEDUP_TTL_SECONDS });
+    }
   } catch {
     return jsonResponse(204);
   }

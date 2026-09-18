@@ -20,5 +20,12 @@ export default async function ZipsPage({
 }) {
   const { zips } = loadIndex();
   const parsed = parseZipsQuery(searchParamsToQuery(await searchParams));
-  return <ZipExplorer zips={zips} initialText={parsed.text} initialKind={parsed.kind} />;
+  return (
+    <ZipExplorer
+      key={`${parsed.text}:${parsed.kind}`}
+      zips={zips}
+      initialText={parsed.text}
+      initialKind={parsed.kind}
+    />
+  );
 }

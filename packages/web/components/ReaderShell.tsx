@@ -6,6 +6,7 @@ import type { ZipRecord } from "../lib/types";
 import { zipHref } from "../lib/zipHref";
 import { GeneratedSummary } from "./GeneratedSummary";
 import { ReadingListButton } from "./ReadingListButton";
+import { TocNav } from "./TocNav";
 import { ZipMeta } from "./ZipMeta";
 import styles from "./ReaderShell.module.css";
 
@@ -14,20 +15,6 @@ function tocForZip(zip: ZipRecord): TocEntry[] {
   if (mode === "html") return tocFromHtml(zip.body ?? "").toc;
   if (mode === "markdown") return tocFromMarkdown(zip.body ?? "");
   return [];
-}
-
-function TocList({ toc }: { toc: TocEntry[] }) {
-  return (
-    <ol className={styles.tocList}>
-      {toc.map((entry) => (
-        <li key={entry.id} data-level={entry.level}>
-          <a className={styles.tocLink} href={`#${entry.id}`}>
-            {entry.text}
-          </a>
-        </li>
-      ))}
-    </ol>
-  );
 }
 
 function Chevron({ dir }: { dir: "prev" | "next" }) {
@@ -58,7 +45,7 @@ export function ReaderShell({
   children: ReactNode;
 }) {
   const toc = tocForZip(zip);
-  const tocNav = toc.length > 0 ? <TocList toc={toc} /> : null;
+  const tocNav = toc.length > 0 ? <TocNav toc={toc} /> : null;
 
   return (
     <div className={styles.shell}>

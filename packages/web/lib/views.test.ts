@@ -105,7 +105,13 @@ function fakeEnv(nowMs: number) {
                   statements.push({ sql, args });
                   if (/INSERT INTO view_daily/i.test(sql)) {
                     const [zip_id, day, count] = args as [string, string, number];
-                    daily.set(`${zip_id}|${day}`, { zip_id, day, count });
+                    const key = `${zip_id}|${day}`;
+                    if (/count\s*=\s*(?:view_daily\.)?count\s*\+\s*1/i.test(sql)) {
+                      const existing = daily.get(key);
+                      daily.set(key, { zip_id, day, count: (existing?.count ?? 0) + 1 });
+                    } else {
+                      daily.set(key, { zip_id, day, count });
+                    }
                   }
                   return { success: true };
                 },
@@ -171,6 +177,33 @@ test("handleTrendingGet returns empty items when D1 has no rows", async () => {
   const res = await handleTrendingGet(fake.env, "2026-09-18");
   assert.equal(res.status, 200);
   assert.deepEqual(await res.json(), { items: [] });
+});
+
+test("handleViewsPost increments view_daily for today without storing raw IP", async () => {
+  const nowMs = Date.parse("2026-09-18T12:00:00Z");
+  const fake = fakeEnv(nowMs);
+
+  const first = await handleViewsPost(viewsRequest({ id: "32" }), fake.env, nowMs);
+  assert.equal(first.status, 204);
+  assert.equal(fake.daily.get("32|2026-09-18")?.count, 1);
+
+  const otherIp = await handleViewsPost(viewsRequest({ id: "32" }, "9.9.9.9"), fake.env, nowMs);
+  assert.equal(otherIp.status, 204);
+  assert.equal(fake.daily.get("32|2026-09-18")?.count, 2);
+
+  const dumped = JSON.stringify({ statements: fake.statements, daily: [...fake.daily.values()] });
+  assert.ok(!dumped.includes("1.2.3.4"));
+  assert.ok(!dumped.includes("9.9.9.9"));
+});
+
+test("handleViewsPost increments daily count when Analytics Engine is absent", async () => {
+  const nowMs = Date.parse("2026-09-18T12:00:00Z");
+  const fake = fakeEnv(nowMs);
+  const env = { KV: fake.env.KV, DB: fake.env.DB };
+  const res = await handleViewsPost(viewsRequest({ id: "32" }), env, nowMs);
+  assert.equal(res.status, 204);
+  assert.equal(fake.daily.get("32|2026-09-18")?.count, 1);
+  assert.equal(fake.writes.length, 0);
 });
 
 test("handleScheduledRollup upserts grouped counts into D1", async () => {

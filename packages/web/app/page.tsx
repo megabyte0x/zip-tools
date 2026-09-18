@@ -7,8 +7,10 @@ import { featuredZips } from "../lib/featured";
 import { loadIndex } from "../lib/loadIndex";
 import type { ZipRecord } from "../lib/types";
 import { handleTrendingGet, type ViewsEnv } from "../lib/views";
-import { zipOfTheDay } from "../lib/zipOfTheDay";
+import { zipOfTheDay, slimZipOfTheDay } from "../lib/zipOfTheDay";
 import styles from "./page.module.css";
+
+export const dynamic = "force-dynamic";
 
 async function loadEnv(): Promise<ViewsEnv> {
   try {
@@ -73,7 +75,7 @@ export default async function HomePage() {
         dangling={index.dangling}
         variant="home"
       />
-      <ZipOfTheDay zip={daily} numbered={numbered} />
+      <ZipOfTheDay zip={daily ? slimZipOfTheDay(daily) : null} numbered={numbered} />
       <ZipExplorer zips={zips} />
     </div>
   );

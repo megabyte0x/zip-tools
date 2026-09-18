@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ZipRecord } from "../lib/types";
 import { zipHref } from "../lib/zipHref";
+import type { ZipOfTheDayZip } from "../lib/zipOfTheDay";
 import styles from "./ZipOfTheDay.module.css";
 
-function ownerLabel(owner: ZipRecord["owners"][number]): string {
+function ownerLabel(owner: ZipOfTheDayZip["owners"][number]): string {
   return owner.email ? `${owner.name} <${owner.email}>` : owner.name;
 }
 
-function statusLabel(zip: ZipRecord): string {
+function statusLabel(zip: ZipOfTheDayZip): string {
   return zip.status.map((entry) => entry.label).join(", ") || zip.statusRaw;
 }
 
@@ -18,7 +19,7 @@ export function ZipOfTheDay({
   zip,
   numbered,
 }: {
-  zip: ZipRecord | null;
+  zip: ZipOfTheDayZip | null;
   numbered: Pick<ZipRecord, "number" | "slug">[];
 }) {
   const router = useRouter();

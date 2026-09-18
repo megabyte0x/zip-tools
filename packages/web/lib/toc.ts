@@ -1,5 +1,17 @@
 export type TocEntry = { id: string; text: string; level: 2 | 3 };
 
+export function activeTocId(
+  headings: { id: string; top: number }[],
+  offset: number,
+): string | null {
+  if (headings.length === 0) return null;
+  let current = headings[0]?.id ?? null;
+  for (const heading of headings) {
+    if (heading.top <= offset) current = heading.id;
+  }
+  return current;
+}
+
 export function slugifyHeading(text: string): string {
   return text
     .toLowerCase()

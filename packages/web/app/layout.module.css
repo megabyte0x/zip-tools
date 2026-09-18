@@ -8,3 +8,17 @@
   flex: 1;
   padding: 1.5rem;
 }
+
+.mainGraph {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.bodyGraph {
+  height: 100vh;
+  overflow: hidden;
+}

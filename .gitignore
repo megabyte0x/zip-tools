@@ -4,5 +4,7 @@ dist
 *.tsbuildinfo
 packages/web/data/zip-index.json
 packages/web/data/rendered/
+packages/web/.wrangler/
+packages/web/.open-next/
 .worktrees/
 .superpowers/

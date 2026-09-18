@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppShell } from "../components/AppShell";
 import { Footer } from "../components/Footer";
 import { SiteHeader } from "../components/SiteHeader";
 import { headerModel } from "../lib/headerModel";
@@ -23,8 +24,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           nus={model.nus}
           zips={zips}
         />
-        <main className={styles.main}>{children}</main>
-        <Footer snapshot={index.snapshot} />
+        <AppShell footer={<Footer snapshot={index.snapshot} />}>{children}</AppShell>
       </body>
     </html>
   );
