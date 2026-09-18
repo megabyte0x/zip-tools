@@ -1,0 +1,19 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: sudo apt-get update && sudo apt-get install -y pandoc
+      - run: pnpm install
+      - run: pnpm --filter @zip-tools/index test
+      - run: pnpm --filter @zip-tools/web test
+      - run: pnpm --filter @zip-tools/index build-index
+      - run: node -e "const d=require('./packages/web/data/zip-index.json'); const ids=new Set(d.zips.map(z=>z.id)); if(!ids.has('0')||!ids.has('32')||!ids.has('317')) process.exit(1); if(!d.zips.some(z=>String(z.id).startsWith('draft-'))) process.exit(1); for (const nu of d.nus) { if(!nu.id) process.exit(1); } "
+      - run: pnpm --filter @zip-tools/web build
