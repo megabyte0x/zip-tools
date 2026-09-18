@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ForceGraph3D } from "../components/ForceGraph3D";
 import { ZipExplorer } from "../components/ZipExplorer";
 import { ZipOfTheDay } from "../components/ZipOfTheDay";
 import { ZipRail } from "../components/ZipRail";
@@ -38,6 +39,11 @@ export default function HomePage() {
           ))}
         </ul>
       </section>
+      <ForceGraph3D
+        zips={zips.map((zip) => ({ ...zip, body: null }))}
+        dangling={index.dangling}
+        variant="home"
+      />
       <ZipOfTheDay zip={daily} numbered={numbered} />
       <ZipExplorer zips={zips} />
     </div>

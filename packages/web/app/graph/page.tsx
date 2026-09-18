@@ -1,17 +1,8 @@
-import { GlobalCitationGraph } from "../../components/CitationGraph";
+import { ForceGraph3D } from "../../components/ForceGraph3D";
 import { loadIndex } from "../../lib/loadIndex";
-import styles from "./page.module.css";
 
 export default function GraphPage() {
   const index = loadIndex();
-  const slim = {
-    ...index,
-    zips: index.zips.map((zip) => ({ ...zip, body: null })),
-  };
-  return (
-    <div>
-      <h1 className={styles.heading}>Citation graph</h1>
-      <GlobalCitationGraph index={slim} />
-    </div>
-  );
+  const zips = index.zips.map((zip) => ({ ...zip, body: null }));
+  return <ForceGraph3D zips={zips} dangling={index.dangling} variant="graph" />;
 }

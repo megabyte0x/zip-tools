@@ -1,0 +1,63 @@
+import type { ZipRecord } from "./types.ts";
+
+export const GRAPH_HELP = "Left-click: rotate, Mouse-wheel: zoom, Right-click: pan";
+export const GRAPH_UNAVAILABLE = "Citation graph is unavailable in this browser.";
+
+export type GraphRecordNode = {
+  id: number;
+  title: string;
+  unassigned: boolean;
+  status: string;
+};
+
+export type GraphRecordLink = { source: number; target: number };
+
+export type GraphRecords = {
+  nodes: GraphRecordNode[];
+  links: GraphRecordLink[];
+};
+
+function primaryStatus(zip: ZipRecord): string {
+  return zip.status[0]?.label ?? zip.statusRaw;
+}
+
+export function graphRecords(zips: ZipRecord[], dangling: number[]): GraphRecords {
+  const nodes = new Map<number, GraphRecordNode>();
+  const links: GraphRecordLink[] = [];
+  const seen = new Set<string>();
+
+  for (const zip of zips) {
+    if (zip.number === null) continue;
+    nodes.set(zip.number, {
+      id: zip.number,
+      title: zip.title,
+      unassigned: false,
+      status: primaryStatus(zip),
+    });
+  }
+
+  for (const id of dangling) {
+    if (!nodes.has(id)) {
+      nodes.set(id, { id, title: "Unassigned", unassigned: true, status: "" });
+    }
+  }
+
+  for (const zip of zips) {
+    if (zip.number === null) continue;
+    for (const to of zip.citations) {
+      if (to === zip.number) continue;
+      const key = `${zip.number}->${to}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      links.push({ source: zip.number, target: to });
+      if (!nodes.has(to)) {
+        nodes.set(to, { id: to, title: "Unassigned", unassigned: true, status: "" });
+      }
+    }
+  }
+
+  return {
+    nodes: [...nodes.values()].sort((a, b) => a.id - b.id),
+    links,
+  };
+}
