@@ -5,10 +5,37 @@ import { ZipOfTheDay } from "../components/ZipOfTheDay";
 import { ZipRail } from "../components/ZipRail";
 import { featuredZips } from "../lib/featured";
 import { loadIndex } from "../lib/loadIndex";
+import type { ZipRecord } from "../lib/types";
+import { handleTrendingGet, type ViewsEnv } from "../lib/views";
 import { zipOfTheDay } from "../lib/zipOfTheDay";
 import styles from "./page.module.css";
 
-export default function HomePage() {
+async function loadEnv(): Promise<ViewsEnv> {
+  try {
+    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+    const ctx = await getCloudflareContext({ async: true });
+    return (ctx.env ?? {}) as ViewsEnv;
+  } catch {
+    return {};
+  }
+}
+
+function zipForViewId(zips: ZipRecord[], id: string): ZipRecord | undefined {
+  return zips.find(
+    (zip) => zip.id === id || zip.slug === id || (zip.number != null && String(zip.number) === id),
+  );
+}
+
+async function mostViewedZips(zips: ZipRecord[], todayUtc: string): Promise<ZipRecord[]> {
+  const res = await handleTrendingGet(await loadEnv(), todayUtc);
+  const data = (await res.json()) as { items?: { id: string; count: number }[] };
+  const items = data.items ?? [];
+  return items
+    .map((item) => zipForViewId(zips, item.id))
+    .filter((zip): zip is ZipRecord => zip != null);
+}
+
+export default async function HomePage() {
   const index = loadIndex();
   const { zips, nus } = index;
   const featured = featuredZips(index);
@@ -17,6 +44,7 @@ export default function HomePage() {
   const numbered = zips
     .filter((zip) => zip.number != null)
     .map((zip) => ({ number: zip.number, slug: zip.slug }));
+  const mostViewed = await mostViewedZips(zips, utcDate);
 
   return (
     <div>
@@ -39,6 +67,7 @@ export default function HomePage() {
           ))}
         </ul>
       </section>
+      {mostViewed.length > 0 ? <ZipRail title="Most viewed (7 days)" zips={mostViewed} /> : null}
       <ForceGraph3D
         zips={zips.map((zip) => ({ ...zip, body: null }))}
         dangling={index.dangling}

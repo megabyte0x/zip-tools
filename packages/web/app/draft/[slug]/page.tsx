@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { CitationGraph } from "../../../components/CitationGraph";
 import { ReaderBody } from "../../../components/ReaderBody";
 import { ReaderShell } from "../../../components/ReaderShell";
+import { ViewBeacon } from "../../../components/ViewBeacon";
 import { loadIndex } from "../../../lib/loadIndex";
 import { neighborhood } from "../../../lib/neighborhood";
 import { resolveDraft } from "../../../lib/resolve";
@@ -17,6 +18,7 @@ export default async function DraftPage({
   if (!zip) notFound();
   return (
     <ReaderShell zip={zip} prev={null} next={null}>
+      <ViewBeacon id={zip.id} />
       <ReaderBody body={zip.body} bodyKind={zip.bodyKind} officialUrl={zip.officialUrl} />
       {zip.number != null ? (
         <CitationGraph

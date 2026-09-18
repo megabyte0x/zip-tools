@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { CitationGraph } from "../../../components/CitationGraph";
 import { ReaderBody } from "../../../components/ReaderBody";
 import { ReaderShell } from "../../../components/ReaderShell";
+import { ViewBeacon } from "../../../components/ViewBeacon";
 import { loadIndex } from "../../../lib/loadIndex";
 import { neighborhood } from "../../../lib/neighborhood";
 import { prevNext } from "../../../lib/neighbors";
@@ -20,6 +21,7 @@ export default async function ZipPage({
     zip.number != null ? prevNext(index.zips, zip.number) : { prev: null, next: null };
   return (
     <ReaderShell zip={zip} prev={neighbors.prev} next={neighbors.next}>
+      <ViewBeacon id={zip.id} />
       <ReaderBody body={zip.body} bodyKind={zip.bodyKind} officialUrl={zip.officialUrl} />
       {zip.number != null ? (
         <CitationGraph
