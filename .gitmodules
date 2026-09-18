@@ -1,0 +1,3 @@
+[submodule "submodule/zips"]
+	path = submodule/zips
+	url = https://github.com/zcash/zips.git
