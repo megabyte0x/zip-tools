@@ -99,12 +99,7 @@ export function ReaderShell({
             {tocNav}
           </details>
         ) : null}
-        <GeneratedSummary
-          id={zip.id}
-          body={zip.body}
-          bodyKind={zip.bodyKind}
-          officialUrl={zip.officialUrl}
-        />
+        <GeneratedSummary id={zip.id} body={zip.body} />
         {children}
       </article>
       <aside className={styles.metaColumn}>

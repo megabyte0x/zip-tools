@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { summaryCacheKey, buildSummaryPrompt, handleSummaryGet } from "./summary.ts";
+import { summaryNeedsBodyCopy } from "./summaryCopy.ts";
 
 test("summaryCacheKey joins sha and id", () => {
   assert.equal(summaryCacheKey("abc", "32"), "abc:32");
@@ -126,4 +128,14 @@ test("handleSummaryGet success caches for 30 days", async () => {
   assert.equal(KV.store.get("abc:32")?.value, "a summary");
   assert.equal(KV.store.get("abc:32")?.expirationTtl, 30 * 24 * 60 * 60);
   assert.equal(prompts.length, 1);
+});
+
+test("needs-body accordion copy omits official CTA", () => {
+  const copy = summaryNeedsBodyCopy();
+  assert.equal(copy, "A summary needs an in-app body.");
+  assert.ok(!copy.includes("Open on zips.z.cash"));
+  const src = readFileSync(new URL("../components/GeneratedSummary.tsx", import.meta.url), "utf8");
+  assert.ok(src.includes("summaryNeedsBodyCopy"));
+  assert.ok(!src.includes("FALLBACK_CTA"));
+  assert.ok(!src.includes("Open on zips.z.cash"));
 });

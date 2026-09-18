@@ -21,12 +21,6 @@
   margin: 0;
 }
 
-.cta {
-  color: var(--color-accent);
-  display: inline-block;
-  margin-top: 0.5rem;
-}
-
 .retry {
   background: var(--color-muted-surface);
   border: 1px solid var(--color-border);

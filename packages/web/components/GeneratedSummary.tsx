@@ -1,22 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { FALLBACK_CTA, readerMode } from "../lib/readerMode";
-import type { ZipRecord } from "../lib/types";
+import { summaryNeedsBodyCopy } from "../lib/summaryCopy";
 import styles from "./GeneratedSummary.module.css";
 
 export function GeneratedSummary({
   id,
   body,
-  bodyKind,
-  officialUrl,
 }: {
   id: string;
   body: string | null;
-  bodyKind: ZipRecord["bodyKind"];
-  officialUrl: string;
 }) {
-  const mode = readerMode(body, bodyKind);
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<"unavailable" | "needs-body" | null>(
     body == null ? "needs-body" : null,
@@ -64,12 +58,7 @@ export function GeneratedSummary({
       <summary className={styles.title}>Generated summary</summary>
       {error === "needs-body" ? (
         <div className={styles.panel}>
-          <p className={styles.copy}>A summary needs an in-app body.</p>
-          {mode === "fallback" ? (
-            <a className={styles.cta} href={officialUrl}>
-              {FALLBACK_CTA}
-            </a>
-          ) : null}
+          <p className={styles.copy}>{summaryNeedsBodyCopy()}</p>
         </div>
       ) : error === "unavailable" ? (
         <div className={styles.panel}>
