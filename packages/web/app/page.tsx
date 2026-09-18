@@ -1,12 +1,25 @@
 import Link from "next/link";
 import { ZipExplorer } from "../components/ZipExplorer";
+import { ZipOfTheDay } from "../components/ZipOfTheDay";
+import { ZipRail } from "../components/ZipRail";
+import { featuredZips } from "../lib/featured";
 import { loadIndex } from "../lib/loadIndex";
+import { zipOfTheDay } from "../lib/zipOfTheDay";
 import styles from "./page.module.css";
 
 export default function HomePage() {
-  const { zips, nus } = loadIndex();
+  const index = loadIndex();
+  const { zips, nus } = index;
+  const featured = featuredZips(index);
+  const utcDate = new Date().toISOString().slice(0, 10);
+  const daily = zipOfTheDay(zips, utcDate);
+  const numbered = zips
+    .filter((zip) => zip.number != null)
+    .map((zip) => ({ number: zip.number, slug: zip.slug }));
+
   return (
     <div>
+      <ZipRail title="Featured" zips={featured} />
       <section className={styles.boards} aria-labelledby="nu-boards-heading">
         <h2 id="nu-boards-heading" className={styles.heading}>
           Network upgrades
@@ -25,6 +38,7 @@ export default function HomePage() {
           ))}
         </ul>
       </section>
+      <ZipOfTheDay zip={daily} numbered={numbered} />
       <ZipExplorer zips={zips} />
     </div>
   );
