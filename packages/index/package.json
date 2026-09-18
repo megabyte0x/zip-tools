@@ -1,0 +1,11 @@
+{
+  "name": "@zip-tools/index",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": { "zip-index": "./src/cli.ts" },
+  "scripts": {
+    "test": "tsx --test test/*.test.ts",
+    "build-index": "tsx src/cli.ts build --source ../../submodule/zips --out ../web/data"
+  },
+  "devDependencies": { "tsx": "^4.19.3", "typescript": "^5.8.2" }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "zip-tools",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "test": "pnpm --filter @zip-tools/index test && pnpm --filter @zip-tools/web test",
+    "index": "pnpm --filter @zip-tools/index build-index",
+    "dev": "pnpm index && pnpm --filter @zip-tools/web dev",
+    "build": "pnpm index && pnpm --filter @zip-tools/web build"
+  }
+}

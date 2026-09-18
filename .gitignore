@@ -1,0 +1,8 @@
+node_modules
+.next
+dist
+*.tsbuildinfo
+packages/web/data/zip-index.json
+packages/web/data/rendered/
+.worktrees/
+.superpowers/
