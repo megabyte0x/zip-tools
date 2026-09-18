@@ -1,0 +1,21 @@
+.body {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.body :is(h1, h2, h3, h4) {
+  line-height: 1.25;
+}
+
+.body a {
+  color: var(--color-accent);
+}
+
+.fallback {
+  color: var(--color-muted);
+  margin: 0;
+}
+
+.cta {
+  color: var(--color-accent);
+}

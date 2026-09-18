@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { ReaderBody } from "../../../components/ReaderBody";
+import { ZipMeta } from "../../../components/ZipMeta";
 import { loadIndex } from "../../../lib/loadIndex";
 import { resolveZip } from "../../../lib/resolve";
 
@@ -13,7 +15,8 @@ export default async function ZipPage({
   return (
     <article>
       <h1>{zip.title}</h1>
-      <p>{zip.id}</p>
+      <ZipMeta zip={zip} />
+      <ReaderBody body={zip.body} bodyKind={zip.bodyKind} officialUrl={zip.officialUrl} />
     </article>
   );
 }
