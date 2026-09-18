@@ -1,0 +1,40 @@
+.band {
+  display: grid;
+  grid-template-columns: minmax(12rem, 2fr) repeat(3, minmax(8rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.label {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.input,
+.select {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  color: var(--color-fg);
+  font: inherit;
+  padding: 0.5rem 0.65rem;
+}
+
+.input:focus,
+.select:focus {
+  outline: 1px solid var(--color-accent);
+}
+
+@media (max-width: 720px) {
+  .band {
+    grid-template-columns: 1fr;
+  }
+}
