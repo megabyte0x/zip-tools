@@ -7,15 +7,29 @@ export function slugifyHeading(text: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-export function allocateHeadingId(text: string, seen: Map<string, number>): string {
+export function allocateHeadingId(text: string, used: Set<string>): string {
   const base = slugifyHeading(text);
-  const n = (seen.get(base) ?? 0) + 1;
-  seen.set(base, n);
-  return n === 1 ? base : `${base}-${n}`;
+  if (!used.has(base)) {
+    used.add(base);
+    return base;
+  }
+  let n = 2;
+  while (used.has(`${base}-${n}`)) n += 1;
+  const id = `${base}-${n}`;
+  used.add(id);
+  return id;
 }
 
 function headingTextFromHtml(inner: string): string {
   return inner.replace(/<[^>]+>/g, "").trim();
+}
+
+function headingTextFromMarkdown(raw: string): string {
+  return raw
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .trim();
 }
 
 function existingHeadingId(attrs: string): string | undefined {
@@ -24,39 +38,85 @@ function existingHeadingId(attrs: string): string | undefined {
   return match[1] ?? match[2] ?? match[3];
 }
 
+const HEADING_RE = /<(h[23])(\s[^>]*)?>([\s\S]*?)<\/\1>/gi;
+
 export function tocFromHtml(html: string): { html: string; toc: TocEntry[] } {
+  const parsed: {
+    tag: string;
+    attrs: string;
+    inner: string;
+    text: string;
+    existing: string | undefined;
+    keepExisting: boolean;
+  }[] = [];
+  for (const match of html.matchAll(new RegExp(HEADING_RE, "gi"))) {
+    const tag = match[1] ?? "h2";
+    const attrs = match[2] ?? "";
+    const inner = match[3] ?? "";
+    parsed.push({
+      tag,
+      attrs,
+      inner,
+      text: headingTextFromHtml(inner),
+      existing: existingHeadingId(attrs),
+      keepExisting: false,
+    });
+  }
+
+  const reserved = new Set<string>();
+  for (const heading of parsed) {
+    if (heading.existing && !reserved.has(heading.existing)) {
+      reserved.add(heading.existing);
+      heading.keepExisting = true;
+    }
+  }
+
+  const used = new Set(reserved);
   const toc: TocEntry[] = [];
-  const seen = new Map<string, number>();
-  const rewritten = html.replace(
-    /<(h[23])(\s[^>]*)?>([\s\S]*?)<\/\1>/gi,
-    (_full, tag: string, rawAttrs: string | undefined, inner: string) => {
-      const attrs = rawAttrs ?? "";
-      const level = Number(tag.slice(1)) as 2 | 3;
-      const text = headingTextFromHtml(inner);
-      const existing = existingHeadingId(attrs);
-      const id = existing ?? allocateHeadingId(text, seen);
-      if (existing) {
-        const n = seen.get(existing) ?? 0;
-        seen.set(existing, Math.max(n, 1));
-      }
-      toc.push({ id, text, level });
-      if (existing) return `<${tag}${attrs}>${inner}</${tag}>`;
-      return `<${tag} id="${id}"${attrs}>${inner}</${tag}>`;
-    },
-  );
+  const ids: string[] = [];
+  for (const heading of parsed) {
+    const id =
+      heading.keepExisting && heading.existing
+        ? heading.existing
+        : allocateHeadingId(heading.text, used);
+    ids.push(id);
+    toc.push({
+      id,
+      text: heading.text,
+      level: Number(heading.tag.slice(1)) as 2 | 3,
+    });
+  }
+
+  let i = 0;
+  const rewritten = html.replace(new RegExp(HEADING_RE, "gi"), (_full, tag: string, rawAttrs: string | undefined, inner: string) => {
+    const heading = parsed[i];
+    const id = ids[i] ?? "";
+    i += 1;
+    const attrs = rawAttrs ?? "";
+    if (heading?.keepExisting) return `<${tag}${attrs}>${inner}</${tag}>`;
+    if (heading?.existing) {
+      const nextAttrs = attrs.replace(
+        /\bid\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/i,
+        `id="${id}"`,
+      );
+      return `<${tag}${nextAttrs}>${inner}</${tag}>`;
+    }
+    return `<${tag} id="${id}"${attrs}>${inner}</${tag}>`;
+  });
   return { html: rewritten, toc };
 }
 
 export function tocFromMarkdown(md: string): TocEntry[] {
   const toc: TocEntry[] = [];
-  const seen = new Map<string, number>();
+  const used = new Set<string>();
   for (const line of md.split(/\r?\n/)) {
     const match = /^(#{2,3})[ \t]+(.+?)\s*$/.exec(line);
     if (!match) continue;
     const hashes = match[1];
-    const raw = match[2].replace(/[ \t]+#+\s*$/, "").trim();
+    const raw = (match[2] ?? "").replace(/[ \t]+#+\s*$/, "").trim();
+    const text = headingTextFromMarkdown(raw);
     const level = hashes.length as 2 | 3;
-    toc.push({ id: allocateHeadingId(raw, seen), text: raw, level });
+    toc.push({ id: allocateHeadingId(text, used), text, level });
   }
   return toc;
 }

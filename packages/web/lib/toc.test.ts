@@ -20,3 +20,25 @@ test("tocFromMarkdown reads ATX h2 and h3", () => {
     { id: "why", text: "Why", level: 3 },
   ]);
 });
+
+test("tocFromMarkdown slugs visible text for links, images, and code", () => {
+  const toc = tocFromMarkdown(
+    "## See [ZIP 32](https://zips.z.cash/zip-032)\n\n### Logo ![Zcash](logo.png) and `Orchard`\n",
+  );
+  assert.equal(toc[0]?.id, "see-zip-32");
+  assert.equal(toc[0]?.text, "See ZIP 32");
+  assert.equal(toc[1]?.id, "logo-zcash-and-orchard");
+  assert.equal(toc[1]?.text, "Logo Zcash and Orchard");
+});
+
+test("tocFromHtml unique ids when existing id collides with generated slug", () => {
+  const { html, toc } = tocFromHtml('<h2>Intro</h2><h2 id="intro">Other</h2>');
+  assert.deepEqual(toc.map((e) => e.id), ["intro-2", "intro"]);
+  assert.match(html, /<h2 id="intro-2">Intro<\/h2>/);
+  assert.match(html, /<h2 id="intro">Other<\/h2>/);
+});
+
+test("tocFromHtml generated collisions skip reserved existing ids", () => {
+  const { toc } = tocFromHtml('<h2 id="intro-2">Foo</h2><h2>Intro</h2><h2>Intro</h2>');
+  assert.deepEqual(toc.map((e) => e.id), ["intro-2", "intro", "intro-3"]);
+});

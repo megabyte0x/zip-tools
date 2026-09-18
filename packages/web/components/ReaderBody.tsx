@@ -22,12 +22,19 @@ function textFromNode(node: ReactNode): string {
 }
 
 function markdownHeadingComponents() {
-  const seen = new Map<string, number>();
+  const used = new Set<string>();
   const heading = (Tag: "h2" | "h3") =>
-    function Heading({ children, ...props }: { children?: ReactNode }) {
-      const id = allocateHeadingId(textFromNode(children), seen);
+    function Heading({
+      children,
+      node: _node,
+      ...props
+    }: {
+      children?: ReactNode;
+      node?: unknown;
+    }) {
+      const id = allocateHeadingId(textFromNode(children), used);
       return (
-        <Tag id={id} {...props}>
+        <Tag {...props} id={id}>
           {children}
         </Tag>
       );
