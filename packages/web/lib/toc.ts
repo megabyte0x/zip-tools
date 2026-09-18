@@ -7,6 +7,18 @@ export function slugifyHeading(text: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+export function headingTextFromNode(node: unknown): string {
+  if (node == null || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(headingTextFromNode).join("");
+  if (typeof node === "object" && "props" in node) {
+    const props = (node as { props?: { alt?: unknown; children?: unknown } }).props;
+    const alt = typeof props?.alt === "string" ? props.alt : "";
+    return `${alt}${headingTextFromNode(props?.children)}`;
+  }
+  return "";
+}
+
 export function allocateHeadingId(text: string, used: Set<string>): string {
   const base = slugifyHeading(text);
   if (!used.has(base)) {

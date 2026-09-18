@@ -1,6 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { slugifyHeading, tocFromHtml, tocFromMarkdown } from "./toc.ts";
+import {
+  allocateHeadingId,
+  headingTextFromNode,
+  slugifyHeading,
+  tocFromHtml,
+  tocFromMarkdown,
+} from "./toc.ts";
 
 test("slugifyHeading lowercases and hyphenates", () => {
   assert.equal(slugifyHeading("Abstract (ZIP 32)"), "abstract-zip-32");
@@ -29,6 +35,22 @@ test("tocFromMarkdown slugs visible text for links, images, and code", () => {
   assert.equal(toc[0]?.text, "See ZIP 32");
   assert.equal(toc[1]?.id, "logo-zcash-and-orchard");
   assert.equal(toc[1]?.text, "Logo Zcash and Orchard");
+});
+
+test("headingTextFromNode includes image alt matching tocFromMarkdown ids", () => {
+  const toc = tocFromMarkdown(
+    "### Logo ![Zcash](logo.png) and `Orchard`\n",
+  );
+  const headingText = headingTextFromNode([
+    "Logo ",
+    { props: { alt: "Zcash" } },
+    " and ",
+    "Orchard",
+  ]);
+  assert.equal(headingText, "Logo Zcash and Orchard");
+  assert.equal(headingText, toc[0]?.text);
+  assert.equal(allocateHeadingId(headingText, new Set()), toc[0]?.id);
+  assert.equal(toc[0]?.id, "logo-zcash-and-orchard");
 });
 
 test("tocFromHtml unique ids when existing id collides with generated slug", () => {

@@ -5,21 +5,11 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
 import { FALLBACK_CTA, readerMode } from "../lib/readerMode";
-import { allocateHeadingId, tocFromHtml } from "../lib/toc";
+import { allocateHeadingId, headingTextFromNode, tocFromHtml } from "../lib/toc";
 import type { ZipRecord } from "../lib/types";
 import styles from "./ReaderBody.module.css";
 
 export { FALLBACK_CTA, readerMode };
-
-function textFromNode(node: ReactNode): string {
-  if (node == null || typeof node === "boolean") return "";
-  if (typeof node === "string" || typeof node === "number") return String(node);
-  if (Array.isArray(node)) return node.map(textFromNode).join("");
-  if (typeof node === "object" && "props" in node) {
-    return textFromNode((node as { props?: { children?: ReactNode } }).props?.children);
-  }
-  return "";
-}
 
 function markdownHeadingComponents() {
   const used = new Set<string>();
@@ -32,7 +22,7 @@ function markdownHeadingComponents() {
       children?: ReactNode;
       node?: unknown;
     }) {
-      const id = allocateHeadingId(textFromNode(children), used);
+      const id = allocateHeadingId(headingTextFromNode(children), used);
       return (
         <Tag {...props} id={id}>
           {children}
