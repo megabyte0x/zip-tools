@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { Footer } from "../components/Footer";
+import { SiteHeader } from "../components/SiteHeader";
+import { headerModel } from "../lib/headerModel";
 import { loadIndex } from "../lib/loadIndex";
 import "./globals.css";
 import styles from "./layout.module.css";
@@ -10,10 +12,17 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const index = loadIndex();
+  const model = headerModel(index);
+  const zips = index.zips.map((zip) => ({ ...zip, body: null }));
   return (
     <html lang="en">
       <body className={styles.body}>
-        <header className={styles.header}>ZIP.tools</header>
+        <SiteHeader
+          zipCount={model.zipCount}
+          draftCount={model.draftCount}
+          nus={model.nus}
+          zips={zips}
+        />
         <main className={styles.main}>{children}</main>
         <Footer snapshot={index.snapshot} />
       </body>
