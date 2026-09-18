@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ZipRecord } from "../lib/types";
 import { HeaderSearch } from "./HeaderSearch";
+import { ReadingListBadge } from "./ReadingListButton";
 import styles from "./SiteHeader.module.css";
 
 export function SiteHeader({
@@ -22,6 +23,7 @@ export function SiteHeader({
       <nav className={styles.nav} aria-label="Site">
         <Link className={styles.link} href="/list">
           Reading List
+          <ReadingListBadge />
         </Link>
         <Link className={styles.link} href="/zips">
           ZIPs {zipCount}
