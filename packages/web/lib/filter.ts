@@ -5,6 +5,7 @@ export type ZipFilterQuery = {
   status?: string;
   nuId?: string;
   category?: string;
+  kind?: "draft" | "numbered";
 };
 
 function includesInsensitive(haystack: string, needle: string): boolean {
@@ -45,6 +46,9 @@ export function filterZips(zips: ZipRecord[], q: ZipFilterQuery): ZipRecord[] {
         return false;
       }
     }
+
+    if (q.kind === "draft" && zip.number !== null) return false;
+    if (q.kind === "numbered" && zip.number === null) return false;
 
     return true;
   });

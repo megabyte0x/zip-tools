@@ -2,32 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { filterZips } from "./filter.ts";
 import type { ZipRecord } from "./types.ts";
-
-function makeZip(overrides: Partial<ZipRecord> = {}): ZipRecord {
-  return {
-    id: "zip-0001",
-    number: 1,
-    slug: "zip-0001",
-    title: "Example ZIP",
-    status: [{ label: "Draft" }],
-    statusRaw: "Draft",
-    category: "Standards Track",
-    owners: [{ name: "Alice" }],
-    created: null,
-    license: null,
-    discussionsTo: null,
-    nuIds: [],
-    citations: [],
-    citedBy: [],
-    sourcePath: "zips/zip-0001.rst",
-    officialUrl: "https://zips.z.cash/zip-0001",
-    githubUrl: "",
-    bodyKind: "none",
-    body: null,
-    parseWarnings: [],
-    ...overrides,
-  };
-}
+import { makeZip } from "./test-zip.ts";
 
 const zips: ZipRecord[] = [
   makeZip({
@@ -113,4 +88,14 @@ test("filterZips returns all zips when text is empty and no filters are set", ()
 test("filterZips returns an empty array when nothing matches", () => {
   const result = filterZips(zips, { text: "no-such-zip" });
   assert.deepEqual(result, []);
+});
+
+test("filterZips kind draft keeps only number === null", () => {
+  const result = filterZips(zips, { kind: "draft" });
+  assert.deepEqual(result.map((z) => z.id), ["draft-foo"]);
+});
+
+test("filterZips kind numbered drops drafts", () => {
+  const result = filterZips(zips, { kind: "numbered" });
+  assert.equal(result.some((z) => z.number === null), false);
 });
