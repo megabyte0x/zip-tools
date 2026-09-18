@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -68,4 +69,19 @@ test("buildIndex over the fixture tree", () => {
     index.zips.some((z) => z.number === 9999 || z.id === "9999"),
     false,
   );
+});
+
+test("cli build writes parseable zip-index.json", () => {
+  const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+  const outDir = "/tmp/zip-index-out";
+  rmSync(outDir, { recursive: true, force: true });
+  const result = spawnSync(
+    "tsx",
+    ["src/cli.ts", "build", "--source", "test/fixtures/zips", "--out", outDir],
+    { cwd: pkgRoot, encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, `${result.stderr}${result.stdout}`);
+  const outFile = join(outDir, "zip-index.json");
+  assert.equal(existsSync(outFile), true);
+  JSON.parse(readFileSync(outFile, "utf8"));
 });

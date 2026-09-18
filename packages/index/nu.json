@@ -1,3 +1,27 @@
 {
-  "nus": []
+  "nus": [
+    {
+      "id": "nu6.2",
+      "title": "NU6.2",
+      "kind": "settled",
+      "deploymentZip": 257,
+      "zips": [257],
+      "notes": "Activated Mainnet height 3364600 on 2026-06-03."
+    },
+    {
+      "id": "nu6.3",
+      "title": "NU6.3",
+      "kind": "candidate",
+      "deploymentZip": 258,
+      "zips": [258, 229, 2005, 2006, 318, 326, 209, 213, 317]
+    },
+    {
+      "id": "nu7",
+      "title": "NU7",
+      "kind": "candidate",
+      "deploymentZip": null,
+      "zips": [218, 230, 231, 233, 234, 235, 2002, 2003],
+      "notes": "draft-arya-deploy-nu7 will define inclusion. ZIP 317 may be updated."
+    }
+  ]
 }
