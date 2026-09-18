@@ -10,8 +10,17 @@ function uniqueSorted(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
-export function ZipExplorer({ zips }: { zips: ZipRecord[] }) {
-  const [text, setText] = useState("");
+export function ZipExplorer({
+  zips,
+  initialText = "",
+  initialKind = "",
+}: {
+  zips: ZipRecord[];
+  initialText?: string;
+  initialKind?: "draft" | "numbered" | "";
+}) {
+  const [text, setText] = useState(initialText);
+  const [kind] = useState(initialKind);
   const [status, setStatus] = useState("");
   const [nuId, setNuId] = useState("");
   const [category, setCategory] = useState("");
@@ -36,8 +45,9 @@ export function ZipExplorer({ zips }: { zips: ZipRecord[] }) {
         status: status || undefined,
         nuId: nuId || undefined,
         category: category || undefined,
+        kind: kind || undefined,
       }),
-    [zips, text, status, nuId, category],
+    [zips, text, status, nuId, category, kind],
   );
 
   return (
