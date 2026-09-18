@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 type WranglerConfig = {
+  main: string;
   d1_databases: { binding: string }[];
   kv_namespaces: { binding: string }[];
   ai: { binding: string };
@@ -26,4 +27,12 @@ test("wrangler.jsonc binds DB, KV, AI, SUMMARY_MODEL, and hourly cron", () => {
   assert.equal(wrangler.ai.binding, "AI");
   assert.equal(wrangler.vars.SUMMARY_MODEL, "@cf/meta/llama-3.1-8b-instruct");
   assert.ok(wrangler.triggers.crons.includes("0 * * * *"));
+});
+
+test("wrangler cron entrypoint calls handleScheduledRollup", () => {
+  const wrangler = parseJsonc(readFileSync(wranglerPath, "utf8"));
+  assert.equal(wrangler.main, "./worker.ts");
+  const worker = readFileSync(join(dirname(wranglerPath), "worker.ts"), "utf8");
+  assert.match(worker, /handleScheduledRollup/);
+  assert.match(worker, /async scheduled/);
 });

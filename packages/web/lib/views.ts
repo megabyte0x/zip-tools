@@ -67,7 +67,7 @@ export function trendingFromDaily(
   const oldest = addUtcDays(todayUtc, -6);
   const totals = new Map<string, number>();
   for (const row of rows) {
-    if (row.day <= oldest || row.day > todayUtc) continue;
+    if (row.day < oldest || row.day > todayUtc) continue;
     totals.set(row.zip_id, (totals.get(row.zip_id) ?? 0) + row.count);
   }
   return [...totals.entries()]

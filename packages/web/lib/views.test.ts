@@ -29,11 +29,20 @@ test("rollupEvents groups by zip and day", () => {
   );
 });
 
+test("trendingFromDaily includes today-6 as a 7-day window", () => {
+  const top = trendingFromDaily(
+    [{ zip_id: "32", day: "2026-09-12", count: 9 }],
+    "2026-09-18",
+    12,
+  );
+  assert.deepEqual(top, [{ id: "32", count: 9 }]);
+});
+
 test("trendingFromDaily sums last 7 UTC days and caps at 12", () => {
   const top = trendingFromDaily(
     [
       { zip_id: "32", day: "2026-09-18", count: 3 },
-      { zip_id: "32", day: "2026-09-12", count: 9 },
+      { zip_id: "32", day: "2026-09-11", count: 9 },
       { zip_id: "1", day: "2026-09-17", count: 4 },
     ],
     "2026-09-18",
