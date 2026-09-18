@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { CitationGraph } from "../../../components/CitationGraph";
 import { ReaderBody } from "../../../components/ReaderBody";
-import { ZipMeta } from "../../../components/ZipMeta";
+import { ReaderShell } from "../../../components/ReaderShell";
 import { loadIndex } from "../../../lib/loadIndex";
 import { neighborhood } from "../../../lib/neighborhood";
 import { resolveDraft } from "../../../lib/resolve";
@@ -16,9 +16,7 @@ export default async function DraftPage({
   const zip = resolveDraft(index, slug);
   if (!zip) notFound();
   return (
-    <article>
-      <h1>{zip.title}</h1>
-      <ZipMeta zip={zip} />
+    <ReaderShell zip={zip} prev={null} next={null}>
       <ReaderBody body={zip.body} bodyKind={zip.bodyKind} officialUrl={zip.officialUrl} />
       {zip.number != null ? (
         <CitationGraph
@@ -27,6 +25,6 @@ export default async function DraftPage({
           depth2={neighborhood(index, zip.number, 2)}
         />
       ) : null}
-    </article>
+    </ReaderShell>
   );
 }

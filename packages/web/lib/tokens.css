@@ -6,6 +6,9 @@
   --color-muted: #a3a091;
   --color-border: rgba(244, 241, 232, 0.12);
   --color-accent: #c4a35a;
+  --color-chip-bg: #1c1e19;
+  --color-chip-fg: #f4f1e8;
+  --color-chip-border: rgba(244, 241, 232, 0.12);
   --radius-control: 6px;
   --radius-surface: 12px;
 }

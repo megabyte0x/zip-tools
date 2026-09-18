@@ -1,0 +1,148 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.tocDesktop {
+  display: none;
+}
+
+.tocMobile {
+  margin: 0 0 1.25rem;
+}
+
+.tocMobile summary {
+  cursor: pointer;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.tocList {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tocList li[data-level="3"] {
+  padding-left: 0.85rem;
+}
+
+.tocLink {
+  color: var(--color-muted);
+  display: block;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  padding: 0.2rem 0;
+  text-decoration: none;
+}
+
+.tocLink:hover {
+  color: var(--color-accent);
+}
+
+.article {
+  min-width: 0;
+}
+
+.article :is(pre, table) {
+  overflow-x: auto;
+}
+
+.title {
+  font-size: 1.75rem;
+  line-height: 1.25;
+  margin: 0 0 1rem;
+}
+
+.prevNext {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
+  margin: 0 0 0.75rem;
+}
+
+.navBtn,
+.navBtnPlaceholder {
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  display: inline-flex;
+  height: 2rem;
+  justify-content: center;
+  width: 2rem;
+}
+
+.navBtn {
+  color: var(--color-fg);
+  text-decoration: none;
+}
+
+.navBtn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.navBtnPlaceholder {
+  visibility: hidden;
+}
+
+.icon {
+  height: 1.1rem;
+  width: 1.1rem;
+}
+
+.metaColumn {
+  display: grid;
+  gap: 0.75rem;
+  order: -1;
+}
+
+.metaColumn button {
+  background: var(--color-muted-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  color: var(--color-fg);
+  cursor: pointer;
+  font: inherit;
+  justify-self: start;
+  padding: 0.4rem 0.75rem;
+}
+
+.metaColumn button[aria-pressed="true"] {
+  background: var(--color-chip-bg);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+@media (min-width: 1100px) {
+  .shell {
+    align-items: start;
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: minmax(11rem, 14rem) minmax(0, 1fr) minmax(14rem, 18rem);
+  }
+
+  .tocDesktop {
+    display: block;
+    max-height: calc(100vh - 6rem);
+    overflow: auto;
+    position: sticky;
+    top: 4.5rem;
+  }
+
+  .tocMobile {
+    display: none;
+  }
+
+  .article {
+    max-width: 65ch;
+  }
+
+  .metaColumn {
+    order: 0;
+    position: sticky;
+    top: 4.5rem;
+  }
+}

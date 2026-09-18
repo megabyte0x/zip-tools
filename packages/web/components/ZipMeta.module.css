@@ -1,8 +1,8 @@
 .meta {
   display: grid;
-  gap: 0.75rem 1.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  margin: 0 0 1.5rem;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+  margin: 0;
   padding: 1rem 1.15rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -35,6 +35,15 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.labels li {
+  background: var(--color-chip-bg);
+  border: 1px solid var(--color-chip-border);
+  border-radius: 999px;
+  color: var(--color-chip-fg);
+  font-size: 0.75rem;
+  padding: 0.15rem 0.55rem;
 }
 
 .link {
