@@ -1,14 +1,17 @@
 :root {
-  --color-bg: #0b0c0a;
-  --color-surface: #141613;
-  --color-muted-surface: #1c1e19;
+  --color-bg: #0a0b0a;
+  --color-surface: #121410;
+  --color-muted-surface: #1a1c17;
   --color-fg: #f4f1e8;
-  --color-muted: #a3a091;
-  --color-border: rgba(244, 241, 232, 0.12);
+  --color-muted: #9a9788;
+  --color-border: rgba(244, 241, 232, 0.1);
   --color-accent: #c4a35a;
   --color-chip-bg: #1c1e19;
   --color-chip-fg: #f4f1e8;
-  --color-chip-border: rgba(244, 241, 232, 0.12);
-  --radius-control: 6px;
+  --color-chip-border: rgba(196, 163, 90, 0.35);
+  --radius-control: 8px;
   --radius-surface: 12px;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "IBM Plex Serif", "Iowan Old Style", Palatino, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }

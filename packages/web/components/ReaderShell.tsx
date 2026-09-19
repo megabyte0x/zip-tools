@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { readerMode } from "../lib/readerMode";
+import { rstSourceToMarkdown } from "../lib/rstSource";
 import { tocFromHtml, tocFromMarkdown, type TocEntry } from "../lib/toc";
 import type { ZipRecord } from "../lib/types";
 import { zipHref } from "../lib/zipHref";
@@ -14,6 +15,7 @@ function tocForZip(zip: ZipRecord): TocEntry[] {
   const mode = readerMode(zip.body, zip.bodyKind);
   if (mode === "html") return tocFromHtml(zip.body ?? "").toc;
   if (mode === "markdown") return tocFromMarkdown(zip.body ?? "");
+  if (mode === "source") return tocFromMarkdown(rstSourceToMarkdown(zip.body ?? ""));
   return [];
 }
 
@@ -50,6 +52,7 @@ export function ReaderShell({
   return (
     <div className={styles.shell}>
       <nav className={styles.tocDesktop} aria-label="Contents">
+        {tocNav ? <p className={styles.tocLabel}>Contents</p> : null}
         {tocNav}
       </nav>
       <article className={styles.article}>
@@ -79,6 +82,9 @@ export function ReaderShell({
             )}
           </nav>
         ) : null}
+        <p className={styles.kicker}>
+          {zip.number != null ? `ZIP ${zip.number}` : zip.slug}
+        </p>
         <h1 className={styles.title}>{zip.title}</h1>
         {tocNav ? (
           <details className={styles.tocMobile}>

@@ -3,10 +3,12 @@
 }
 
 .heading {
-  font-size: 1.1rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  margin: 0 0 0.75rem;
+  letter-spacing: 0.1em;
+  margin: 0 0 0.85rem;
+  text-transform: uppercase;
+  color: var(--color-muted);
 }
 
 .rail {

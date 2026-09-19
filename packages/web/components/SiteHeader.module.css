@@ -6,15 +6,16 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem 1.25rem;
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border);
-  padding: 0.75rem 1.5rem;
+  padding: 0.7rem 1.5rem;
 }
 
 .wordmark {
   color: var(--color-fg);
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   text-decoration: none;
 }
 
@@ -26,7 +27,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.65rem 1rem;
+  gap: 0.5rem 0.85rem;
   flex: 1 1 auto;
 }
 
@@ -38,10 +39,36 @@
 }
 
 .link:hover,
-.nu:hover {
+.nu:hover,
+.count:hover {
   color: var(--color-accent);
 }
 
 .nu {
   letter-spacing: 0.02em;
+}
+
+.count {
+  align-items: baseline;
+  color: inherit;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  line-height: 1.1;
+  text-decoration: none;
+}
+
+.countLabel {
+  color: var(--color-muted);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.countNum {
+  color: var(--color-fg);
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }

@@ -25,11 +25,13 @@ export function SiteHeader({
           Reading List
           <ReadingListBadge />
         </Link>
-        <Link className={styles.link} href="/zips">
-          ZIPs {zipCount}
+        <Link className={styles.count} href="/zips">
+          <span className={styles.countLabel}>ZIPs</span>
+          <span className={styles.countNum}>{zipCount}</span>
         </Link>
-        <Link className={styles.link} href="/zips?kind=draft">
-          Drafts {draftCount}
+        <Link className={styles.count} href="/zips?kind=draft">
+          <span className={styles.countLabel}>Drafts</span>
+          <span className={styles.countNum}>{draftCount}</span>
         </Link>
         <Link className={styles.link} href="/graph">
           Graph

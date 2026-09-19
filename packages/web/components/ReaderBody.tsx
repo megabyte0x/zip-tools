@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
 import { FALLBACK_CTA, readerMode } from "../lib/readerMode";
+import { rstSourceToMarkdown } from "../lib/rstSource";
 import { allocateHeadingId, headingTextFromNode, tocFromHtml } from "../lib/toc";
 import type { ZipRecord } from "../lib/types";
 import styles from "./ReaderBody.module.css";
@@ -65,7 +66,15 @@ export function ReaderBody({
 
   if (mode === "source") {
     return (
-      <pre className={`${styles.body} ${styles.source}`}>{body ?? ""}</pre>
+      <div className={styles.body}>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[rehypeKatex]}
+          components={markdownHeadingComponents()}
+        >
+          {rstSourceToMarkdown(body ?? "")}
+        </ReactMarkdown>
+      </div>
     );
   }
 
