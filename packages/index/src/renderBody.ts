@@ -20,7 +20,7 @@ function rstToHtml(text: string): { body: string | null; warning?: string } {
     if (result.error) {
       const err = result.error as NodeJS.ErrnoException;
       const warning = err.code === "ENOENT" ? "pandoc not found" : err.message;
-      return { body: null, warning };
+      return { body: text, warning };
     }
 
     if (result.status !== 0) {
@@ -28,13 +28,13 @@ function rstToHtml(text: string): { body: string | null; warning?: string } {
       const warning =
         stderr ||
         (result.signal ? `pandoc killed by ${result.signal}` : `pandoc exited ${result.status}`);
-      return { body: null, warning };
+      return { body: text, warning };
     }
 
     return { body: result.stdout };
   } catch (err) {
     const warning = err instanceof Error ? err.message : String(err);
-    return { body: null, warning };
+    return { body: text, warning };
   }
 }
 

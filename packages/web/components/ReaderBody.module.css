@@ -23,3 +23,10 @@
 .cta {
   color: var(--color-accent);
 }
+
+.source {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9rem;
+}

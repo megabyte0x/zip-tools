@@ -63,6 +63,12 @@ export function ReaderBody({
     );
   }
 
+  if (mode === "source") {
+    return (
+      <pre className={`${styles.body} ${styles.source}`}>{body ?? ""}</pre>
+    );
+  }
+
   return (
     <div className={styles.body}>
       <ReactMarkdown

@@ -12,6 +12,10 @@ test("readerMode returns html when body is rst HTML", () => {
   assert.equal(readerMode("<p>rst</p>", "rst"), "html");
 });
 
+test("readerMode returns source when rst body is not HTML", () => {
+  assert.equal(readerMode("====\nZIP 32\n====\n\nAbstract\n========\n", "rst"), "source");
+});
+
 test("readerMode returns markdown for md and draft bodies", () => {
   assert.equal(readerMode("# hello", "md"), "markdown");
   assert.equal(readerMode("# draft", "draft"), "markdown");

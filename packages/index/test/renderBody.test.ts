@@ -14,8 +14,14 @@ test("draft markdown is draft kind", () => {
   assert.equal(r.body, "x");
 });
 
-test("rst without pandoc or on failure returns null body and warning", () => {
-  const r = renderBody("zips/zip-0000.rst", "====\nHi\n====\n");
+test("rst without pandoc keeps source body and warning", () => {
+  const source = "====\nHi\n====\n";
+  const r = renderBody("zips/zip-0000.rst", source);
   assert.equal(r.bodyKind, "rst");
-  if (r.body === null) assert.ok(r.warning);
+  if (r.warning?.includes("pandoc not found") || r.body === source) {
+    assert.equal(r.body, source);
+    assert.ok(r.warning);
+  } else {
+    assert.ok(r.body?.includes("<") || (r.body?.length ?? 0) > 0);
+  }
 });
