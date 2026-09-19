@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ZipRecord } from "../lib/types";
 import { zipHref } from "../lib/zipHref";
 import type { ZipOfTheDayZip } from "../lib/zipOfTheDay";
+import { Button } from "./ui/button";
 import styles from "./ZipOfTheDay.module.css";
 
 function ownerLabel(owner: ZipOfTheDayZip["owners"][number]): string {
@@ -42,9 +43,9 @@ export function ZipOfTheDay({
           ZIP of the day
         </h2>
         {numbered.length > 1 ? (
-          <button className={styles.random} type="button" onClick={onRandom}>
+          <Button variant="outline" size="sm" type="button" onClick={onRandom}>
             Random ZIP
-          </button>
+          </Button>
         ) : null}
       </div>
       <p className={styles.title}>

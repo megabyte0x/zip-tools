@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ZipRecord } from "../lib/types";
 import { zipHref } from "../lib/zipHref";
+import { Badge } from "./ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import styles from "./ZipRail.module.css";
 
 function statusLabel(zip: ZipRecord): string {
@@ -18,10 +20,18 @@ export function ZipRail({ title, zips }: { title: string; zips: ZipRecord[] }) {
       <ul className={styles.rail}>
         {zips.map((zip) => (
           <li key={zip.id} className={styles.item}>
-            <Link className={styles.card} href={zipHref(zip)}>
-              <span className={styles.number}>{zip.number}</span>
-              <span className={styles.title}>{zip.title}</span>
-              <span className={styles.status}>{statusLabel(zip)}</span>
+            <Link href={zipHref(zip)} className="block h-full no-underline">
+              <Card size="sm" className="h-full py-3 transition hover:ring-primary/40">
+                <CardHeader className="gap-1">
+                  <CardDescription className="text-primary">
+                    {zip.number != null ? `ZIP ${zip.number}` : zip.slug}
+                  </CardDescription>
+                  <CardTitle className="text-sm leading-snug">{zip.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Badge variant="outline">{statusLabel(zip)}</Badge>
+                </CardContent>
+              </Card>
             </Link>
           </li>
         ))}

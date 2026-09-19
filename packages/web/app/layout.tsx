@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   const model = headerModel(index);
   const zips = index.zips.map((zip) => ({ ...zip, body: null }));
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body className={styles.body}>
         <SiteHeader
           zipCount={model.zipCount}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 import { searchSuggestions } from "../lib/searchSuggest";
 import type { ZipRecord } from "../lib/types";
+import { Input } from "./ui/input";
 import styles from "./HeaderSearch.module.css";
 
 export function HeaderSearch({ zips }: { zips: ZipRecord[] }) {
@@ -26,7 +27,7 @@ export function HeaderSearch({ zips }: { zips: ZipRecord[] }) {
     <form className={styles.form} onSubmit={onSubmit} role="search">
       <label className={styles.label}>
         <span className={styles.srOnly}>Search ZIPs</span>
-        <input
+        <Input
           className={styles.input}
           type="search"
           value={text}

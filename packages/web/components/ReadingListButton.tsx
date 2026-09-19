@@ -9,6 +9,8 @@ import {
 } from "../lib/readingList";
 import type { ZipRecord } from "../lib/types";
 import { zipHref } from "../lib/zipHref";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
 
 function loadList(): { items: ReturnType<typeof parseReadingList>; unavailable: boolean } {
   try {
@@ -26,7 +28,11 @@ export function ReadingListBadge() {
   }, []);
 
   if (count == null || count === 0) return null;
-  return <span> {count}</span>;
+  return (
+    <Badge variant="secondary" className="ml-1">
+      {count}
+    </Badge>
+  );
 }
 
 export function ReadingListButton({
@@ -61,8 +67,8 @@ export function ReadingListButton({
   }
 
   return (
-    <button type="button" aria-pressed={saved} onClick={toggle}>
+    <Button type="button" variant={saved ? "default" : "outline"} aria-pressed={saved} onClick={toggle}>
       {saved ? "Bookmarked" : "Bookmark"}
-    </button>
+    </Button>
   );
 }
