@@ -6,6 +6,29 @@ import ts from "typescript";
 
 const require = createRequire(import.meta.url);
 
+const expectedReleasedRouteErrors = new Set([
+  "route.continue: Route is already handled!",
+  "route.continue: Target page, context or browser has been closed",
+]);
+
+type ReleasedRouteSettlement =
+  | { outcome: "continued" }
+  | { outcome: "cancelled"; message: string };
+
+async function classifyReleasedRoute(
+  continueRoute: () => Promise<void>,
+): Promise<ReleasedRouteSettlement> {
+  try {
+    await continueRoute();
+    return { outcome: "continued" };
+  } catch (error) {
+    if (error instanceof Error && expectedReleasedRouteErrors.has(error.message)) {
+      return { outcome: "cancelled", message: error.message };
+    }
+    throw error;
+  }
+}
+
 async function mountZipExplorer(
   page: Page,
   props: Record<string, unknown>,
@@ -81,6 +104,12 @@ async function openFilteredExplorerFromReader(page: Page) {
   await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
 }
 
+test("released route settlement rejects unexpected continuation failures", async () => {
+  const failure = new Error("injected unexpected route failure");
+
+  await expect(classifyReleasedRoute(() => Promise.reject(failure))).rejects.toBe(failure);
+});
+
 test("mount initialization keeps supplied props unless explorer URL keys are present", async ({ page }) => {
   const supplied = {
     text: "Orchard",
@@ -144,9 +173,11 @@ test("Back during a pending client transition restores the exact filtered explor
   const responseGate = new Promise<void>((resolve) => {
     releaseResponse = resolve;
   });
-  let signalReleasedRequestSettled!: () => void;
-  const releasedRequestSettled = new Promise<void>((resolve) => {
+  let signalReleasedRequestSettled!: (settlement: ReleasedRouteSettlement) => void;
+  let failReleasedRequestSettlement!: (error: unknown) => void;
+  const releasedRequestSettled = new Promise<ReleasedRouteSettlement>((resolve, reject) => {
     signalReleasedRequestSettled = resolve;
+    failReleasedRequestSettlement = reject;
   });
 
   await page.route(/\/zip\/317(?:\?|$)/, async (route) => {
@@ -156,8 +187,12 @@ test("Back during a pending client transition restores the exact filtered explor
     }
     signalPendingRequest();
     await responseGate;
-    await route.continue().catch(() => {});
-    signalReleasedRequestSettled();
+    try {
+      signalReleasedRequestSettled(await classifyReleasedRoute(() => route.continue()));
+    } catch (error) {
+      failReleasedRequestSettlement(error);
+      throw error;
+    }
   });
 
   await openFilteredExplorerFromReader(page);
@@ -181,7 +216,12 @@ test("Back during a pending client transition restores the exact filtered explor
   await expect(page.getByRole("searchbox", { name: "Search", exact: true })).toHaveValue("317");
   await expect(page.getByLabel("Kind", { exact: true })).toHaveValue("numbered");
   releaseResponse();
-  await releasedRequestSettled;
+  const releasedRequestSettlement = await releasedRequestSettled;
+  if (releasedRequestSettlement.outcome === "cancelled") {
+    expect(expectedReleasedRouteErrors.has(releasedRequestSettlement.message)).toBe(true);
+  } else {
+    expect(releasedRequestSettlement).toEqual({ outcome: "continued" });
+  }
 
   await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
   await expect(page.getByRole("region", { name: "ZIP explorer" })).toHaveAttribute(
