@@ -3,13 +3,26 @@ import assert from "node:assert/strict";
 import { GRAPH_HELP, GRAPH_UNAVAILABLE, graphRecords } from "./graphFallback.ts";
 import { makeZip } from "./test-zip.ts";
 
-test("graphRecords builds cites edges and dangling nodes", () => {
+test("graphRecords builds assigned and true dangling citation edges", () => {
   const g = graphRecords(
-    [makeZip({ number: 1, citations: [2, 99], status: [{ label: "Final" }] })],
+    [
+      makeZip({ number: 1, citations: [2, 99], status: [{ label: "Final" }] }),
+      makeZip({ number: 2, title: "Second ZIP" }),
+    ],
     [99],
   );
   assert.equal(g.nodes.some((n) => n.id === 99 && n.unassigned), true);
   assert.deepEqual(g.links, [{ source: 1, target: 2 }, { source: 1, target: 99 }]);
+});
+
+test("graphRecords omits edges to assigned ZIPs excluded by a filter", () => {
+  const g = graphRecords(
+    [makeZip({ number: 1, citations: [2, 99], status: [{ label: "Final" }] })],
+    [99],
+  );
+  assert.deepEqual(g.links, [{ source: 1, target: 99 }]);
+  assert.equal(g.nodes.some((node) => node.id === 2), false);
+  assert.equal(g.nodes.some((node) => node.id === 99 && node.unassigned), true);
 });
 
 test("graphRecords drops dangling with no edge to remaining zips", () => {
@@ -19,6 +32,10 @@ test("graphRecords drops dangling with no edge to remaining zips", () => {
   );
   assert.equal(g.nodes.some((n) => n.id === 99 && n.unassigned), true);
   assert.equal(g.nodes.some((n) => n.id === 88), false);
+});
+
+test("graphRecords returns an empty graph for empty filtered membership", () => {
+  assert.deepEqual(graphRecords([], [99]), { nodes: [], links: [] });
 });
 
 test("graph copy constants match spec", () => {

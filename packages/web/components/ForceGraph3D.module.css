@@ -91,6 +91,7 @@
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  min-height: 2.75rem;
   text-decoration: none;
 }
 
@@ -99,6 +100,7 @@
 }
 
 .searchForm {
+  align-items: end;
   display: flex;
   gap: 0.5rem;
 }
@@ -148,7 +150,33 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-surface);
   overflow: hidden;
+  position: relative;
   width: 100%;
+}
+
+.inactive canvas {
+  pointer-events: none;
+}
+
+.loading {
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  color: var(--color-muted);
+  display: grid;
+  inset: 0;
+  place-items: center;
+  position: absolute;
+  z-index: 1;
+}
+
+.graphStatus,
+.counts {
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+  margin: 0 0 0.5rem;
+}
+
+.counts {
+  margin-top: -0.25rem;
 }
 
 .fallback {
@@ -156,6 +184,17 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-surface);
   padding: 1rem 1.1rem;
+}
+
+.emptyState {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-surface);
+  padding: 1rem 1.1rem;
+}
+
+.emptyState h3 {
+  margin: 0 0 0.5rem;
 }
 
 .pageFallback {
@@ -192,6 +231,32 @@
 
 .item {
   margin: 0 0 0.35rem;
+}
+
+.nodeList {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-surface);
+  margin-top: 0.75rem;
+  max-height: 12rem;
+  overflow: auto;
+  padding: 0.75rem;
+}
+
+.nodeListItem {
+  border-bottom: 1px solid var(--color-border);
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.45rem 0;
+}
+
+.nodeListItem:last-child {
+  border-bottom: 0;
+}
+
+.direction {
+  color: var(--color-muted);
+  font-size: 0.75rem;
 }
 
 .muted {

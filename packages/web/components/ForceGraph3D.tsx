@@ -7,6 +7,7 @@ import {
   Component,
   type FormEvent,
   type ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -21,6 +22,7 @@ import {
   type GraphRecordNode,
   type GraphRecords,
 } from "../lib/graphFallback";
+import { findGraphNode } from "../lib/graphSearch";
 import { STATUS_LEGEND, statusColor } from "../lib/statusColor";
 import type { ZipRecord } from "../lib/types";
 import styles from "./ForceGraph3D.module.css";
@@ -54,8 +56,7 @@ class GraphErrorBoundary extends Component<
   }
 
   render() {
-    if (this.state.hasError) return this.props.fallback;
-    return this.props.children;
+    return this.state.hasError ? this.props.fallback : this.props.children;
   }
 }
 
@@ -67,102 +68,117 @@ function isGraphRuntimeError(error: unknown): boolean {
   return /webgl|three|force-graph|CONTEXT_LOST|WebGLRenderer/i.test(text);
 }
 
-function assertWebGl(): void {
-  if (typeof document === "undefined") return;
-  const canvas = document.createElement("canvas");
-  const gl =
-    canvas.getContext("webgl") ||
-    canvas.getContext("webgl2") ||
-    canvas.getContext("experimental-webgl");
-  if (!gl) throw new Error("webgl");
-}
-
-function uniqueNumbers(values: number[]): number[] {
-  return [...new Set(values)].sort((a, b) => a - b);
-}
-
-function findNode(nodes: GraphRecordNode[], query: string): GraphRecordNode | undefined {
-  const raw = query.trim().toLowerCase();
-  if (!raw) return undefined;
-  const numeric = raw.replace(/^zip\s+/, "");
-  const asNum = Number(numeric);
-  if (Number.isInteger(asNum)) {
-    const byId = nodes.find((node) => node.id === asNum);
-    if (byId) return byId;
+function focusNode(
+  fg: ForceGraphMethods | undefined,
+  node: NodeObject<GraphRecordNode>,
+  reducedMotion: boolean,
+) {
+  if (!fg) return;
+  if (node.x == null || node.y == null || node.z == null) {
+    fg.zoomToFit(reducedMotion ? 0 : 800, 160, (candidate) => candidate.id === node.id);
+    return;
   }
-  return nodes.find((node) => node.title.toLowerCase().includes(raw));
-}
-
-function focusNode(fg: ForceGraphMethods | undefined, node: NodeObject<GraphRecordNode>) {
-  if (!fg || node.x == null || node.y == null || node.z == null) return;
-  const dist = 160;
-  const hyp = Math.hypot(node.x, node.y, node.z) || 1;
-  const ratio = 1 + dist / hyp;
+  const distance = 160;
+  const hypotenuse = Math.hypot(node.x, node.y, node.z) || 1;
+  const ratio = 1 + distance / hypotenuse;
   fg.cameraPosition(
     { x: node.x * ratio, y: node.y * ratio, z: node.z * ratio },
     { x: node.x, y: node.y, z: node.z },
-    800,
+    reducedMotion ? 0 : 800,
   );
 }
 
-function zoomBy(fg: ForceGraphMethods | undefined, factor: number) {
+function zoomBy(fg: ForceGraphMethods | undefined, factor: number, reducedMotion: boolean) {
   if (!fg) return;
-  const cam = fg.camera();
+  const camera = fg.camera();
   fg.cameraPosition(
-    { x: cam.position.x * factor, y: cam.position.y * factor, z: cam.position.z * factor },
+    {
+      x: camera.position.x * factor,
+      y: camera.position.y * factor,
+      z: camera.position.z * factor,
+    },
     { x: 0, y: 0, z: 0 },
-    300,
+    reducedMotion ? 0 : 300,
   );
 }
 
-function NumberList({ ids, nodes }: { ids: number[]; nodes: GraphRecordNode[] }) {
-  const byId = new Map(nodes.map((node) => [node.id, node]));
-  if (ids.length === 0) return <p className={styles.empty}>None</p>;
-  return (
-    <ul className={styles.list}>
-      {ids.map((id) => {
-        const node = byId.get(id);
-        const unassigned = node?.unassigned ?? true;
-        return (
-          <li key={id} className={styles.item}>
-            {unassigned ? (
-              <span className={styles.muted}>{id}</span>
-            ) : (
-              <Link className={styles.link} href={`/zip/${id}`}>
-                {id}
-              </Link>
-            )}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-function Fallback({
+function GraphNodeList({
   data,
-  variant,
-  onRetry,
+  heading,
+  initiallyOpen = false,
 }: {
   data: GraphRecords;
-  variant: "home" | "graph";
-  onRetry: () => void;
+  heading: string;
+  initiallyOpen?: boolean;
 }) {
-  const cites = uniqueNumbers(data.links.map((link) => link.target));
-  const citedBy = uniqueNumbers(data.links.map((link) => link.source));
+  const [open, setOpen] = useState(initiallyOpen);
+  const nodesById = useMemo(() => new Map(data.nodes.map((node) => [node.id, node])), [data.nodes]);
+  const directions = useMemo(() => {
+    const result = new Map<number, { cites: number[]; citedBy: number[] }>();
+    for (const node of data.nodes) result.set(node.id, { cites: [], citedBy: [] });
+    for (const link of data.links) {
+      result.get(link.source)?.cites.push(link.target);
+      result.get(link.target)?.citedBy.push(link.source);
+    }
+    return result;
+  }, [data]);
+
+  const describe = (ids: number[]) =>
+    ids.length === 0
+      ? "None"
+      : ids
+          .map((id) => {
+            const node = nodesById.get(id);
+            return node?.unassigned ? `${id} (Unassigned)` : `ZIP ${id}: ${node?.title ?? "Unknown"}`;
+          })
+          .join(", ");
+
   return (
-    <div className={`${styles.fallback}${variant === "graph" ? ` ${styles.pageFallback}` : ""}`}>
+    <details
+      className={styles.nodeList}
+      role="region"
+      aria-label={heading}
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary className={styles.listHeading}>{heading}</summary>
+      {data.nodes.length === 0 ? (
+        <p className={styles.empty}>None</p>
+      ) : (
+        <ul className={styles.list}>
+          {data.nodes.map((node) => {
+            const direction = directions.get(node.id) ?? { cites: [], citedBy: [] };
+            return (
+              <li key={node.id} className={styles.nodeListItem}>
+                <div>
+                  {node.unassigned ? (
+                    <span className={styles.muted}>{node.id} — Unassigned (not navigable)</span>
+                  ) : (
+                    <Link className={styles.link} href={`/zip/${node.id}`}>
+                      ZIP {node.id}: {node.title}
+                    </Link>
+                  )}
+                </div>
+                <span className={styles.direction}>Cites: {describe(direction.cites)}</span>
+                <span className={styles.direction}>Cited by: {describe(direction.citedBy)}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </details>
+  );
+}
+
+function Fallback({ data, variant, onRetry }: { data: GraphRecords; variant: "home" | "graph"; onRetry: () => void }) {
+  return (
+    <div
+      className={`${styles.fallback}${variant === "graph" ? ` ${styles.pageFallback}` : ""}`}
+      data-testid="graph-surface"
+      data-state="failed"
+    >
       <p className={styles.unavailable}>{GRAPH_UNAVAILABLE}</p>
-      <div className={styles.lists}>
-        <div>
-          <h3 className={styles.listHeading}>Cites</h3>
-          <NumberList ids={cites} nodes={data.nodes} />
-        </div>
-        <div>
-          <h3 className={styles.listHeading}>Cited by</h3>
-          <NumberList ids={citedBy} nodes={data.nodes} />
-        </div>
-      </div>
+      <GraphNodeList data={data} heading="Citation nodes with direction" initiallyOpen />
       <div className={styles.actions}>
         <button className={styles.button} type="button" onClick={onRetry}>
           Try again
@@ -180,15 +196,33 @@ function Fallback({
   );
 }
 
+function EmptyGraph({ variant }: { variant: "home" | "graph" }) {
+  return (
+    <div
+      className={`${styles.emptyState}${variant === "graph" ? ` ${styles.pageFallback}` : ""}`}
+      data-testid="graph-surface"
+      data-state="empty"
+    >
+      <h3>No citation nodes</h3>
+      <p>{variant === "graph" ? "No citation nodes match this network upgrade." : "No citation nodes are available."}</p>
+      <Link className={styles.button} href="/zips">
+        Browse ZIPs
+      </Link>
+    </div>
+  );
+}
+
 function GraphCanvas({
   data,
   heightClass,
   fill,
+  variant,
   onRuntimeError,
 }: {
   data: GraphRecords;
   heightClass: string;
   fill: boolean;
+  variant: "home" | "graph";
   onRuntimeError: () => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -196,8 +230,11 @@ function GraphCanvas({
   const router = useRouter();
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [query, setQuery] = useState("");
-
-  assertWebGl();
+  const [feedback, setFeedback] = useState("");
+  const [ready, setReady] = useState(false);
+  const [active, setActive] = useState(true);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const [cameraAction, setCameraAction] = useState("initial");
 
   const graphData = useMemo(
     () => ({
@@ -208,55 +245,119 @@ function GraphCanvas({
   );
 
   useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const sync = () => setSize({ width: el.clientWidth, height: el.clientHeight });
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const coarse = window.matchMedia("(pointer: coarse)");
+    const sync = () => {
+      setReducedMotion(reduced.matches);
+      if (variant === "home" && coarse.matches) setActive(false);
+    };
     sync();
-    const ro = new ResizeObserver(sync);
-    ro.observe(el);
-    return () => ro.disconnect();
+    reduced.addEventListener("change", sync);
+    coarse.addEventListener("change", sync);
+    return () => {
+      reduced.removeEventListener("change", sync);
+      coarse.removeEventListener("change", sync);
+    };
+  }, [variant]);
+
+  useEffect(() => {
+    const element = wrapRef.current;
+    if (!element) return;
+    const sync = () => setSize({ width: element.clientWidth, height: element.clientHeight });
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(element);
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
-    const onError = (event: ErrorEvent) => {
-      const fromFile = /webgl|three|force-graph/i.test(event.filename ?? "");
-      if (fromFile || isGraphRuntimeError(event.error ?? event.message)) onRuntimeError();
+    const element = wrapRef.current;
+    if (!element) return;
+    const handleLost = (event: Event) => {
+      event.preventDefault();
+      onRuntimeError();
     };
-    const onRejection = (event: PromiseRejectionEvent) => {
-      if (isGraphRuntimeError(event.reason)) onRuntimeError();
+    let canvas: HTMLCanvasElement | null = null;
+    const attach = () => {
+      const next = element.querySelector("canvas");
+      if (next === canvas) return;
+      canvas?.removeEventListener("webglcontextlost", handleLost);
+      canvas = next;
+      canvas?.addEventListener("webglcontextlost", handleLost);
     };
-    window.addEventListener("error", onError);
-    window.addEventListener("unhandledrejection", onRejection);
+    attach();
+    const observer = new MutationObserver(attach);
+    observer.observe(element, { childList: true, subtree: true });
     return () => {
-      window.removeEventListener("error", onError);
-      window.removeEventListener("unhandledrejection", onRejection);
+      observer.disconnect();
+      canvas?.removeEventListener("webglcontextlost", handleLost);
     };
   }, [onRuntimeError]);
 
   useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const onLost = (event: Event) => {
-      event.preventDefault();
-      onRuntimeError();
+    const handleError = (event: ErrorEvent) => {
+      const fromGraphFile = /webgl|three|force-graph/i.test(event.filename ?? "");
+      if (fromGraphFile || isGraphRuntimeError(event.error ?? event.message)) onRuntimeError();
     };
-    el.addEventListener("webglcontextlost", onLost, true);
-    return () => el.removeEventListener("webglcontextlost", onLost, true);
-  }, [onRuntimeError, size.width, size.height]);
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      if (isGraphRuntimeError(event.reason)) onRuntimeError();
+    };
+    window.addEventListener("error", handleError);
+    window.addEventListener("unhandledrejection", handleRejection);
+    return () => {
+      window.removeEventListener("error", handleError);
+      window.removeEventListener("unhandledrejection", handleRejection);
+    };
+  }, [onRuntimeError]);
+
+  useEffect(() => {
+    const element = wrapRef.current;
+    if (!element || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) fgRef.current?.resumeAnimation();
+      else fgRef.current?.pauseAnimation();
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ready]);
+
+  useEffect(() => {
+    if (variant !== "home" || !active) return;
+    const exit = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setActive(false);
+    };
+    window.addEventListener("keydown", exit);
+    return () => window.removeEventListener("keydown", exit);
+  }, [active, variant]);
 
   function onSearch(event: FormEvent) {
     event.preventDefault();
-    const node = findNode(graphData.nodes, query);
-    if (node) focusNode(fgRef.current, node);
+    const node = findGraphNode(graphData.nodes, query);
+    if (!node) {
+      setFeedback(`No graph node matches "${query.trim()}".`);
+      return;
+    }
+    const positionedNode = node as NodeObject<GraphRecordNode>;
+    focusNode(fgRef.current, positionedNode, reducedMotion);
+    setCameraAction(`focus-${node.id}`);
+    setFeedback(node.unassigned ? `Focused ${node.id}: Unassigned.` : `Focused ZIP ${node.id}: ${node.title}.`);
   }
 
+  const markReady = useCallback(() => setReady(true), []);
+
   return (
-    <div className={fill ? styles.graphBody : undefined}>
+    <div
+      className={fill ? styles.graphBody : undefined}
+      data-testid="graph-surface"
+      data-state={ready ? "ready" : "loading"}
+      data-camera-action={cameraAction}
+    >
       <div className={styles.toolbar}>
         <form className={styles.searchForm} onSubmit={onSearch}>
           <label className={styles.filter}>
             Search
             <input
+              aria-label="Search"
               className={styles.search}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -267,21 +368,52 @@ function GraphCanvas({
             Focus
           </button>
         </form>
-        <button className={styles.button} type="button" onClick={() => zoomBy(fgRef.current, 0.8)}>
+        <button
+          className={styles.button}
+          type="button"
+          onClick={() => {
+            zoomBy(fgRef.current, 0.8, reducedMotion);
+            setCameraAction("zoom-in");
+          }}
+        >
           Zoom in
         </button>
-        <button className={styles.button} type="button" onClick={() => zoomBy(fgRef.current, 1.25)}>
+        <button
+          className={styles.button}
+          type="button"
+          onClick={() => {
+            zoomBy(fgRef.current, 1.25, reducedMotion);
+            setCameraAction("zoom-out");
+          }}
+        >
           Zoom out
         </button>
         <button
           className={styles.button}
           type="button"
-          onClick={() => fgRef.current?.zoomToFit(400, 40)}
+          onClick={() => {
+            fgRef.current?.zoomToFit(reducedMotion ? 0 : 400, 40);
+            setCameraAction("reset");
+          }}
         >
           Reset
         </button>
+        {variant === "home" ? (
+          <button className={styles.button} type="button" onClick={() => setActive((value) => !value)}>
+            {active ? "Deactivate graph" : "Activate graph"}
+          </button>
+        ) : null}
       </div>
-      <div ref={wrapRef} className={`${styles.canvas} ${heightClass}`}>
+      <p className={styles.graphStatus} aria-live="polite" role="status">
+        {feedback || (ready ? "Graph ready" : "Loading citation graph…")}
+      </p>
+      <p className={styles.counts}>{data.nodes.length} nodes · {data.links.length} citations</p>
+      <div
+        ref={wrapRef}
+        className={`${styles.canvas} ${heightClass}${active ? "" : ` ${styles.inactive}`}`}
+        aria-label="Interactive 3D citation graph"
+      >
+        {!ready ? <span className={styles.loading}>Loading citation graph…</span> : null}
         {size.width > 0 && size.height > 0 ? (
           <ForceGraphImpl
             ref={fgRef}
@@ -294,14 +426,22 @@ function GraphCanvas({
               node.unassigned ? `${node.id} — Unassigned` : `ZIP ${node.id}: ${node.title}`
             }
             nodeColor={(node) => (node.unassigned ? "#a3a091" : statusColor(node.status))}
-            linkColor={() => "rgba(244, 241, 232, 0.28)"}
+            nodeRelSize={5}
+            linkColor={() => "rgba(244, 241, 232, 0.38)"}
+            linkWidth={0.8}
+            enableNavigationControls={active}
+            enablePointerInteraction={active}
+            cooldownTicks={reducedMotion ? 1 : undefined}
+            onEngineTick={markReady}
+            onEngineStop={markReady}
             onNodeClick={(node) => {
               if (!node.unassigned && node.id != null) router.push(`/zip/${node.id}`);
             }}
-            showPointerCursor={(obj) => Boolean(obj && "unassigned" in obj && !obj.unassigned)}
+            showPointerCursor={(object) => Boolean(object && "unassigned" in object && !object.unassigned)}
           />
         ) : null}
       </div>
+      <GraphNodeList data={data} heading="Accessible citation nodes" />
     </div>
   );
 }
@@ -322,9 +462,9 @@ export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
   const Heading = variant === "graph" ? "h1" : "h2";
   const onRetry = () => {
     setFailed(false);
-    setRetry((n) => n + 1);
+    setRetry((value) => value + 1);
   };
-  const onRuntimeError = () => setFailed(true);
+  const onRuntimeError = useCallback(() => setFailed(true), []);
   const fallback = <Fallback data={data} variant={variant} onRetry={onRetry} />;
 
   return (
@@ -346,11 +486,7 @@ export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
       {variant === "graph" ? (
         <label className={styles.filter}>
           NU
-          <select
-            className={styles.select}
-            value={nuId}
-            onChange={(event) => setNuId(event.target.value)}
-          >
+          <select className={styles.select} value={nuId} onChange={(event) => setNuId(event.target.value)}>
             <option value="">All</option>
             {nuIds.map((id) => (
               <option key={id} value={id}>
@@ -368,7 +504,9 @@ export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
           </li>
         ))}
       </ul>
-      {failed ? (
+      {data.nodes.length === 0 ? (
+        <EmptyGraph variant={variant} />
+      ) : failed ? (
         fallback
       ) : (
         <GraphErrorBoundary resetKey={retry} fallback={fallback} onError={onRuntimeError}>
@@ -376,6 +514,7 @@ export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
             key={retry}
             data={data}
             fill={variant === "graph"}
+            variant={variant}
             heightClass={variant === "home" ? styles.preview : styles.full}
             onRuntimeError={onRuntimeError}
           />
