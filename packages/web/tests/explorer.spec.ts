@@ -124,7 +124,26 @@ test("search and discrete filters survive navigation, back, and reload", async (
   expect(page.url()).toBe(restoredUrl);
 });
 
-test("immediate Back restores the filtered explorer after a cached reader navigation", async ({ page }) => {
+test("Back during a pending client transition restores the exact filtered explorer", async ({ page }) => {
+  let signalPendingRequest!: () => void;
+  const pendingRequest = new Promise<void>((resolve) => {
+    signalPendingRequest = resolve;
+  });
+  let releaseResponse!: () => void;
+  const responseGate = new Promise<void>((resolve) => {
+    releaseResponse = resolve;
+  });
+
+  await page.route(/\/zip\/317(?:\?|$)/, async (route) => {
+    if (route.request().headers().rsc !== "1") {
+      await route.continue();
+      return;
+    }
+    signalPendingRequest();
+    await responseGate;
+    await route.continue().catch(() => {});
+  });
+
   await page.goto("/zip/312");
   await page.goto("/zips?q=317&kind=numbered");
   await page.getByText("Draft (revision details)").click();
@@ -132,12 +151,102 @@ test("immediate Back restores the filtered explorer after a cached reader naviga
     page.getByText("[Revision 0] Active, [Revision 1: NU6.3] Draft, [Revision 2] Draft"),
   ).toBeVisible();
 
-  await page.getByRole("link", { name: "Proportional Transfer Fee Mechanism" }).click();
-  await page.goBack({ waitUntil: "domcontentloaded" });
+  await Promise.all([
+    pendingRequest,
+    page
+      .getByRole("link", { name: "Proportional Transfer Fee Mechanism" })
+      .click({ noWaitAfter: true }),
+  ]);
+  await page.goBack({ waitUntil: "commit" });
 
   await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
   await expect(page.getByRole("searchbox", { name: "Search", exact: true })).toHaveValue("317");
   await expect(page.getByLabel("Kind", { exact: true })).toHaveValue("numbered");
+  releaseResponse();
+  await page.waitForTimeout(100);
+  await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
+});
+
+test("ordinary and keyboard result activation stay client-side without duplicate history", async ({ page }) => {
+  await page.goto("/zip/312");
+  await page.goto("/zips?q=317&kind=numbered");
+  const marker = await page.evaluate(() => {
+    const value = crypto.randomUUID();
+    (window as Window & { __explorerSession?: string }).__explorerSession = value;
+    return value;
+  });
+  const result = page.getByRole("link", { name: "Proportional Transfer Fee Mechanism" });
+
+  await result.click();
+  await expect(page).toHaveURL(/\/zip\/317$/);
+  expect(
+    await page.evaluate(
+      () => (window as Window & { __explorerSession?: string }).__explorerSession,
+    ),
+  ).toBe(marker);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/zip\/312$/);
+
+  await page.goto("/zips?q=317&kind=numbered");
+  const keyboardSearch = page.getByRole("searchbox", { name: "Search", exact: true });
+  await keyboardSearch.fill("317x");
+  await expect(page).toHaveURL(/\/zips\?q=317x&kind=numbered$/);
+  await keyboardSearch.fill("317");
+  await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
+  const keyboardMarker = await page.evaluate(() => {
+    const value = crypto.randomUUID();
+    (window as Window & { __explorerSession?: string }).__explorerSession = value;
+    return value;
+  });
+  await result.focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/zip\/317$/);
+  expect(
+    await page.evaluate(
+      () => (window as Window & { __explorerSession?: string }).__explorerSession,
+    ),
+  ).toBe(keyboardMarker);
+});
+
+test("modified result clicks retain browser semantics without staging history", async ({ page, context }) => {
+  await page.goto("/zip/312");
+  await page.goto("/zips?q=317&kind=numbered");
+  const explorerUrl = page.url();
+  const historyLength = await page.evaluate(() => history.length);
+  const popupPromise = context.waitForEvent("page");
+
+  await page
+    .getByRole("link", { name: "Proportional Transfer Fee Mechanism" })
+    .click({ modifiers: ["Control"] });
+  const popup = await popupPromise;
+  await popup.waitForLoadState("domcontentloaded");
+
+  expect(page.url()).toBe(explorerUrl);
+  expect(await page.evaluate(() => history.length)).toBe(historyLength);
+  await expect(popup).toHaveURL(/\/zip\/317$/);
+  await popup.close();
+});
+
+test("debounce replaces, discrete filters push, and popstate restores controls", async ({ page }) => {
+  await page.goto("/zip/312");
+  await page.goto("/zips");
+  const initialLength = await page.evaluate(() => history.length);
+  const search = page.getByRole("searchbox", { name: "Search", exact: true });
+
+  await search.fill("Orchard");
+  await expect(page).toHaveURL(/\/zips\?q=Orchard$/);
+  expect(await page.evaluate(() => history.length)).toBe(initialLength);
+
+  await page.getByLabel("Kind", { exact: true }).selectOption("numbered");
+  await expect(page).toHaveURL(/\/zips\?q=Orchard&kind=numbered$/);
+  expect(await page.evaluate(() => history.length)).toBe(initialLength + 1);
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/zips\?q=Orchard$/);
+  await expect(search).toHaveValue("Orchard");
+  await expect(page.getByLabel("Kind", { exact: true })).toHaveValue("");
 });
 
 test("owner search, drafts, sorting, and empty-state clearing work", async ({ page }) => {

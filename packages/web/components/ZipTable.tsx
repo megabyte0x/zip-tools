@@ -35,10 +35,12 @@ export function ZipTable({
   zips,
   searchText = "",
   onClear,
+  onResultNavigate,
 }: {
   zips: ZipRecord[];
   searchText?: string;
   onClear: () => void;
+  onResultNavigate: () => void;
 }) {
   if (zips.length === 0) {
     return (
@@ -76,12 +78,22 @@ export function ZipTable({
             return (
               <tr key={zip.id}>
                 <td data-label="Number" headers="zip-column-number">
-                  <Link className={styles.identityLink} href={zipHref(zip)}>
+                  <Link
+                    className={styles.identityLink}
+                    href={zipHref(zip)}
+                    replace
+                    onNavigate={onResultNavigate}
+                  >
                     {zipIdentity(zip)}
                   </Link>
                 </td>
                 <td data-label="Title" headers="zip-column-title">
-                  <Link className={styles.titleLink} href={zipHref(zip)}>
+                  <Link
+                    className={styles.titleLink}
+                    href={zipHref(zip)}
+                    replace
+                    onNavigate={onResultNavigate}
+                  >
                     {zip.title}
                   </Link>
                   {owners.map((owner) => (

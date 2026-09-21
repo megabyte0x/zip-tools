@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { filterZips } from "../lib/filter";
 import type { ZipRecord } from "../lib/types";
 import type { ExplorerQuery } from "../lib/workbenchContracts";
@@ -120,37 +120,15 @@ export function ZipExplorer({
     changeDiscrete({ [key]: key === "sort" ? "number" : "" });
   };
 
-  const followResultLink = (event: MouseEvent<HTMLElement>) => {
-    if (
-      event.defaultPrevented ||
-      event.button !== 0 ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.shiftKey ||
-      event.altKey
-    ) {
-      return;
-    }
-
-    const target = event.target;
-    const anchor = target instanceof Element ? target.closest("a[href]") : null;
-    if (!(anchor instanceof HTMLAnchorElement) || anchor.target || anchor.hasAttribute("download")) {
-      return;
-    }
-
-    const destination = new URL(anchor.href, window.location.href);
-    if (destination.origin !== window.location.origin) return;
-
-    event.preventDefault();
-    window.location.assign(destination.href);
+  const stageResultNavigation = () => {
+    // The result Link replaces this staging entry when its client transition commits.
+    // If Back wins the race, it only removes the staging entry and stays on this URL.
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    window.history.pushState(window.history.state, "", currentUrl);
   };
 
   return (
-    <section
-      className={styles.explorer}
-      aria-label="ZIP explorer"
-      onClickCapture={followResultLink}
-    >
+    <section className={styles.explorer} aria-label="ZIP explorer">
       <SearchBand
         text={query.text}
         kind={query.kind}
@@ -193,7 +171,12 @@ export function ZipExplorer({
         </ul>
       ) : null}
 
-      <ZipTable zips={filtered} searchText={query.text} onClear={clearFilters} />
+      <ZipTable
+        zips={filtered}
+        searchText={query.text}
+        onClear={clearFilters}
+        onResultNavigate={stageResultNavigation}
+      />
     </section>
   );
 }
