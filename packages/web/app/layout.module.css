@@ -30,7 +30,18 @@
   width: 100%;
 }
 
-.bodyGraph {
-  height: 100vh;
-  overflow: hidden;
+.mainGraph > * {
+  flex: 1;
+  min-height: 0;
+}
+
+@media (max-width: 47.9375rem) {
+  .mainGraph {
+    overflow: visible;
+  }
+
+  .mainGraph > * {
+    min-height: calc(100svh - var(--header-height));
+    overflow: visible;
+  }
 }

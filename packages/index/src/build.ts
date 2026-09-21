@@ -89,6 +89,7 @@ function recordFromFile(path: string, sourceDir: string, sha: string): ZipRecord
     officialUrl: officialUrl(header.number, slug),
     githubUrl: githubBlobUrl(sha, sourcePath),
     bodyKind: rendered.bodyKind,
+    bodyFormat: rendered.bodyFormat,
     body: rendered.body,
     parseWarnings,
   };

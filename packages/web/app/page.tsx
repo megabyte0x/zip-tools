@@ -47,9 +47,19 @@ export default async function HomePage() {
     .filter((zip) => zip.number != null)
     .map((zip) => ({ number: zip.number, slug: zip.slug }));
   const mostViewed = await mostViewedZips(zips, utcDate);
+  const bodyFreeZips = zips.map((zip) => ({ ...zip, body: null }));
 
   return (
     <div>
+      <section className={styles.intro} aria-labelledby="home-heading">
+        <div>
+          <h1 id="home-heading">Read and explore Zcash proposals</h1>
+          <p>Browse the pinned ZIP corpus, follow citations, and read proposals in place.</p>
+        </div>
+        <Link className={styles.browseLink} href="#explorer">
+          Browse ZIPs
+        </Link>
+      </section>
       <ZipRail title="Featured" zips={featured} />
       <section className={styles.boards} aria-labelledby="nu-boards-heading">
         <h2 id="nu-boards-heading" className={styles.heading}>
@@ -71,12 +81,14 @@ export default async function HomePage() {
       </section>
       {mostViewed.length > 0 ? <ZipRail title="Most viewed (7 days)" zips={mostViewed} /> : null}
       <ForceGraph3D
-        zips={zips.map((zip) => ({ ...zip, body: null }))}
+        zips={bodyFreeZips}
         dangling={index.dangling}
         variant="home"
       />
       <ZipOfTheDay zip={daily ? slimZipOfTheDay(daily) : null} numbered={numbered} />
-      <ZipExplorer zips={zips} />
+      <section id="explorer" aria-label="ZIP explorer">
+        <ZipExplorer zips={bodyFreeZips} />
+      </section>
     </div>
   );
 }

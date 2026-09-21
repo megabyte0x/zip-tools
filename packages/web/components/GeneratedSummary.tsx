@@ -6,19 +6,19 @@ import styles from "./GeneratedSummary.module.css";
 
 export function GeneratedSummary({
   id,
-  body,
+  hasBody,
 }: {
   id: string;
-  body: string | null;
+  hasBody: boolean;
 }) {
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<"unavailable" | "needs-body" | null>(
-    body == null ? "needs-body" : null,
+    hasBody ? null : "needs-body",
   );
   const [retry, setRetry] = useState(0);
 
   const load = useCallback(async () => {
-    if (body == null) {
+    if (!hasBody) {
       setError("needs-body");
       setText(null);
       return;
@@ -47,7 +47,7 @@ export function GeneratedSummary({
       setError("unavailable");
       setText(null);
     }
-  }, [id, body]);
+  }, [id, hasBody]);
 
   useEffect(() => {
     void load();

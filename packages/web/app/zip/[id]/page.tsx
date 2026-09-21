@@ -6,6 +6,7 @@ import { ViewBeacon } from "../../../components/ViewBeacon";
 import { loadIndex } from "../../../lib/loadIndex";
 import { neighborhood } from "../../../lib/neighborhood";
 import { prevNext } from "../../../lib/neighbors";
+import { prepareReader } from "../../../lib/prepareReader";
 import { resolveZip } from "../../../lib/resolve";
 
 export default async function ZipPage({
@@ -19,10 +20,16 @@ export default async function ZipPage({
   if (!zip) notFound();
   const neighbors =
     zip.number != null ? prevNext(index.zips, zip.number) : { prev: null, next: null };
+  const document = await prepareReader(zip);
   return (
-    <ReaderShell zip={zip} prev={neighbors.prev} next={neighbors.next}>
+    <ReaderShell zip={zip} prev={neighbors.prev} next={neighbors.next} document={document}>
       <ViewBeacon id={zip.id} />
-      <ReaderBody body={zip.body} bodyKind={zip.bodyKind} officialUrl={zip.officialUrl} />
+      <ReaderBody
+        body={zip.body}
+        bodyKind={zip.bodyKind}
+        officialUrl={zip.officialUrl}
+        document={document}
+      />
       {zip.number != null ? (
         <CitationGraph
           center={zip.number}

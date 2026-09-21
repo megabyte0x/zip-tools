@@ -111,7 +111,7 @@ export function ReaderShell({
         ) : null}
         <GeneratedSummary
           id={zip.id}
-          body={preparedDocument ? (preparedDocument.mode === "missing" ? null : "") : zip.body}
+          hasBody={preparedDocument ? preparedDocument.mode !== "missing" : zip.body !== null}
         />
         {children}
       </article>

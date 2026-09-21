@@ -149,7 +149,7 @@ test('reader shows ZIP identity and title', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toContainText('FROST');
 });
 
-test.fixme('ZIP 312 exposes its prepared proposal paragraphs', async ({ page }) => {
+test('ZIP 312 exposes its prepared proposal paragraphs', async ({ page }) => {
   await page.goto('/zip/312');
 
   const body = page.getByTestId('reader-body');
