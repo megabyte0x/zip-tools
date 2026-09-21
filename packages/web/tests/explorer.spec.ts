@@ -144,6 +144,10 @@ test("Back during a pending client transition restores the exact filtered explor
   const responseGate = new Promise<void>((resolve) => {
     releaseResponse = resolve;
   });
+  let signalReleasedRequestSettled!: () => void;
+  const releasedRequestSettled = new Promise<void>((resolve) => {
+    signalReleasedRequestSettled = resolve;
+  });
 
   await page.route(/\/zip\/317(?:\?|$)/, async (route) => {
     if (route.request().headers().rsc !== "1") {
@@ -153,6 +157,7 @@ test("Back during a pending client transition restores the exact filtered explor
     signalPendingRequest();
     await responseGate;
     await route.continue().catch(() => {});
+    signalReleasedRequestSettled();
   });
 
   await openFilteredExplorerFromReader(page);
@@ -176,7 +181,18 @@ test("Back during a pending client transition restores the exact filtered explor
   await expect(page.getByRole("searchbox", { name: "Search", exact: true })).toHaveValue("317");
   await expect(page.getByLabel("Kind", { exact: true })).toHaveValue("numbered");
   releaseResponse();
+  await releasedRequestSettled;
+
   await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
+  await expect(page.getByRole("region", { name: "ZIP explorer" })).toHaveAttribute(
+    "aria-busy",
+    "false",
+  );
+  await expect(page.getByRole("searchbox", { name: "Search", exact: true })).toHaveValue("317");
+  await expect(page.getByLabel("Kind", { exact: true })).toHaveValue("numbered");
+  await expect(
+    page.getByRole("heading", { name: "Proportional Transfer Fee Mechanism" }),
+  ).toHaveCount(0);
 
   await page.goForward({ waitUntil: "commit" });
   await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
