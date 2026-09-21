@@ -1,121 +1,98 @@
 # Reader, explorer, and 3D verification
 
-**Date:** 2026-09-21  
-**Worktree:** `/home/megabyte/Work/zcash/zip-tools/.worktrees/feat-reader-explorer-3d`  
-**Branch/base:** `feat/reader-explorer-3d` / `1e671aa50d8c1ce747988dc62262c408b89a62f8`  
-**Target:** production Next.js build at `http://127.0.0.1:3100`  
-**Outcome:** **DONE_WITH_CONCERNS** — unit and build gates pass; production E2E acceptance is red on documented product defects.
+**Date:** 2026-09-22
+**Worktree:** `/home/megabyte/Work/zcash/zip-tools/.worktrees/feat-reader-explorer-3d`
+**Branch / tested HEAD:** `feat/reader-explorer-3d` / `f4b0a14af19dc444c50639a3eb45e1e44af0b53d`
+**Target:** production Next.js build at `http://127.0.0.1:3100`
+**Outcome:** **PASS WITH ONE LOW-SEVERITY CONCERN**
 
 ## Executive summary
 
-| Severity | Count |
-|---|---:|
-| Critical | 0 |
-| High | 1 |
-| Medium | 3 |
-| Low | 1 |
-| **Total** | **5** |
+The merged production build passes browser, reader, explorer, graph, keyboard, responsive, and overflow acceptance. The required single complete Playwright invocation finished with **53 passed, 0 failed, 2 skipped**. The two skips are production-expected development-observer tests; no failed or focused run is folded into these totals.
 
-The app renders real WebGL 3D nodes and edges and the core reader/explorer routes work. The production Playwright suite finished with **34 passed, 4 failed, 2 skipped**. The custom acceptance suite's final run finished with **3 passed, 3 failed**. Failures are preserved rather than weakened.
+All previously reported High and Medium defects are resolved in the merged result:
 
-## Issues
+- ZIP 317 formula overflow is contained at both 390 px and 1280 px.
+- The skip link moves focus to `main#main-content`, whose `tabindex="-1"` does not add it to ordinary tab order.
+- Explorer Back during a pending reader transition restores the exact filtered results entry and remains stable after the delayed transition settles.
+- Closed generated summaries no longer make the optional AI request, and the required-route run recorded no unexpected console or page errors.
 
-### 1. ZIP 317 equation creates document-level horizontal overflow
+One Low visual/accessibility concern remains: the graph is real and interactive, but its initial full-graph view is difficult to read because nodes and edges are tiny, the cluster occupies a small fraction of the available canvas, and dark statuses and edges have weak contrast.
 
-- **Severity/category:** High — Functional / Visual / Accessibility
-- **Route:** `/zip/317`
-- **Observed:** At the 1280 CSS-pixel browser viewport, `documentElement.scrollWidth` is 1293 while `clientWidth` is 1265. The widest MathML expression is 1124.44 px and extends to x=1436.23. Its piecewise formula is hidden under the metadata rail and cut at the viewport edge; no contained horizontal-scroll affordance is visible.
-- **Impact:** The exact technical definition cannot be read normally.
-- **Repro:** Open `/zip/317`; navigate to “Recommended algorithm for block template construction”; inspect the `unpaid_actions(tx)` formula.
-- **Evidence:** `docs/superpowers/reports/2026-09-21-reader-explorer-3d-screenshots/issue-zip317-overflow-1280.png`
-- **Code-confirmed owner:** reader styling / prepared technical markup, principally `packages/web/components/ReaderBody.module.css` and reader layout containment. The rendered MathML has visible overflow and no containing scroll boundary.
+| Severity | Open | Resolved from prior report |
+|---|---:|---:|
+| Critical | 0 | 0 |
+| High | 0 | 1 |
+| Medium | 0 | 3 |
+| Low | 1 | 0 |
 
-### 2. Skip link changes the hash but does not move focus to main
+## Remaining concern
 
-- **Severity/category:** Medium — Accessibility
-- **Routes:** sampled on `/zip/48`
-- **Observed:** Keyboard Tab correctly focuses “Skip to content”; Enter leaves `document.activeElement` on `BODY`, not `main#main-content`. The target has no `tabindex`.
-- **Expected:** Skip-link activation moves keyboard focus to the main content target.
-- **Code-confirmed owner:** shared layout/header skip-link target (`packages/web/app/layout.tsx` and associated navigation styles).
+### Low: initial graph overview remains difficult to read
 
-### 3. Explorer back history can skip the filtered results entry
-
-- **Severity/category:** Medium — Functional / UX
-- **Repro:** In one browser session, visit a reader, then `/zips?q=317&kind=numbered`, open revision details, immediately open “Proportional Transfer Fee Mechanism,” and invoke Back.
-- **Observed:** Back returned to the earlier `/zip/312` history entry instead of filtered explorer results. The focused acceptance assertion expected `/zips?q=317&kind=numbered` and failed consistently in the combined reader flow. The isolated existing explorer history test passed, so the defect is sequence-dependent.
-- **Owner:** `packages/web/components/ZipExplorer.tsx` URL synchronization/history replacement behavior and reader transition integration.
-
-### 4. Optional generated-summary request emits a production console error
-
-- **Severity/category:** Medium — Console / UX
-- **Routes:** reader routes, including `/zip/48` and `/zip/32`
-- **Observed console error:** `Failed to load resource: the server responded with a status of 503 (Service Unavailable)`.
-- **Behavior:** Reading remains available (fail-open), but routine production browsing does not have a clean console when optional AI bindings are absent.
-- **Owner:** `packages/web/components/GeneratedSummary.tsx` and `/api/summary/[id]` unavailable-binding response handling.
-- **Note:** The missing-ZIP document's expected 404 was recorded but excluded from the unexpected-console assertion.
-
-### 5. Graph data is real but difficult to read at its initial fit
-
-- **Severity/category:** Low — Visual / Accessibility
-- **Routes:** `/` and `/graph`; all three required widths
-- **Observed:** Real node and citation-edge pixels are visible and interactive, but the initial fit leaves large empty areas while compressing the main cluster. Many edges and the darkest nodes/legend swatches are nearly indistinguishable from the background. No visible labels are shown until interaction.
-- **Measured/automated evidence:** body and article text pass the custom WCAG-AA contrast assertion (>= 4.5:1); the issue is graph-mark contrast and initial fit, confirmed in all graph captures by visual inspection.
-- **Owner:** `packages/web/components/ForceGraph3D.tsx`, `ForceGraph3D.module.css`, and graph status colors.
+- **Routes:** `/` and `/graph`
+- **Observed in all graph captures:** Real nodes and connecting edges are visible, but the main cluster is compact relative to the canvas, nodes are only a few pixels wide, individual edges are difficult to trace, dark status nodes nearly blend into the background, and no static node labels are visible before interaction. At 768 px the legend wraps `Reserved`; at 390 px it wraps over three rows. The canvas itself fits and is not clipped.
+- **Behavioral counter-evidence:** The production tests prove a live, non-lost WebGL canvas; non-uniform rendered pixels; 126 nodes and 443 citations; visible camera changes for zoom, reset, and rotation; successful focus and no-match states; NU filtering; assigned-node canvas navigation; context-loss fallback and retry; initialization-failure retry; empty filtering; home activation/deactivation; Escape; and mobile page scrolling outside an inactive graph.
+- **Code-confirmed rendering inputs, not a claimed root cause:** `ForceGraph3D.tsx` uses canvas background `#141613`, edge color `rgba(244, 241, 232, 0.38)`, edge width `0.8`, node relative size `5`, and interaction-only `nodeLabel`. `statusColor.ts` maps `Obsolete` to `#1c1e19` and `Reserved` to `#141613`, the same value as the graph background. These values confirm the low-contrast dark categories and thin edges. The visually loose initial fit is observed in captures; no implementation cause for that fit is asserted.
 
 ## Required route and behavior matrix
 
-| Area | Routes / evidence | Result |
+The generated index was parsed before testing rather than guessing examples. It identifies ZIP 48 as Markdown (`sourcePath: zips/zip-0048.md`, `bodyKind: md`), `draft-arya-dairaemma-disable-addition-of-transparent-chain-value` as a draft, and `nu6.3` in the generated NU list. ZIP 48 is the reader route used consistently for the 390, 768, and 1440 captures.
+
+| Area | Route or behavior | Result |
 |---|---|---|
-| Required pages | `/`, `/zips`, `/zips?kind=draft`, `/graph`, `/zip/32`, `/zip/312`, `/zip/317`, `/zip/48`, `/draft/draft-arya-dairaemma-disable-addition-of-transparent-chain-value`, `/nu/nu6.3`, `/list`, `/zip/999999` | Rendered; missing ZIP returns 404 and “No ZIP matches.” ZIP 317 overflow is blocking. |
-| Generated-index selection | Markdown: ZIP 48; draft: `draft-arya-dairaemma-disable-addition-of-transparent-chain-value`; NU: `nu6.3` | Selected by parsing `packages/web/data/zip-index.json`, not guessed. |
-| Reader prose/TOC | ZIP 48 and ZIP 312 | Nonempty in-app body; TOC href/heading IDs match; hash history passed existing suite. |
-| Sources/citations | ZIP 48 | GitHub URL pinned to 40-character snapshot SHA; in-app `/zip/...` citation found. |
-| Dates/revisions | ZIP 312, ZIP 317 | `2022-08-dd` preserved; ZIP 317 revision detail text rendered. |
-| Adjacent/bookmark | ZIP 48 | Previous/next present; bookmark persists reload. |
-| RST degraded mode | ZIP 32/312/317 | Explicit “Limited conversion. pandoc not found” label present. Build environment did not exercise full-converter output. Fallback remains readable but exposes RST citation syntax such as `[#FROST]_` and source editorial text; this is a content-fidelity concern, not claimed full conversion. |
-| Explorer | `/zips`, draft filter | Counts, filters, sorting, owner search, empty-state clearing, mobile table semantics pass existing tests. Sequence-dependent Back failure remains. |
-| Real 3D | `/`, `/graph` | Live non-lost WebGL context, non-uniform node pixels, node/citation counts, camera pixel changes, rotate, zoom, reset, focus/no-match, NU filter, assigned-node canvas navigation, context loss, retry, initialization failure, and empty state exercised. Five repeated focused graph runs passed. |
-| Mobile graph | `/` at 390 | Inactive graph allows page scrolling. Existing production graph suite passes Activate → Escape/deactivate. |
-| Expanded graph | `/graph` at 390/768/1440 | Canvas and accessible-node disclosure fit without document overflow. |
-| Keyboard/zoom | ZIP 48 and required top-level pages | Header/search keyboard tests pass; visible focus assertion passes after ordinary Tab. Skip-link target focus fails. Effective 200% checks used a 720×450 CSS viewport and passed `/`, `/zips`, `/zip/48`, `/graph` overflow assertions. |
-| Code/table containment | ZIP 32 | Sampled `pre`/table surfaces; any content wider than its box had `overflow-x: auto|scroll`. ZIP 317 MathML is not contained. |
+| Required pages | `/`, `/zips`, `/zips?kind=draft`, `/graph`, `/zip/32`, `/zip/312`, `/zip/317`, `/zip/48`, `/draft/draft-arya-dairaemma-disable-addition-of-transparent-chain-value`, `/nu/nu6.3`, `/list`, `/zip/999999` | All expected pages rendered; the missing ZIP returned 404 with `No ZIP matches`; no required page had document-level horizontal overflow. |
+| Reader body and TOC | `/zip/48`, `/zip/312` | In-app proposal body is nonempty; ZIP 48 body exceeded 1,000 characters; TOC hashes resolve to matching heading IDs and preserve hash history. |
+| Source and citations | `/zip/48` | GitHub source is pinned to a 40-character snapshot SHA; an internal `/zip/...` citation is present. |
+| Revisions and dates | `/zip/317`, `/zip/312` | ZIP 317 exposes `[Revision 0] Active, [Revision 1: NU6.3] Draft, [Revision 2] Draft`; incomplete date `2022-08-dd` remains preserved. |
+| Adjacent navigation and bookmark | `/zip/48` | Previous and next ZIP controls are present; bookmark state survives reload. |
+| Markdown / draft / NU samples | `/zip/48`, `/draft/draft-arya-dairaemma-disable-addition-of-transparent-chain-value`, `/nu/nu6.3` | Generated-index-selected samples render successfully. |
+| RST environment | `/zip/32`, `/zip/312`, `/zip/317` | `pandoc` is absent. The degraded RST path is clearly labeled `Limited conversion`, remains readable, and does not expose sampled raw `.. raw::` directive clutter. Only full-converter output inspection is environment-specific and unverified. |
+| Explorer filters and history | `/zips` | Counts, search, kind/status/NU/category filters, owner search, sorting, draft selection, empty-state clearing, reload restoration, client navigation, and mobile table semantics pass. |
+| Exact pending-Back sequence | reader → `/zips?q=317&kind=numbered` → pending `/zip/317` → Back | The filtered explorer restores while the transition is pending; after the delayed request settles, URL, search `317`, kind `numbered`, idle state, and absent reader heading remain exact. Forward does not create a duplicate reader history entry; subsequent Back reaches `/zips?q=317`, then `/zip/312`. |
+| Real WebGL nodes and edges | `/`, `/graph` | Live non-lost WebGL and non-uniform pixels pass. Captures visibly show nodes and connecting edges; the graph reports 126 nodes and 443 citations. The production scene-observer test is intentionally skipped because that test-only observer is development-only. |
+| Graph interaction | `/graph` | Rotate, zoom, reset, focus, no-match, NU filter, assigned-node navigation, empty state, context loss, retry, and initialization-failure retry pass. |
+| Home graph interaction | `/` | Preview reaches ready state; mobile page scroll works outside the inactive graph; Activate and Escape/deactivate pass. |
+| Keyboard | `/zip/48` and shared header | Skip link receives focus and moves focus to `main#main-content`; ordinary tab order continues to the logo; visible focus and keyboard search-to-reader flow pass. |
+| Effective 200% zoom | `/`, `/zips`, `/zip/48`, `/graph` | Tested at a 720 × 450 CSS viewport; no document-level horizontal overflow. |
+| Technical overflow | `/zip/32`, `/zip/317`, `/zip/48` | Wide code/table/formula content is contained with horizontal scrolling. ZIP 317 passes at 390 px and 1280 px. Live ZIP 48 measurement found page width equal to client width and all wider `pre` elements using `overflow-x: auto`. |
+| Contrast | `/zip/48` | Computed body and article paragraph contrast both meet the suite's WCAG-AA threshold of 4.5:1. The separate graph-mark concern remains above. |
+| Console | Required-route flow and behavior tests | No unexpected browser console errors or page errors. The missing page's expected 404 resource message is excluded from the unexpected-error assertion. |
 
 ## Visual evidence
 
-All 12 required captures were opened with visual analysis. One additional defect capture documents ZIP 317.
+All 12 captures were freshly produced by the single complete Playwright invocation and then individually opened with vision analysis.
 
-| Width | Home | Explorer | Reader | Graph |
+Directory: `docs/superpowers/reports/2026-09-21-reader-explorer-3d-screenshots/`
+
+| Width | Home | Explorer | Reader (`/zip/48`) | Graph |
 |---:|---|---|---|---|
 | 390 | `home-390.png` | `explorer-390.png` | `reader-390.png` | `graph-390.png` |
 | 768 | `home-768.png` | `explorer-768.png` | `reader-768.png` | `graph-768.png` |
 | 1440 | `home-1440.png` | `explorer-1440.png` | `reader-1440.png` | `graph-1440.png` |
 
-Directory: `docs/superpowers/reports/2026-09-21-reader-explorer-3d-screenshots/`
+Visual findings:
 
-Visual observations:
+- **Home:** Headings, cards, upgrade summaries, search, and graph controls are readable and fit. The featured rail deliberately exposes a partial next card at 390 and 1440 without a strong visible scroll affordance. At 768 and 1440, only the upper part of the home graph canvas is above the 900 px fold.
+- **Explorer:** 390 px uses stacked filters and cards; 768 and 1440 use a table. All controls and columns fit without horizontal clipping. Small uppercase labels and placeholders are subdued but legible.
+- **Reader:** The title and prose remain readable at all widths; desktop uses a comfortable central measure. At 390 and 768, long monospaced metadata lines appear clipped in the static viewport, but live measurement confirms they are inside `overflow-x: auto` containers and do not widen the document. The 1440 capture shows the TOC, body, source metadata, adjacent controls, links, and bookmark without clipping.
+- **Graph:** Every graph capture visibly contains non-uniform nodes and connecting edges. The canvas and controls fit at all widths. The remaining Low concern is the tiny clustered initial fit, faint edges, dark status colors, and lack of static labels.
 
-- Explorer layouts fit all three widths without page-level horizontal overflow; 390 stacks filters/cards and 768/1440 retain the table.
-- Reader has a sound 65ch-class desktop measure; at 390/768 the raw metadata preamble visibly clips long email/URL strings inside its box, though the document itself stays contained. Metadata duplication pushes prose downward at 768/1440.
-- Home's featured rail intentionally/visibly leaves a partial next card at 390 and 1440 without a strong scroll affordance. At 768/1440 the graph section is present but most actual canvas content starts below the initial 900px fold.
-- Graph captures at every width visibly contain nodes and edges. Controls fit, but mouse-only help remains on the mobile layout, legend rows wrap, and edge/dark-node contrast is weak.
-- Visual observations are separated from confirmed defects above; no implementation proposal was tested because Task 7 is evidence-only.
+## Commands, exits, and exact totals
 
-## Commands and gates
-
-| Command | Exit/result |
+| Command | Exit / output |
 |---|---|
-| `pnpm run build` (before server) | 0; production build generated all required app routes. Warning: Next inferred workspace root due multiple lockfiles. |
-| `pnpm --filter @zip-tools/web start --hostname 127.0.0.1 --port 3100` | Ready in 251 ms; intentionally terminated after browser work (exit 143). No use of port 3000. |
-| `ZIP_TEST_BASE_URL=http://127.0.0.1:3100 pnpm --filter @zip-tools/web exec playwright test --workers=1` | 1; 34 passed, 4 failed, 2 skipped. Failures: ZIP 317 overflow, unexpected 503 console response, sequence-dependent Back state, skip-link focus; the custom mobile duplicate also failed in this complete run, while the existing production graph interaction test passed. |
-| `ZIP_TEST_BASE_URL=http://127.0.0.1:3100 pnpm --filter @zip-tools/web exec playwright test tests/acceptance.spec.ts --workers=1` | 1; final focused run 3 passed, 3 failed. Failures preserved for overflow/503, combined-history Back behavior, skip-link focus/503. |
-| `... playwright test tests/acceptance.spec.ts --grep 'real 3D graph supports' --repeat-each=5` | 0; 5/5 passed. |
-| `pnpm run test` | 0; index 26/26 and web 114/114 passed (140 total). |
-| `pnpm run build && git diff --check` | 0; build passed and diff check clean. |
+| `pnpm run build` | **0**. Index rebuilt, Next.js production compilation/type checks/static generation completed. Next warned that multiple lockfiles caused workspace-root inference. |
+| `pnpm --filter @zip-tools/web start --hostname 127.0.0.1 --port 3100` | Ready at `http://127.0.0.1:3100` in **253 ms**. Port 3000 was not used. The server was terminated after acceptance. |
+| `ZIP_TEST_BASE_URL=http://127.0.0.1:3100 pnpm --filter @zip-tools/web exec playwright test --workers=1` | **0**. Single complete invocation: **55 total, 53 passed, 0 failed, 2 skipped**, one worker, 1.1 minutes. The skipped tests are the development-only camera and scene observers intentionally absent from production builds. |
+| `pnpm run test` | **0**. Index **26/26** and web **114/114** passed: **140 passed, 0 failed, 0 skipped** total. |
+| `pnpm run build` | **0**. Final production build completed after report/screenshots were finalized; the same multiple-lockfile workspace-root warning remained. |
+| `git diff --check` | **0**. Run as the final gate after all tracked evidence edits and cleanup. |
 
-## Blockers and handoff
+No focused Playwright invocation was run or added to the totals.
 
-- Acceptance is blocked by issues 1–4. Issue 1 is the release-significant blocker because required technical content is unreadable.
-- Full-fidelity RST output was not testable because `pandoc` is absent. The explicitly degraded path was tested instead; full-converter cleanliness remains unverified.
-- Suggested owner routing: reader/layout owner for issues 1–2 and fallback fidelity; explorer owner for issue 3; optional backend/navigation owner for issue 4; graph owner for issue 5.
-- Install/start handoff: `pnpm install --frozen-lockfile`; `pnpm run build`; `pnpm --filter @zip-tools/web start --hostname 127.0.0.1 --port 3100`.
-- Server stopped and `packages/web/test-results` removed before commit. No push, merge, reset, or implementation-file changes were made.
+## Cleanup and handoff
+
+- Exact install/build/start handoff: `pnpm install --frozen-lockfile`; `pnpm run build`; `pnpm --filter @zip-tools/web start --hostname 127.0.0.1 --port 3100`.
+- Production server termination, generated Playwright artifact cleanup, final root test/build, final `git diff --check`, and final commit are recorded in the final-run report and commit metadata.
+- No production source or browser test source was edited. No push, merge, reset, subagent dispatch, or port 3000 use occurred.
