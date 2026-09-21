@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/
 import styles from "./ZipRail.module.css";
 
 function statusLabel(zip: ZipRecord): string {
-  return zip.status[0]?.label ?? zip.statusRaw;
+  return zip.status.map((entry) => entry.label).join(", ") || zip.statusRaw;
 }
 
 export function ZipRail({ title, zips }: { title: string; zips: ZipRecord[] }) {
@@ -20,16 +20,18 @@ export function ZipRail({ title, zips }: { title: string; zips: ZipRecord[] }) {
       <ul className={styles.rail}>
         {zips.map((zip) => (
           <li key={zip.id} className={styles.item}>
-            <Link href={zipHref(zip)} className="block h-full no-underline">
-              <Card size="sm" className="h-full py-3 transition hover:ring-primary/40">
+            <Link href={zipHref(zip)} className={styles.cardLink}>
+              <Card size="sm" className={styles.card}>
                 <CardHeader className="gap-1">
                   <CardDescription className="text-primary">
-                    {zip.number != null ? `ZIP ${zip.number}` : zip.slug}
+                    {zip.number != null ? `ZIP ${zip.number}` : "Draft"}
                   </CardDescription>
-                  <CardTitle className="text-sm leading-snug">{zip.title}</CardTitle>
+                  <CardTitle className={styles.title}>{zip.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Badge variant="outline">{statusLabel(zip)}</Badge>
+                  <Badge className={styles.status} variant="outline">
+                    {statusLabel(zip)}
+                  </Badge>
                 </CardContent>
               </Card>
             </Link>
