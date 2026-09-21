@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import { searchSuggestions } from "../lib/searchSuggest";
@@ -73,6 +72,10 @@ export function HeaderSearch({ zips }: { zips: ZipRecord[] }) {
             setActiveIndex(-1);
           }}
           onFocus={() => setOpen(true)}
+          onBlur={() => {
+            setOpen(false);
+            setActiveIndex(-1);
+          }}
           onKeyDown={onKeyDown}
           placeholder="Number, title, or owner"
           autoComplete="off"
@@ -87,17 +90,10 @@ export function HeaderSearch({ zips }: { zips: ZipRecord[] }) {
               className={index === activeIndex ? styles.highlighted : undefined}
               role="option"
               aria-selected={index === activeIndex}
+              onPointerDown={(event) => event.preventDefault()}
+              onClick={() => navigate(hit.href)}
             >
-              <Link
-                className={styles.suggestion}
-                href={hit.href}
-                onClick={() => {
-                  setOpen(false);
-                  setActiveIndex(-1);
-                }}
-              >
-                {hit.label}
-              </Link>
+              <span className={styles.suggestion}>{hit.label}</span>
             </li>
           ))}
         </ul>

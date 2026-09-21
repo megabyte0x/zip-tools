@@ -9,11 +9,18 @@ test("primary navigation links to every discovery destination", async ({ page })
     "#main-content",
   );
 
-  await page.getByRole("link", { name: "Browse", exact: true }).click();
-  await expect(page).toHaveURL(/\/zips$/);
+  const browse = page.getByRole("link", { name: "Browse", exact: true });
+  const drafts = page.getByRole("link", { name: "Drafts", exact: true });
 
-  await page.getByRole("link", { name: "Drafts", exact: true }).click();
+  await browse.click();
+  await expect(page).toHaveURL(/\/zips$/);
+  await expect(browse).toHaveAttribute("aria-current", "page");
+  await expect(drafts).not.toHaveAttribute("aria-current", "page");
+
+  await drafts.click();
   await expect(page).toHaveURL(/\/zips\?kind=draft$/);
+  await expect(drafts).toHaveAttribute("aria-current", "page");
+  await expect(browse).not.toHaveAttribute("aria-current", "page");
 
   await page.getByRole("link", { name: "Graph", exact: true }).click();
   await expect(page).toHaveURL(/\/graph$/);
@@ -48,6 +55,18 @@ test("header search supports keyboard selection, Escape, and no-hit browse", asy
   await readerSearch.fill("no proposal has this phrase 9d1c");
   await page.getByRole("search").press("Enter");
   await expect(page).toHaveURL(/\/zips\?q=no%20proposal%20has%20this%20phrase%209d1c$/);
+});
+
+test("Tab exits an open search combobox without entering its options", async ({ page }) => {
+  await page.goto("/zip/312");
+  const search = page.getByRole("combobox", { name: "Search ZIPs" });
+
+  await search.fill("312");
+  await expect(search).toHaveAttribute("aria-expanded", "true");
+  await search.press("Tab");
+
+  await expect(search).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("link", { name: "Browse", exact: true })).toBeFocused();
 });
 
 test("search is available on graph and reader routes", async ({ page }) => {
@@ -86,6 +105,19 @@ test("390px menu exposes navigation without page-width overflow", async ({ page 
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test("390px menu closes after query-only Drafts navigation", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/zips");
+
+  const openMenu = page.getByRole("button", { name: "Open menu" });
+  await openMenu.click();
+  await page.getByRole("link", { name: "Drafts", exact: true }).click();
+
+  await expect(page).toHaveURL(/\/zips\?kind=draft$/);
+  await expect(openMenu).toBeVisible();
+  await expect(page.getByRole("link", { name: "Drafts", exact: true })).not.toBeVisible();
 });
 
 for (const width of [768, 1440]) {
