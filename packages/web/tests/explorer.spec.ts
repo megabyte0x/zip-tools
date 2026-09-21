@@ -31,7 +31,8 @@ async function mountZipExplorer(
 
   await page.addScriptTag({
     content: `
-      const { useEffect, useMemo, useRef, useState } = React;
+      const { useEffect, useMemo, useRef, useState, useTransition } = React;
+      const useRouter = () => ({ push() {} });
       const styles = new Proxy({}, { get: (_, key) => String(key) });
       const filterZips = (zips) => zips;
       const parseZipsQuery = (search) => {
@@ -68,6 +69,16 @@ async function mountZipExplorer(
     const root = window.ReactDOM.createRoot(document.querySelector("main"));
     root.render(window.React.createElement(window.ZipExplorer, componentProps));
   }, { zips: [], ...props });
+}
+
+async function openFilteredExplorerFromReader(page: Page) {
+  await page.goto("/zip/312");
+  await page.getByRole("link", { name: "Browse" }).click();
+  const search = page.getByRole("searchbox", { name: "Search", exact: true });
+  await search.fill("317");
+  await expect(page).toHaveURL(/\/zips\?q=317$/);
+  await page.getByLabel("Kind", { exact: true }).selectOption("numbered");
+  await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
 }
 
 test("mount initialization keeps supplied props unless explorer URL keys are present", async ({ page }) => {
@@ -144,8 +155,7 @@ test("Back during a pending client transition restores the exact filtered explor
     await route.continue().catch(() => {});
   });
 
-  await page.goto("/zip/312");
-  await page.goto("/zips?q=317&kind=numbered");
+  await openFilteredExplorerFromReader(page);
   await page.getByText("Draft (revision details)").click();
   await expect(
     page.getByText("[Revision 0] Active, [Revision 1: NU6.3] Draft, [Revision 2] Draft"),
@@ -157,19 +167,28 @@ test("Back during a pending client transition restores the exact filtered explor
       .getByRole("link", { name: "Proportional Transfer Fee Mechanism" })
       .click({ noWaitAfter: true }),
   ]);
-  await page.goBack({ waitUntil: "commit" });
-
+  await page.evaluate(() => history.back());
+  await expect(page.getByRole("region", { name: "ZIP explorer" })).toHaveAttribute(
+    "aria-busy",
+    "false",
+  );
   await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
   await expect(page.getByRole("searchbox", { name: "Search", exact: true })).toHaveValue("317");
   await expect(page.getByLabel("Kind", { exact: true })).toHaveValue("numbered");
   releaseResponse();
-  await page.waitForTimeout(100);
   await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
+
+  await page.goForward({ waitUntil: "commit" });
+  await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/zips\?q=317$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/zip\/312$/);
 });
 
 test("ordinary and keyboard result activation stay client-side without duplicate history", async ({ page }) => {
-  await page.goto("/zip/312");
-  await page.goto("/zips?q=317&kind=numbered");
+  await openFilteredExplorerFromReader(page);
+  const explorerHistoryLength = await page.evaluate(() => history.length);
   const marker = await page.evaluate(() => {
     const value = crypto.randomUUID();
     (window as Window & { __explorerSession?: string }).__explorerSession = value;
@@ -179,6 +198,7 @@ test("ordinary and keyboard result activation stay client-side without duplicate
 
   await result.click();
   await expect(page).toHaveURL(/\/zip\/317$/);
+  expect(await page.evaluate(() => history.length)).toBe(explorerHistoryLength + 1);
   expect(
     await page.evaluate(
       () => (window as Window & { __explorerSession?: string }).__explorerSession,
@@ -186,6 +206,8 @@ test("ordinary and keyboard result activation stay client-side without duplicate
   ).toBe(marker);
   await page.goBack();
   await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/zips\?q=317$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/zip\/312$/);
 
@@ -210,9 +232,106 @@ test("ordinary and keyboard result activation stay client-side without duplicate
   ).toBe(keyboardMarker);
 });
 
+test("failed result transition leaves no pending or history residue", async ({ page }) => {
+  let signalFailedRequest!: () => void;
+  const failedRequest = new Promise<void>((resolve) => {
+    signalFailedRequest = resolve;
+  });
+
+  await page.route(/\/zip\/317(?:\?|$)/, async (route) => {
+    if (route.request().headers().rsc !== "1") {
+      await route.continue();
+      return;
+    }
+    signalFailedRequest();
+    await route.abort("failed");
+  });
+
+  await openFilteredExplorerFromReader(page);
+  await Promise.all([
+    failedRequest,
+    page
+      .getByRole("link", { name: "Proportional Transfer Fee Mechanism" })
+      .click({ noWaitAfter: true }),
+  ]);
+
+  await expect(page).toHaveURL(/\/zip\/317$/);
+  await expect(
+    page.getByRole("heading", { name: "Proportional Transfer Fee Mechanism" }),
+  ).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
+  await expect(page.getByRole("searchbox", { name: "Search", exact: true })).toHaveValue("317");
+  await page.goBack();
+  await expect(page).toHaveURL(/\/zips\?q=317$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/zip\/312$/);
+});
+
+for (const activation of ["double pointer", "repeated Enter"] as const) {
+  test(`${activation} result activation is idempotent`, async ({ page }) => {
+    let signalPendingRequest!: () => void;
+    const pendingRequest = new Promise<void>((resolve) => {
+      signalPendingRequest = resolve;
+    });
+    let releaseResponse!: () => void;
+    const responseGate = new Promise<void>((resolve) => {
+      releaseResponse = resolve;
+    });
+
+    await page.route(/\/zip\/317(?:\?|$)/, async (route) => {
+      if (route.request().headers().rsc !== "1") {
+        await route.continue();
+        return;
+      }
+      signalPendingRequest();
+      await responseGate;
+      await route.continue().catch(() => {});
+    });
+
+    await openFilteredExplorerFromReader(page);
+    const result = page.getByRole("link", { name: "Proportional Transfer Fee Mechanism" });
+    if (activation === "double pointer") {
+      await result.click({ clickCount: 2, noWaitAfter: true });
+    } else {
+      await result.focus();
+      await page.keyboard.press("Enter");
+      await page.keyboard.press("Enter");
+    }
+    await pendingRequest;
+    releaseResponse();
+
+    await expect(page).toHaveURL(/\/zip\/317$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/zips\?q=317$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/zip\/312$/);
+  });
+}
+
+test("descendant preventDefault cancels result navigation without history residue", async ({ page }) => {
+  await openFilteredExplorerFromReader(page);
+  const explorerUrl = page.url();
+  const historyLength = await page.evaluate(() => history.length);
+  const result = page.getByRole("link", { name: "Proportional Transfer Fee Mechanism" });
+
+  await result.evaluate((link) => {
+    const child = document.createElement("span");
+    child.textContent = link.textContent;
+    child.dataset.preventingChild = "true";
+    child.addEventListener("click", (event) => event.preventDefault());
+    link.replaceChildren(child);
+  });
+  await page.locator('[data-preventing-child="true"]').click();
+
+  expect(page.url()).toBe(explorerUrl);
+  expect(await page.evaluate(() => history.length)).toBe(historyLength);
+});
+
 test("modified result clicks retain browser semantics without staging history", async ({ page, context }) => {
-  await page.goto("/zip/312");
-  await page.goto("/zips?q=317&kind=numbered");
+  await openFilteredExplorerFromReader(page);
   const explorerUrl = page.url();
   const historyLength = await page.evaluate(() => history.length);
   const popupPromise = context.waitForEvent("page");
