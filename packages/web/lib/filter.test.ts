@@ -40,6 +40,32 @@ const zips: ZipRecord[] = [
   }),
 ];
 
+const revisionZips: ZipRecord[] = [
+  makeZip({
+    id: "zip-0010",
+    number: 10,
+    title: "alpha",
+    status: [{ label: "Proposed" }],
+    statusRaw: "Proposed for NU6.3",
+    category: "Core Plus",
+    nuIds: ["nu6.30"],
+  }),
+  makeZip({ id: "draft-z", number: null, slug: "draft-z", title: "Beta" }),
+  makeZip({
+    id: "zip-0002",
+    number: 2,
+    title: "Zulu",
+    status: [
+      { label: "Proposed", revision: "1" },
+      { label: "Final", revision: "2" },
+    ],
+    statusRaw: "Revision 1: Proposed; Revision 2: Final",
+    category: "Core",
+    nuIds: ["nu6.3"],
+  }),
+  makeZip({ id: "draft-a", number: null, slug: "draft-a", title: "Beta" }),
+];
+
 test("filterZips matches text against ZIP number", () => {
   const result = filterZips(zips, { text: "32" });
   assert.deepEqual(
@@ -98,4 +124,37 @@ test("filterZips kind draft keeps only number === null", () => {
 test("filterZips kind numbered drops drafts", () => {
   const result = filterZips(zips, { kind: "numbered" });
   assert.equal(result.some((z) => z.number === null), false);
+});
+
+test("filterZips matches exact parsed status labels instead of statusRaw substrings", () => {
+  assert.deepEqual(
+    filterZips(revisionZips, { status: "Final" }).map((zip) => zip.id),
+    ["zip-0002"],
+  );
+  assert.deepEqual(filterZips(revisionZips, { status: "NU6.3" }), []);
+});
+
+test("filterZips matches NU and category values exactly", () => {
+  assert.deepEqual(
+    filterZips(revisionZips, { nuId: "nu6.3" }).map((zip) => zip.id),
+    ["zip-0002"],
+  );
+  assert.deepEqual(
+    filterZips(revisionZips, { category: "Core" }).map((zip) => zip.id),
+    ["zip-0002"],
+  );
+});
+
+test("filterZips sorts numbered ZIPs numerically with stable drafts last", () => {
+  assert.deepEqual(
+    filterZips(revisionZips, { sort: "number" }).map((zip) => zip.id),
+    ["zip-0002", "zip-0010", "draft-z", "draft-a"],
+  );
+});
+
+test("filterZips sorts titles case-insensitively and preserves equal-title order", () => {
+  assert.deepEqual(
+    filterZips(revisionZips, { sort: "title" }).map((zip) => zip.id),
+    ["zip-0010", "draft-z", "draft-a", "zip-0002"],
+  );
 });

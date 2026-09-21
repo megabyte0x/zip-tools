@@ -5,11 +5,16 @@ export type ZipFilterQuery = {
   status?: string;
   nuId?: string;
   category?: string;
-  kind?: "draft" | "numbered";
+  kind?: "draft" | "numbered" | "";
+  sort?: "number" | "title";
 };
 
 function includesInsensitive(haystack: string, needle: string): boolean {
-  return haystack.toLowerCase().includes(needle.toLowerCase());
+  return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
+}
+
+function equalsInsensitive(left: string, right: string): boolean {
+  return left.trim().localeCompare(right.trim(), undefined, { sensitivity: "accent" }) === 0;
 }
 
 export function filterZips(zips: ZipRecord[], q: ZipFilterQuery): ZipRecord[] {
@@ -18,7 +23,7 @@ export function filterZips(zips: ZipRecord[], q: ZipFilterQuery): ZipRecord[] {
   const nuId = q.nuId?.trim() ?? "";
   const category = q.category?.trim() ?? "";
 
-  return zips.filter((zip) => {
+  const filtered = zips.filter((zip) => {
     if (text) {
       const numberText = zip.number == null ? "" : String(zip.number);
       const ownerText = zip.owners.map((owner) => owner.name).join("\0");
@@ -29,22 +34,16 @@ export function filterZips(zips: ZipRecord[], q: ZipFilterQuery): ZipRecord[] {
       if (!matched) return false;
     }
 
-    if (status) {
-      const statusMatched =
-        includesInsensitive(zip.statusRaw, status) ||
-        zip.status.some((entry) => includesInsensitive(entry.label, status));
-      if (!statusMatched) return false;
+    if (status && !zip.status.some((entry) => equalsInsensitive(entry.label, status))) {
+      return false;
     }
 
-    if (nuId) {
-      const nuMatched = zip.nuIds.some((id) => includesInsensitive(id, nuId));
-      if (!nuMatched) return false;
+    if (nuId && !zip.nuIds.some((id) => equalsInsensitive(id, nuId))) {
+      return false;
     }
 
-    if (category) {
-      if (!zip.category || !includesInsensitive(zip.category, category)) {
-        return false;
-      }
+    if (category && (!zip.category || !equalsInsensitive(zip.category, category))) {
+      return false;
     }
 
     if (q.kind === "draft" && zip.number !== null) return false;
@@ -52,4 +51,22 @@ export function filterZips(zips: ZipRecord[], q: ZipFilterQuery): ZipRecord[] {
 
     return true;
   });
+
+  return filtered
+    .map((zip, index) => ({ zip, index }))
+    .sort((left, right) => {
+      let order = 0;
+      if (q.sort === "title") {
+        order = left.zip.title.localeCompare(right.zip.title, undefined, {
+          sensitivity: "base",
+        });
+      } else if (left.zip.number == null || right.zip.number == null) {
+        if (left.zip.number == null && right.zip.number != null) order = 1;
+        if (left.zip.number != null && right.zip.number == null) order = -1;
+      } else {
+        order = left.zip.number - right.zip.number;
+      }
+      return order || left.index - right.index;
+    })
+    .map(({ zip }) => zip);
 }
