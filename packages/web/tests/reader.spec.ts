@@ -179,6 +179,37 @@ test('generated summary fetches only after opening and retries without serializi
   expect(summaryRequests[1]).toEqual({ method: 'GET', postData: null });
 });
 
+test('generated summary stays single-flight across a close and reopen, then retries after failure', async ({ page }) => {
+  let requests = 0;
+  let releaseFirstResponse!: () => void;
+  const firstResponsePending = new Promise<void>((resolve) => {
+    releaseFirstResponse = resolve;
+  });
+  await page.route('**/api/summary/48', async (route) => {
+    requests += 1;
+    if (requests === 1) await firstResponsePending;
+    await route.fulfill({ status: 503, body: 'unavailable' });
+  });
+
+  await page.goto('/zip/48');
+  const title = page.getByText('Generated summary', { exact: true });
+  const disclosure = title.locator('..');
+  await title.click();
+  await expect.poll(() => requests).toBe(1);
+
+  await title.click();
+  await expect(disclosure).not.toHaveAttribute('open', '');
+  await title.click();
+  await expect(disclosure).toHaveAttribute('open', '');
+  await page.waitForTimeout(100);
+  expect(requests).toBe(1);
+
+  releaseFirstResponse();
+  await expect(page.getByText('Summary is unavailable.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Retry' }).click();
+  await expect.poll(() => requests).toBe(2);
+});
+
 test('previous and next ZIP links expose their destinations', async ({ page }) => {
   await page.goto('/zip/312');
 
@@ -216,14 +247,18 @@ test('desktop article keeps a readable measure', async ({ page }) => {
 });
 
 for (const width of [390, 1280]) {
-  test(`ZIP 317 unpaid-actions formula is locally scrollable at ${width}px`, async ({ page }) => {
+  test(`ZIP 317 scopes horizontal scrolling to its structured formula at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/zip/317');
 
     const formula = page.locator('p').filter({
       has: page.locator('math').filter({ hasText: 'unpaid_actions(tx)' }),
     }).first();
+    const inlineMath = page.locator('p').filter({
+      has: page.locator('math').filter({ hasText: 'conventional_fee(tx)' }),
+    }).first();
     await expect(formula).toBeVisible();
+    await expect(inlineMath).toBeVisible();
 
     const layout = await formula.evaluate((node) => {
       const article = node.closest('article')!;
@@ -238,12 +273,16 @@ for (const width of [390, 1280]) {
         metadataLeft: metadata?.getBoundingClientRect().left ?? null,
       };
     });
+    const inlineMathOverflow = await inlineMath.evaluate(
+      (node) => getComputedStyle(node).overflowX,
+    );
 
     expect(layout.documentContained).toBe(true);
     expect(layout.formulaOverflows).toBe(true);
     expect(layout.overflowX).toMatch(/^(auto|scroll)$/);
     expect(layout.formulaRight).toBeLessThanOrEqual(layout.articleRight);
     if (width >= 768) expect(layout.formulaRight).toBeLessThan(layout.metadataLeft!);
+    expect(inlineMathOverflow).toBe('visible');
   });
 }
 

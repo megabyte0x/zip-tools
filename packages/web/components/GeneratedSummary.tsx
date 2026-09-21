@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { summaryNeedsBodyCopy } from "../lib/summaryCopy";
 import styles from "./GeneratedSummary.module.css";
 
@@ -15,6 +15,7 @@ export function GeneratedSummary({
   const [error, setError] = useState<"unavailable" | "needs-body" | null>(
     hasBody ? null : "needs-body",
   );
+  const loadInFlight = useRef(false);
 
   const load = useCallback(async () => {
     if (!hasBody) {
@@ -22,6 +23,8 @@ export function GeneratedSummary({
       setText(null);
       return;
     }
+    if (loadInFlight.current) return;
+    loadInFlight.current = true;
     setError(null);
     try {
       const res = await fetch(`/api/summary/${encodeURIComponent(id)}`);
@@ -45,6 +48,8 @@ export function GeneratedSummary({
     } catch {
       setError("unavailable");
       setText(null);
+    } finally {
+      loadInFlight.current = false;
     }
   }, [id, hasBody]);
 

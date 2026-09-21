@@ -12,7 +12,7 @@
 }
 
 .body :is(pre, table, .katex-display),
-.body p:has(math) {
+.body p:has(math mtable) {
   max-width: 100%;
   overflow-x: auto;
 }
