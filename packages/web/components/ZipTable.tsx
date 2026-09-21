@@ -63,11 +63,11 @@ export function ZipTable({
         </colgroup>
         <thead>
           <tr>
-            <th>Number</th>
-            <th>Title</th>
-            <th>Status</th>
-            <th>Category</th>
-            <th>NU</th>
+            <th id="zip-column-number">Number</th>
+            <th id="zip-column-title">Title</th>
+            <th id="zip-column-status">Status</th>
+            <th id="zip-column-category">Category</th>
+            <th id="zip-column-nu">NU</th>
           </tr>
         </thead>
         <tbody>
@@ -75,12 +75,12 @@ export function ZipTable({
             const owners = matchingOwners(zip, searchText);
             return (
               <tr key={zip.id}>
-                <td data-label="Number">
+                <td data-label="Number" headers="zip-column-number">
                   <Link className={styles.identityLink} href={zipHref(zip)}>
                     {zipIdentity(zip)}
                   </Link>
                 </td>
-                <td data-label="Title">
+                <td data-label="Title" headers="zip-column-title">
                   <Link className={styles.titleLink} href={zipHref(zip)}>
                     {zip.title}
                   </Link>
@@ -90,11 +90,15 @@ export function ZipTable({
                     </span>
                   ))}
                 </td>
-                <td data-label="Status">
+                <td data-label="Status" headers="zip-column-status">
                   <StatusDetail zip={zip} />
                 </td>
-                <td data-label="Category">{zip.category ?? "—"}</td>
-                <td data-label="NU">{zip.nuIds.join(", ") || "—"}</td>
+                <td data-label="Category" headers="zip-column-category">
+                  {zip.category ?? "—"}
+                </td>
+                <td data-label="NU" headers="zip-column-nu">
+                  {zip.nuIds.join(", ") || "—"}
+                </td>
               </tr>
             );
           })}

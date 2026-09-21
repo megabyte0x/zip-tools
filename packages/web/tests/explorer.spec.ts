@@ -1,4 +1,102 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, resolve } from "node:path";
+import ts from "typescript";
+
+const require = createRequire(import.meta.url);
+
+async function mountZipExplorer(
+  page: Page,
+  props: Record<string, unknown>,
+  url: string,
+) {
+  await page.goto(url);
+  await page.evaluate(() => {
+    document.body.replaceChildren(document.createElement("main"));
+  });
+
+  const reactRoot = dirname(require.resolve("react/package.json"));
+  const reactDomRoot = dirname(require.resolve("react-dom/package.json"));
+  await page.addScriptTag({ path: resolve(reactRoot, "umd/react.development.js") });
+  await page.addScriptTag({ path: resolve(reactDomRoot, "umd/react-dom.development.js") });
+
+  const source = readFileSync(resolve(process.cwd(), "components/ZipExplorer.tsx"), "utf8")
+    .replace(/^"use client";\s*/m, "")
+    .replace(/^import .*;\s*$/gm, "")
+    .replace("export function ZipExplorer", "function ZipExplorer");
+  const compiled = ts.transpileModule(source, {
+    compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.None, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+
+  await page.addScriptTag({
+    content: `
+      const { useEffect, useMemo, useRef, useState } = React;
+      const styles = new Proxy({}, { get: (_, key) => String(key) });
+      const filterZips = (zips) => zips;
+      const parseZipsQuery = (search) => {
+        const params = new URLSearchParams(search);
+        const kind = params.get("kind") || "";
+        return {
+          text: params.get("q") || "",
+          kind: kind === "draft" || kind === "numbered" ? kind : "",
+          status: params.get("status") || "",
+          nuId: params.get("nu") || "",
+          category: params.get("category") || "",
+          sort: params.get("sort") === "title" ? "title" : "number",
+        };
+      };
+      const serializeZipsQuery = (_query, existing) => existing;
+      const SearchBand = (props) => React.createElement(
+        "output",
+        { "data-testid": "mounted-query" },
+        JSON.stringify({
+          text: props.text,
+          kind: props.kind,
+          status: props.status,
+          nuId: props.nuId,
+          category: props.category,
+          sort: props.sort,
+        }),
+      );
+      const ZipTable = () => React.createElement("div");
+      ${compiled}
+      window.ZipExplorer = ZipExplorer;
+    `,
+  });
+  await page.evaluate((componentProps) => {
+    const root = window.ReactDOM.createRoot(document.querySelector("main"));
+    root.render(window.React.createElement(window.ZipExplorer, componentProps));
+  }, { zips: [], ...props });
+}
+
+test("mount initialization keeps supplied props unless explorer URL keys are present", async ({ page }) => {
+  const supplied = {
+    text: "Orchard",
+    kind: "numbered",
+    status: "Active",
+    nuId: "nu6.3",
+    category: "Consensus",
+    sort: "title",
+  };
+
+  await mountZipExplorer(page, { initialQuery: supplied }, "/zips?keep=1");
+  await expect(page.getByTestId("mounted-query")).toHaveText(JSON.stringify(supplied));
+
+  await mountZipExplorer(
+    page,
+    { initialText: "Orchard", initialKind: "numbered" },
+    "/zips?keep=1",
+  );
+  await expect(page.getByTestId("mounted-query")).toHaveText(
+    JSON.stringify({ ...supplied, status: "", nuId: "", category: "", sort: "number" }),
+  );
+
+  await mountZipExplorer(page, { initialQuery: supplied }, "/zips?q=Halo&kind=draft");
+  await expect(page.getByTestId("mounted-query")).toHaveText(
+    JSON.stringify({ text: "Halo", kind: "draft", status: "", nuId: "", category: "", sort: "number" }),
+  );
+});
 
 test("search and discrete filters survive navigation, back, and reload", async ({ page }) => {
   await page.goto("/zips?keep=1#results");
@@ -55,6 +153,16 @@ test("owner search, drafts, sorting, and empty-state clearing work", async ({ pa
 test("revision detail is disclosed and mobile layout does not overflow", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/zips?q=317");
+
+  await expect(page.getByRole("columnheader")).toHaveCount(5);
+  expect(
+    await page.locator("tbody tr").first().locator("td").evaluateAll((cells) =>
+      cells.map((cell) => {
+        const header = document.getElementById(cell.getAttribute("headers") ?? "");
+        return header?.textContent?.trim() ?? "";
+      }),
+    ),
+  ).toEqual(["Number", "Title", "Status", "Category", "NU"]);
 
   await page.getByText("Draft (revision details)").click();
   await expect(

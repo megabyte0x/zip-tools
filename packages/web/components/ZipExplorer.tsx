@@ -18,6 +18,13 @@ const EMPTY_QUERY: ExplorerQuery = {
   sort: "number",
 };
 
+const EXPLORER_URL_KEYS = ["q", "kind", "status", "nu", "category", "sort"] as const;
+
+function hasExplorerUrlKeys(search: string): boolean {
+  const params = new URLSearchParams(search);
+  return EXPLORER_URL_KEYS.some((key) => params.has(key));
+}
+
 function uniqueSorted(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
@@ -59,7 +66,7 @@ export function ZipExplorer({
 
   useEffect(() => {
     const restoreFromUrl = () => setQuery(parseZipsQuery(window.location.search));
-    restoreFromUrl();
+    if (hasExplorerUrlKeys(window.location.search)) restoreFromUrl();
     setBrowserReady(true);
     window.addEventListener("popstate", restoreFromUrl);
     return () => window.removeEventListener("popstate", restoreFromUrl);
