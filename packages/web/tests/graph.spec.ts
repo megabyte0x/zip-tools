@@ -12,20 +12,14 @@ async function classifyRenderedPixels(page: import("@playwright/test").Page, png
     context!.drawImage(image, 0, 0);
     const pixels = context!.getImageData(0, 0, copy.width, copy.height).data;
     let nodePixels = 0;
-    let edgePixels = 0;
     for (let index = 0; index < pixels.length; index += 4) {
       const red = pixels[index];
       const green = pixels[index + 1];
       const blue = pixels[index + 2];
       const spread = Math.max(red, green, blue) - Math.min(red, green, blue);
       if (red > 95 && green > 75 && blue < red - 18 && spread > 25) nodePixels += 1;
-      if (
-        red >= 85 && red <= 125 &&
-        Math.abs(red - green) <= 5 &&
-        green - blue >= 2 && green - blue <= 10
-      ) edgePixels += 1;
     }
-    return { nodePixels, edgePixels };
+    return { nodePixels };
   }, png.toString("base64"));
 }
 
@@ -34,6 +28,15 @@ async function cameraPosition(page: import("@playwright/test").Page) {
     const observe = (window as Window & { __ZIP_TEST_GRAPH_CAMERA__?: () => [number, number, number] })
       .__ZIP_TEST_GRAPH_CAMERA__;
     if (!observe) throw new Error("Graph camera observation hook is unavailable");
+    return observe();
+  });
+}
+
+async function visibleLinkCount(page: import("@playwright/test").Page) {
+  return page.evaluate(() => {
+    const observe = (window as Window & { __ZIP_TEST_GRAPH_VISIBLE_LINKS__?: () => number })
+      .__ZIP_TEST_GRAPH_VISIBLE_LINKS__;
+    if (!observe) throw new Error("Graph scene observation hook is unavailable");
     return observe();
   });
 }
@@ -107,16 +110,39 @@ test("actual canvas context loss shows fallback and retry restores 3D", async ({
 
 test("pre-ready renderer initialization failure shows fallback and retry recovers", async ({ page }) => {
   await page.addInitScript(() => {
-    (window as Window & { __ZIP_TEST_GRAPH_INIT_FAILURES__?: number }).__ZIP_TEST_GRAPH_INIT_FAILURES__ = 1;
+    const original = HTMLCanvasElement.prototype.getContext;
+    let failuresRemaining = 1;
+    const testWindow = window as Window & { __ZIP_TEST_WEBGL_CONTEXT_FAILURES__?: number };
+    testWindow.__ZIP_TEST_WEBGL_CONTEXT_FAILURES__ = 0;
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...args: unknown[]) {
+      if (type === "webgl2" && failuresRemaining > 0) {
+        failuresRemaining -= 1;
+        testWindow.__ZIP_TEST_WEBGL_CONTEXT_FAILURES__! += 1;
+        return null;
+      }
+      return Reflect.apply(original, this, [type, ...args]);
+    } as typeof HTMLCanvasElement.prototype.getContext;
   });
   await page.goto("/graph");
   const surface = page.getByTestId("graph-surface");
   await expect(surface).toHaveAttribute("data-state", "failed");
   await expect(surface).toContainText("Citation graph is unavailable in this browser.");
   await expect(surface.locator("canvas")).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => (window as Window & { __ZIP_TEST_WEBGL_CONTEXT_FAILURES__?: number }).__ZIP_TEST_WEBGL_CONTEXT_FAILURES__,
+    ),
+  ).toBe(1);
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByTestId("graph-surface")).toHaveAttribute("data-state", "ready", { timeout: 15_000 });
-  await expect(page.getByTestId("graph-surface").locator("canvas")).toBeVisible();
+  const canvas = page.getByTestId("graph-surface").locator("canvas");
+  await expect(canvas).toBeVisible();
+  expect(
+    await canvas.evaluate((element: HTMLCanvasElement) => {
+      const context = element.getContext("webgl2");
+      return Boolean(context && !context.isContextLost());
+    }),
+  ).toBe(true);
 });
 
 test("empty filtered graph has a distinct empty state", async ({ page }) => {
@@ -144,7 +170,7 @@ test("focused assigned node can be clicked on the real canvas", async ({ page })
   const rendered = await canvas.screenshot();
   const classes = await classifyRenderedPixels(page, rendered);
   expect(classes.nodePixels, JSON.stringify(classes)).toBeGreaterThan(100);
-  expect(classes.edgePixels, JSON.stringify(classes)).toBeGreaterThan(100);
+  expect(await visibleLinkCount(page), "real scene must contain independently visible citation links").toBeGreaterThan(100);
   const [box, point] = await Promise.all([
     canvas.boundingBox(),
     page.evaluate(async (png) => {

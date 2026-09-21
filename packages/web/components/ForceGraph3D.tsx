@@ -102,14 +102,6 @@ function zoomBy(fg: ForceGraphMethods | undefined, factor: number, reducedMotion
   );
 }
 
-function injectRendererInitializationFailure() {
-  if (process.env.NODE_ENV === "production") return;
-  const testWindow = window as Window & { __ZIP_TEST_GRAPH_INIT_FAILURES__?: number };
-  const failures = testWindow.__ZIP_TEST_GRAPH_INIT_FAILURES__ ?? 0;
-  if (failures < 1) return;
-  throw new Error("WebGLRenderer initialization failed by test hook");
-}
-
 function GraphNodeList({
   data,
   heading,
@@ -248,15 +240,40 @@ function GraphCanvas({
     if (process.env.NODE_ENV === "production") return;
     const testWindow = window as Window & {
       __ZIP_TEST_GRAPH_CAMERA__?: () => [number, number, number];
+      __ZIP_TEST_GRAPH_VISIBLE_LINKS__?: () => number;
     };
     const observe = (): [number, number, number] => {
       const position = fgRef.current?.camera().position;
       if (!position) throw new Error("Graph camera is not initialized");
       return [position.x, position.y, position.z];
     };
+    const observeVisibleLinks = () => {
+      const scene = fgRef.current?.scene();
+      if (!scene) throw new Error("Graph scene is not initialized");
+      let visibleLinks = 0;
+      scene.traverse((object) => {
+        const link = object as typeof object & {
+          __graphObjType?: string;
+          material?: { opacity?: number; visible?: boolean } | Array<{ opacity?: number; visible?: boolean }>;
+        };
+        if (link.__graphObjType !== "link") return;
+        for (let current: typeof object | null = object; current; current = current.parent) {
+          if (!current.visible) return;
+        }
+        const materials = Array.isArray(link.material) ? link.material : [link.material];
+        if (materials.some((material) => material && material.visible !== false && (material.opacity ?? 1) > 0)) {
+          visibleLinks += 1;
+        }
+      });
+      return visibleLinks;
+    };
     testWindow.__ZIP_TEST_GRAPH_CAMERA__ = observe;
+    testWindow.__ZIP_TEST_GRAPH_VISIBLE_LINKS__ = observeVisibleLinks;
     return () => {
       if (testWindow.__ZIP_TEST_GRAPH_CAMERA__ === observe) delete testWindow.__ZIP_TEST_GRAPH_CAMERA__;
+      if (testWindow.__ZIP_TEST_GRAPH_VISIBLE_LINKS__ === observeVisibleLinks) {
+        delete testWindow.__ZIP_TEST_GRAPH_VISIBLE_LINKS__;
+      }
     };
   }, []);
 
@@ -368,8 +385,6 @@ function GraphCanvas({
   }
 
   const markReady = useCallback(() => setReady(true), []);
-
-  if (size.width > 0 && size.height > 0) injectRendererInitializationFailure();
 
   return (
     <div
@@ -487,11 +502,6 @@ export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
   const data = useMemo(() => graphRecords(filtered, dangling), [filtered, dangling]);
   const Heading = variant === "graph" ? "h1" : "h2";
   const onRetry = () => {
-    if (process.env.NODE_ENV !== "production") {
-      const testWindow = window as Window & { __ZIP_TEST_GRAPH_INIT_FAILURES__?: number };
-      const failures = testWindow.__ZIP_TEST_GRAPH_INIT_FAILURES__ ?? 0;
-      if (failures > 0) testWindow.__ZIP_TEST_GRAPH_INIT_FAILURES__ = failures - 1;
-    }
     setFailed(false);
     setRetry((value) => value + 1);
   };
