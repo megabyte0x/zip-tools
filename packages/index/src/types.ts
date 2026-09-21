@@ -6,6 +6,8 @@ export type StatusEntry = {
 
 export type Owner = { name: string; email?: string };
 
+export type BodyFormat = "html" | "markdown" | "rst-source" | "none";
+
 export type ZipRecord = {
   id: string;
   number: number | null;
@@ -25,6 +27,7 @@ export type ZipRecord = {
   officialUrl: string;
   githubUrl: string;
   bodyKind: "md" | "rst" | "draft" | "none";
+  bodyFormat?: BodyFormat;
   body: string | null;
   parseWarnings: string[];
 };

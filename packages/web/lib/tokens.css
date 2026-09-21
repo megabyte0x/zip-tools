@@ -11,7 +11,26 @@
   --color-chip-border: rgba(196, 163, 90, 0.35);
   --radius-control: 8px;
   --radius-surface: 12px;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --header-height: 4rem;
+  --focus-ring: 2px solid var(--color-accent);
+  --measure-prose: 65ch;
+  --font-size-app: 1rem;
+  --font-size-prose: 1.125rem;
+  --line-height-prose: 1.7;
+  --control-height: 44px;
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "IBM Plex Serif", "Iowan Old Style", Palatino, serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --font-size-prose: 1rem;
+  }
 }

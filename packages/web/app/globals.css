@@ -20,6 +20,7 @@ body {
   background: var(--color-bg);
   color: var(--color-fg);
   font-family: var(--font-sans);
+  font-size: var(--font-size-app);
   min-height: 100vh;
   text-rendering: optimizeLegibility;
 }
@@ -29,8 +30,18 @@ a {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: var(--focus-ring);
   outline-offset: 2px;
+}
+
+:where(input, select, textarea) {
+  min-height: var(--control-height);
+  min-width: 0;
+  width: 100%;
+}
+
+:where(button, [role="button"]) {
+  min-height: var(--control-height);
 }
 
 @theme inline {
