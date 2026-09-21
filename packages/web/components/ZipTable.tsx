@@ -35,10 +35,12 @@ export function ZipTable({
   zips,
   searchText = "",
   onClear,
+  onResultNavigate,
 }: {
   zips: ZipRecord[];
   searchText?: string;
   onClear: () => void;
+  onResultNavigate: (href: string) => void;
 }) {
   if (zips.length === 0) {
     return (
@@ -73,15 +75,30 @@ export function ZipTable({
         <tbody>
           {zips.map((zip) => {
             const owners = matchingOwners(zip, searchText);
+            const href = zipHref(zip);
             return (
               <tr key={zip.id}>
                 <td data-label="Number" headers="zip-column-number">
-                  <Link className={styles.identityLink} href={zipHref(zip)}>
+                  <Link
+                    className={styles.identityLink}
+                    href={href}
+                    onNavigate={(event) => {
+                      event.preventDefault();
+                      onResultNavigate(href);
+                    }}
+                  >
                     {zipIdentity(zip)}
                   </Link>
                 </td>
                 <td data-label="Title" headers="zip-column-title">
-                  <Link className={styles.titleLink} href={zipHref(zip)}>
+                  <Link
+                    className={styles.titleLink}
+                    href={href}
+                    onNavigate={(event) => {
+                      event.preventDefault();
+                      onResultNavigate(href);
+                    }}
+                  >
                     {zip.title}
                   </Link>
                   {owners.map((owner) => (

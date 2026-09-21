@@ -135,6 +135,81 @@ test('prepared fixture TOC links agree with body targets', () => {
   }
 });
 
+test('closed generated summary does not request optional AI', async ({ page }) => {
+  const summaryRequests: string[] = [];
+  const unavailableResponses: number[] = [];
+  const consoleErrors: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/summary/')) summaryRequests.push(request.url());
+  });
+  page.on('response', (response) => {
+    if (response.url().includes('/api/summary/') && response.status() === 503) {
+      unavailableResponses.push(response.status());
+    }
+  });
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
+
+  await page.goto('/zip/48');
+  await expect(page.getByText('Generated summary', { exact: true }).locator('..')).not.toHaveAttribute('open', '');
+  await page.waitForTimeout(500);
+
+  expect(summaryRequests).toEqual([]);
+  expect(unavailableResponses).toEqual([]);
+  expect(consoleErrors.filter((message) => message.includes('503'))).toEqual([]);
+});
+
+test('generated summary fetches only after opening and retries without serializing the body', async ({ page }) => {
+  const summaryRequests: Array<{ method: string; postData: string | null }> = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/summary/')) {
+      summaryRequests.push({ method: request.method(), postData: request.postData() });
+    }
+  });
+
+  await page.goto('/zip/48');
+  await page.getByText('Generated summary', { exact: true }).click();
+  await expect(page.getByText('Summary is unavailable.', { exact: true })).toBeVisible();
+  await expect.poll(() => summaryRequests.length).toBe(1);
+  expect(summaryRequests[0]).toEqual({ method: 'GET', postData: null });
+
+  await page.getByRole('button', { name: 'Retry' }).click();
+  await expect.poll(() => summaryRequests.length).toBe(2);
+  expect(summaryRequests[1]).toEqual({ method: 'GET', postData: null });
+});
+
+test('generated summary stays single-flight across a close and reopen, then retries after failure', async ({ page }) => {
+  let requests = 0;
+  let releaseFirstResponse!: () => void;
+  const firstResponsePending = new Promise<void>((resolve) => {
+    releaseFirstResponse = resolve;
+  });
+  await page.route('**/api/summary/48', async (route) => {
+    requests += 1;
+    if (requests === 1) await firstResponsePending;
+    await route.fulfill({ status: 503, body: 'unavailable' });
+  });
+
+  await page.goto('/zip/48');
+  const title = page.getByText('Generated summary', { exact: true });
+  const disclosure = title.locator('..');
+  await title.click();
+  await expect.poll(() => requests).toBe(1);
+
+  await title.click();
+  await expect(disclosure).not.toHaveAttribute('open', '');
+  await title.click();
+  await expect(disclosure).toHaveAttribute('open', '');
+  await page.waitForTimeout(100);
+  expect(requests).toBe(1);
+
+  releaseFirstResponse();
+  await expect(page.getByText('Summary is unavailable.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Retry' }).click();
+  await expect.poll(() => requests).toBe(2);
+});
+
 test('previous and next ZIP links expose their destinations', async ({ page }) => {
   await page.goto('/zip/312');
 
@@ -170,6 +245,46 @@ test('desktop article keeps a readable measure', async ({ page }) => {
   const width = await page.locator('article').evaluate((node) => node.getBoundingClientRect().width);
   expect(width).toBeLessThanOrEqual(800);
 });
+
+for (const width of [390, 1280]) {
+  test(`ZIP 317 scopes horizontal scrolling to its structured formula at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/zip/317');
+
+    const formula = page.locator('p').filter({
+      has: page.locator('math').filter({ hasText: 'unpaid_actions(tx)' }),
+    }).first();
+    const inlineMath = page.locator('p').filter({
+      has: page.locator('math').filter({ hasText: 'conventional_fee(tx)' }),
+    }).first();
+    await expect(formula).toBeVisible();
+    await expect(inlineMath).toBeVisible();
+
+    const layout = await formula.evaluate((node) => {
+      const article = node.closest('article')!;
+      const metadata = article.nextElementSibling;
+      return {
+        documentContained:
+          document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+        formulaOverflows: node.scrollWidth > node.clientWidth,
+        overflowX: getComputedStyle(node).overflowX,
+        formulaRight: node.getBoundingClientRect().right,
+        articleRight: article.getBoundingClientRect().right,
+        metadataLeft: metadata?.getBoundingClientRect().left ?? null,
+      };
+    });
+    const inlineMathOverflow = await inlineMath.evaluate(
+      (node) => getComputedStyle(node).overflowX,
+    );
+
+    expect(layout.documentContained).toBe(true);
+    expect(layout.formulaOverflows).toBe(true);
+    expect(layout.overflowX).toMatch(/^(auto|scroll)$/);
+    expect(layout.formulaRight).toBeLessThanOrEqual(layout.articleRight);
+    if (width >= 768) expect(layout.formulaRight).toBeLessThan(layout.metadataLeft!);
+    expect(inlineMathOverflow).toBe('visible');
+  });
+}
 
 test('TOC links resolve to article headings and preserve hash history', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });

@@ -15,7 +15,11 @@ export function AppShell({
 
   return (
     <>
-      <main id="main-content" className={graph ? styles.mainGraph : styles.main}>
+      <main
+        id="main-content"
+        className={graph ? styles.mainGraph : styles.main}
+        tabIndex={-1}
+      >
         {children}
       </main>
       {graph ? null : footer}

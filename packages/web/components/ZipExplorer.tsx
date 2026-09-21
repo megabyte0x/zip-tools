@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { filterZips } from "../lib/filter";
 import type { ZipRecord } from "../lib/types";
 import type { ExplorerQuery } from "../lib/workbenchContracts";
@@ -19,6 +20,16 @@ const EMPTY_QUERY: ExplorerQuery = {
 };
 
 const EXPLORER_URL_KEYS = ["q", "kind", "status", "nu", "category", "sort"] as const;
+
+type ResultNavigation = {
+  sourceUrl: string;
+  phase: "pending" | "restoring";
+};
+
+type NavigationWithEvents = EventTarget & {
+  addEventListener(type: "navigate", listener: (event: Event) => void): void;
+  removeEventListener(type: "navigate", listener: (event: Event) => void): void;
+};
 
 function hasExplorerUrlKeys(search: string): boolean {
   const params = new URLSearchParams(search);
@@ -57,19 +68,58 @@ export function ZipExplorer({
   initialText?: string;
   initialKind?: "draft" | "numbered" | "";
 }) {
+  const router = useRouter();
   const [query, setQuery] = useState<ExplorerQuery>(() =>
     queryFromCompatibility(initialQuery, initialText, initialKind),
   );
   const [browserReady, setBrowserReady] = useState(false);
+  const [navigationPhase, setNavigationPhase] = useState<"idle" | "pending" | "restoring">(
+    "idle",
+  );
+  const [, startNavigation] = useTransition();
   const latestQuery = useRef(query);
+  const resultNavigation = useRef<ResultNavigation | null>(null);
   latestQuery.current = query;
 
   useEffect(() => {
-    const restoreFromUrl = () => setQuery(parseZipsQuery(window.location.search));
+    const cancelPendingTraversal = (event: Event) => {
+      const transaction = resultNavigation.current;
+      const navigationEvent = event as Event & { navigationType?: string };
+      if (!transaction || navigationEvent.navigationType !== "traverse" || !event.cancelable) return;
+
+      event.preventDefault();
+      resultNavigation.current = null;
+      setNavigationPhase("idle");
+      startNavigation(() => router.replace(transaction.sourceUrl, { scroll: false }));
+    };
+    const restoreFromUrl = () => {
+      const transaction = resultNavigation.current;
+      if (transaction) {
+        const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        if (currentUrl === transaction.sourceUrl) {
+          resultNavigation.current = null;
+          setNavigationPhase("idle");
+          return;
+        }
+
+        transaction.phase = "restoring";
+        setNavigationPhase("restoring");
+        window.history.forward();
+        return;
+      }
+
+      setQuery(parseZipsQuery(window.location.search));
+    };
     if (hasExplorerUrlKeys(window.location.search)) restoreFromUrl();
     setBrowserReady(true);
+    const navigation = (window as Window & { navigation?: NavigationWithEvents }).navigation;
+    navigation?.addEventListener("navigate", cancelPendingTraversal);
     window.addEventListener("popstate", restoreFromUrl);
-    return () => window.removeEventListener("popstate", restoreFromUrl);
+    return () => {
+      navigation?.removeEventListener("navigate", cancelPendingTraversal);
+      window.removeEventListener("popstate", restoreFromUrl);
+      resultNavigation.current = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -120,8 +170,23 @@ export function ZipExplorer({
     changeDiscrete({ [key]: key === "sort" ? "number" : "" });
   };
 
+  const navigateToResult = (href: string) => {
+    if (resultNavigation.current) return;
+
+    resultNavigation.current = {
+      sourceUrl: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+      phase: "pending",
+    };
+    setNavigationPhase("pending");
+    startNavigation(() => router.push(href));
+  };
+
   return (
-    <section className={styles.explorer} aria-label="ZIP explorer">
+    <section
+      className={styles.explorer}
+      aria-label="ZIP explorer"
+      aria-busy={navigationPhase !== "idle"}
+    >
       <SearchBand
         text={query.text}
         kind={query.kind}
@@ -164,7 +229,12 @@ export function ZipExplorer({
         </ul>
       ) : null}
 
-      <ZipTable zips={filtered} searchText={query.text} onClear={clearFilters} />
+      <ZipTable
+        zips={filtered}
+        searchText={query.text}
+        onClear={clearFilters}
+        onResultNavigate={navigateToResult}
+      />
     </section>
   );
 }

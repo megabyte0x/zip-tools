@@ -146,11 +146,15 @@ test("reader fidelity, navigation, bookmarks, and explorer history are retained"
   await expect(page.getByRole("status").filter({ hasText: "Limited conversion." })).toBeVisible();
   await expect(page.getByTestId("reader-body")).not.toContainText(".. raw::");
 
-  await page.goto("/zips?q=317&kind=numbered");
+  await page.getByRole("link", { name: "Browse" }).click();
+  await page.getByRole("searchbox", { name: "Search", exact: true }).fill("317");
+  await expect(page).toHaveURL(/\/zips\?q=317$/);
+  await page.getByLabel("Kind", { exact: true }).selectOption("numbered");
+  await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
   await page.getByText("Draft (revision details)").click();
   await expect(page.getByText("[Revision 0] Active, [Revision 1: NU6.3] Draft, [Revision 2] Draft")).toBeVisible();
-  await page.waitForTimeout(500);
   await page.getByRole("link", { name: "Proportional Transfer Fee Mechanism" }).click();
+  await expect(page).toHaveURL(/\/zip\/317$/);
   await page.goBack({ waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
   await expect(page.getByLabel("Search", { exact: true })).toHaveValue("317");

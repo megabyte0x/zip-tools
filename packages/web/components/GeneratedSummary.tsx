@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { summaryNeedsBodyCopy } from "../lib/summaryCopy";
 import styles from "./GeneratedSummary.module.css";
 
@@ -15,7 +15,7 @@ export function GeneratedSummary({
   const [error, setError] = useState<"unavailable" | "needs-body" | null>(
     hasBody ? null : "needs-body",
   );
-  const [retry, setRetry] = useState(0);
+  const loadInFlight = useRef(false);
 
   const load = useCallback(async () => {
     if (!hasBody) {
@@ -23,6 +23,8 @@ export function GeneratedSummary({
       setText(null);
       return;
     }
+    if (loadInFlight.current) return;
+    loadInFlight.current = true;
     setError(null);
     try {
       const res = await fetch(`/api/summary/${encodeURIComponent(id)}`);
@@ -46,15 +48,18 @@ export function GeneratedSummary({
     } catch {
       setError("unavailable");
       setText(null);
+    } finally {
+      loadInFlight.current = false;
     }
   }, [id, hasBody]);
 
-  useEffect(() => {
-    void load();
-  }, [load, retry]);
-
   return (
-    <details className={styles.accordion}>
+    <details
+      className={styles.accordion}
+      onToggle={(event) => {
+        if (event.currentTarget.open && text === null && error === null) void load();
+      }}
+    >
       <summary className={styles.title}>Generated summary</summary>
       {error === "needs-body" ? (
         <div className={styles.panel}>
@@ -63,7 +68,7 @@ export function GeneratedSummary({
       ) : error === "unavailable" ? (
         <div className={styles.panel}>
           <p className={styles.copy}>Summary is unavailable.</p>
-          <button type="button" className={styles.retry} onClick={() => setRetry((n) => n + 1)}>
+          <button type="button" className={styles.retry} onClick={() => void load()}>
             Retry
           </button>
         </div>
