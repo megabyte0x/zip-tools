@@ -2,9 +2,11 @@
 
 ## Status
 
-Complete on `feat/reader-explorer-3d`.
+Complete on `feat/reader-explorer-3d`; the complete production browser gate is green.
 
-Commit: this report is included in `feat(web): integrate reader explorer workbench`; the immutable SHA is recorded in the final Task 6 handoff because a commit cannot contain its own hash.
+Integration commit: `4b6387cfdef49da1169f6e5ffd8975d764d01de2` (`feat(web): integrate reader explorer workbench`).
+
+Production-gate fix commit: `test(web): stabilize integrated production browser suite`; its immutable SHA is recorded in the final Task 6 handoff because a Git commit cannot contain its own hash.
 
 ## Files changed
 
@@ -20,6 +22,7 @@ Commit: this report is included in `feat(web): integrate reader explorer workben
 - `packages/web/components/GeneratedSummary.tsx`
 - `packages/web/components/ReaderShell.tsx`
 - `packages/web/tests/reader.spec.ts`
+- `packages/web/tests/graph.spec.ts` (production-gate fix)
 - `.superpowers/sdd/2026-09-21-reader-explorer-3d/task-6-report.md`
 
 The generated `packages/web/data/zip-index.json` was regenerated for verification and remains intentionally ignored rather than committed.
@@ -71,8 +74,9 @@ Final commands against the completed diff:
 
 - `pnpm run test`: PASS — 26 index tests and 114 web tests, 140 total, 0 failed.
 - `pnpm run build`: PASS — regenerated the real index, compiled, type-checked, generated 8/8 static pages, and collected traces. Only Next's existing multiple-lockfile/workspace-root warning remains.
-- Production Playwright on `127.0.0.1:3100`: reader + explorer + navigation suites PASS, 25/25.
-- Production graph failure/recovery assertions: PASS, 2/2 (`webglcontextlost` recovery and pre-ready renderer initialization failure/retry).
+- Complete production Playwright invocation on `127.0.0.1:3100`: PASS — 34 discovered, 32 passed, 2 intentionally skipped development-observer tests, 0 failed; exit 0. All four browser files ran in one command.
+- Development-only graph observer assertions: PASS, 2/2 against the development server (actual renderer camera movement/reset and actual visible scene-link objects).
+- Production graph coverage verifies loading → ready, a live non-lost real-WebGL canvas, node pixels, camera pixel change/reset/rotation, both failure/retry paths, focus feedback, empty filtering, and canvas navigation without production test hooks.
 - `git diff --check`: PASS.
 - Added-line security scan: no hardcoded secrets, shell injection, dangerous evaluation, unsafe deserialization, or SQL interpolation.
 
@@ -109,5 +113,34 @@ Against the built production artifact without Cloudflare bindings:
 ## Concerns
 
 - Full RST fidelity still depends on Pandoc; this environment intentionally produced 99 explicit `rst-source` fallbacks, all with retained readable content.
-- Running all four Playwright files in one production invocation produced four graph-test harness failures: three unscoped role/label selectors collide with the integrated header's accessible status/menu elements, and one camera-observation hook is intentionally development-only. Product verification remained green through 25 integrated reader/explorer/navigation tests, two production graph recovery tests, and direct production WebGL/canvas/layout checks. The graph implementation was not changed to accommodate test-only selectors.
+- Camera and renderer-scene object observers remain intentionally development-only. Production assertions use only user-visible behavior and the real canvas; the two observer-specific tests are reported as intentional skips in production and pass against a development server.
 - Next continues to warn that multiple lockfiles make workspace-root inference ambiguous; it does not affect compilation, type checking, route generation, or production startup.
+
+## Production E2E gate fix evidence
+
+### RED
+
+- Complete pre-fix production invocation: 31 discovered, 27 passed, 4 failed, 0 skipped; exit 1.
+- Failures were the two page-wide graph status collisions, the page-wide NU collision, and the unconditional production camera-observer assertion. The status collision in the final canvas-navigation test masked the additional missing production scene-observer failure.
+
+### Corrections
+
+- Scoped graph Search, Focus, and status selectors to `graph-surface`, and scoped the NU combobox to the accessible Citation graph region. No product accessibility or route code changed.
+- Split camera and scene-link internals into explicitly development-only tests enabled with `ZIP_TEST_GRAPH_OBSERVERS=development`.
+- Kept production coverage hook-free and renderer-visible: state-transition observation is injected only by Playwright, while assertions inspect the real non-lost WebGL context, canvas pixels, controls, recovery UI, and navigation.
+
+### GREEN
+
+- `pnpm run test`: PASS — 140/140 unit tests (26 index + 114 web), 0 failed.
+- `pnpm run build`: PASS — optimized production build compiled, type-checked, generated 8/8 static pages, and collected traces.
+- Development observer command: PASS — 2/2, 0 skipped, 0 failed.
+- Complete post-build production command: `ZIP_TEST_BASE_URL=http://127.0.0.1:3100 pnpm exec playwright test --reporter=line` from `packages/web`.
+- Final production aggregate: **34 discovered; 32 passed; 2 intentionally skipped; 0 failed; exit 0**. The skipped tests are exactly the development-only camera and visible-scene-link observers.
+
+### Fix files and self-review
+
+- Modified `packages/web/tests/graph.spec.ts` and this report only; no Task E hook or product code change was necessary.
+- Confirmed development hooks remain absent from production and both observer tests pass when explicitly run against the development artifact.
+- Confirmed selector scoping follows the integrated graph subtree rather than weakening header or graph accessibility.
+- Confirmed the production run includes `reader.spec.ts`, `explorer.spec.ts`, `navigation.spec.ts`, and `graph.spec.ts` in one invocation.
+- Added no credentials, debug logging, product test hooks, route changes, or unrelated refactors.
