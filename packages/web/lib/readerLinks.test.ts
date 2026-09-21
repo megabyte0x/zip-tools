@@ -15,6 +15,7 @@ test("readerProposalHref normalizes numbered and draft proposal references with 
 test("readerProposalHref preserves fragments and safe external URLs but blocks unsafe schemes", () => {
   assert.equal(readerProposalHref("#security"), "#security");
   assert.equal(readerProposalHref("https://example.com/spec?q=1#part"), "https://example.com/spec?q=1#part");
+  assert.equal(readerProposalHref("//example.com/zip-0032.rst#abstract"), "//example.com/zip-0032.rst#abstract");
   assert.equal(readerProposalHref("mailto:alice@example.com"), "mailto:alice@example.com");
   assert.equal(readerProposalHref("javascript:alert(1)"), "#");
   assert.equal(readerProposalHref("data:text/html,bad"), "#");

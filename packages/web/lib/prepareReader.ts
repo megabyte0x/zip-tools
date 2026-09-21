@@ -33,7 +33,11 @@ const sanitizeSchema = {
   tagNames: [...(defaultSchema.tagNames ?? []), ...MATHML_TAGS],
   attributes: {
     ...defaultSchema.attributes,
-    code: [...(defaultSchema.attributes?.code ?? []), ["className", /^language-[\w-]+$/]],
+    code: [
+      ...(defaultSchema.attributes?.code ?? []),
+      ["className", /^language-[\w-]+$/],
+      ["className", /^math-(?:inline|display)$/],
+    ],
     span: [
       ...(defaultSchema.attributes?.span ?? []),
       ["className", /^(?:katex|katex-display|katex-html|katex-mathml|base|strut|mord|mop|mbin|mrel|mopen|mclose|mpunct|minner|msupsub|vlist-t|vlist-r|vlist|pstrut|sizing|reset-size\d+|size\d+|mathnormal|mathrm|mathbf|amsrm)$/],
@@ -72,13 +76,13 @@ async function markdownTree(markdown: string): Promise<HastNode> {
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkMath)
-    .use(remarkRehype, { allowDangerousHtml: true })
-    .use(rehypeKatex);
+    .use(remarkRehype, { allowDangerousHtml: true });
   const tree = await processor.run(processor.parse(markdown));
   const html = String(
     unified().use(rehypeStringify, { allowDangerousHtml: true }).stringify(tree),
   );
-  return await htmlTree(html);
+  const safeTree = await sanitize(await htmlTree(html));
+  return await unified().use(rehypeKatex).run(safeTree as never) as HastNode;
 }
 
 async function htmlTree(html: string): Promise<HastNode> {
@@ -123,17 +127,19 @@ function prepareTree(tree: HastNode, zip: ZipRecord): ReaderHeading[] {
   }
 
   const headings = all.filter((node) => node.tagName === "h2" || node.tagName === "h3");
-  const reserved = new Set<string>();
+  const used = new Set<string>();
   const keepExisting = new Set<HastNode>();
-  for (const heading of headings) {
-    const id = heading.properties?.id;
-    if (typeof id === "string" && id !== "" && !reserved.has(id)) {
-      reserved.add(id);
-      keepExisting.add(heading);
+  for (const node of all) {
+    const id = node.properties?.id;
+    if (typeof id !== "string" || id === "") continue;
+    if (!used.has(id)) {
+      used.add(id);
+      keepExisting.add(node);
+    } else if (node.tagName !== "h2" && node.tagName !== "h3") {
+      delete node.properties?.id;
     }
   }
 
-  const used = new Set(reserved);
   return headings.map((heading) => {
     const text = textContent(heading).trim();
     const id = keepExisting.has(heading)
@@ -153,8 +159,9 @@ export async function prepareReader(zip: ZipRecord): Promise<PreparedReader> {
 
   const degraded = format === "rst-source";
   const source = degraded ? rstSourceToMarkdown(zip.body) : zip.body;
-  const parsed = format === "html" ? await htmlTree(source) : await markdownTree(source);
-  const tree = await sanitize(parsed);
+  const tree = format === "html"
+    ? await sanitize(await htmlTree(source))
+    : await markdownTree(source);
   const toc = prepareTree(tree, zip);
   const html = String(unified().use(rehypeStringify).stringify(tree as never));
   const warnings = [...zip.parseWarnings];

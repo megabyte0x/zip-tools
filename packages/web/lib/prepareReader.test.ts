@@ -26,6 +26,22 @@ test("prepareReader sanitizes HTML while preserving safe code and math markup", 
   assert.ok(doc.html.includes(`id="${doc.toc[0]?.id}"`));
 });
 
+test("prepareReader preserves safe KaTeX structures for representative markdown math", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "markdown",
+    bodyKind: "md",
+    body: "## Formula\n\n$$\\frac{x^2}{\\sqrt{y}}$$",
+  }));
+
+  assert.match(doc.html, /<mfrac><msup>/);
+  assert.match(doc.html, /<msqrt>/);
+  assert.match(doc.html, /class="[^"]*mfrac[^"]*"/);
+  assert.match(doc.html, /class="[^"]*sqrt[^"]*"/);
+  assert.match(doc.html, /class="[^"]*msupsub[^"]*"/);
+  assert.match(doc.html, /style="[^"]+"/);
+  assert.match(doc.html, /<svg[^>]*><path d="[^"]+"><\/path><\/svg>/);
+});
+
 test("prepareReader preserves unique existing heading ids and allocates collisions", async () => {
   const doc = await prepareReader(makeZip({
     bodyFormat: "html",
@@ -35,6 +51,19 @@ test("prepareReader preserves unique existing heading ids and allocates collisio
   assert.deepEqual(doc.toc.map((heading) => heading.id), ["kept", "second", "first"]);
   assert.equal(new Set(doc.toc.map((heading) => heading.id)).size, 3);
   for (const heading of doc.toc) assert.ok(doc.html.includes(`id="${heading.id}"`));
+});
+
+test("prepareReader allocates heading ids against ids on non-heading elements", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "html",
+    bodyKind: "rst",
+    body: '<div id="intro">Anchor</div><h2 id="intro">Intro</h2>',
+  }));
+
+  assert.deepEqual(doc.toc.map((heading) => heading.id), ["intro-2"]);
+  assert.match(doc.html, /<div id="intro">Anchor<\/div>/);
+  assert.equal(doc.html.match(/id="intro"/g)?.length, 1);
+  assert.match(doc.html, /<h2 id="intro-2">Intro<\/h2>/);
 });
 
 test("prepareReader renders markdown headings from visible links images and code", async () => {
@@ -62,11 +91,21 @@ test("prepareReader preserves safe markdown HTML while sanitizing unsafe raw HTM
   const doc = await prepareReader(makeZip({
     bodyFormat: "markdown",
     bodyKind: "md",
-    body: "## Data\n\n<table><tbody><tr><td>Value</td></tr></tbody></table><script>bad()</script>",
+    body: [
+      "## Data",
+      "",
+      '<table><tbody><tr><td>Value</td></tr></tbody></table>',
+      '<a href="javascript:alert(1)" onclick="alert(1)">bad link</a>',
+      '<img src="javascript:alert(1)" onerror="alert(1)">',
+      "<script>bad()</script>",
+    ].join("\n"),
   }));
   assert.match(doc.html, /<table>/);
   assert.match(doc.html, /<td>Value<\/td>/);
   assert.ok(!doc.html.includes("<script"));
+  assert.ok(!doc.html.includes("javascript:"));
+  assert.ok(!doc.html.includes("onclick"));
+  assert.ok(!doc.html.includes("onerror"));
 });
 
 test("prepareReader renders retained RST prose in explicitly degraded mode", async () => {

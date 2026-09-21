@@ -16,6 +16,14 @@ export function readerProposalHref(href: string): string {
   const value = href.trim();
   if (value === "" || UNSAFE_SCHEME.test(value)) return "#";
   if (value.startsWith("#")) return value;
+  if (value.startsWith("//")) {
+    try {
+      const parsed = new URL(value, "https://zips.z.cash");
+      return parsed.protocol === "https:" && parsed.hostname !== "" ? value : "#";
+    } catch {
+      return "#";
+    }
+  }
 
   let path = value;
   let fragment = "";
