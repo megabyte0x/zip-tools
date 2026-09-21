@@ -76,6 +76,23 @@ test("search is available on graph and reader routes", async ({ page }) => {
   await expect(page.getByRole("combobox", { name: "Search ZIPs" })).toBeVisible();
 });
 
+test("keyboard skip link moves focus to main without adding it to ordinary tab order", async ({ page }) => {
+  await page.goto("/zip/48");
+
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
+  await page.keyboard.press("Enter");
+
+  const main = page.locator("main#main-content");
+  await expect(main).toBeFocused();
+  await expect(main).toHaveAttribute("tabindex", "-1");
+
+  await page.reload();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("link", { name: "ZIP.tools", exact: true })).toBeFocused();
+});
+
 test("keyboard path moves through the header search into a reader", async ({ page }) => {
   await page.goto("/zip/312");
   await page.keyboard.press("Tab");
