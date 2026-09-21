@@ -1,8 +1,31 @@
 .body {
   font-family: var(--font-serif);
-  font-size: 1.05rem;
+  font-size: 1rem;
   line-height: 1.7;
+  min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.body :is(img, svg, video) {
+  height: auto;
+  max-width: 100%;
+}
+
+.body :is(pre, table, .katex-display) {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.body table {
+  border-collapse: collapse;
+  display: block;
+  width: max-content;
+}
+
+.body :is(th, td) {
+  border: 1px solid var(--color-border);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
 }
 
 .body :is(h1, h2, h3, h4) {
@@ -22,11 +45,22 @@
 }
 
 .body :is(h2, h3) {
-  scroll-margin-top: 4.5rem;
+  scroll-margin-top: 5.5rem;
+}
+
+.body :is(h2, h3):target {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 0.3rem;
 }
 
 .body a {
   color: var(--color-accent);
+}
+
+.body a:focus-visible {
+  border-radius: 0.15rem;
+  outline: 2px solid var(--color-accent);
+  outline-offset: 0.2rem;
 }
 
 .body :is(pre, code) {
@@ -39,6 +73,21 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
   padding: 0.85rem 1rem;
+}
+
+.conversionNotice {
+  background: var(--color-muted-surface);
+  border-left: 3px solid var(--color-accent);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.8rem;
+}
+
+@media (min-width: 768px) {
+  .body {
+    font-size: 1.125rem;
+  }
 }
 
 .fallback {
