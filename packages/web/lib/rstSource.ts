@@ -17,6 +17,20 @@ export function rstSourceToMarkdown(source: string): string {
   while (i < lines.length) {
     const line = lines[i];
     const next = lines[i + 1];
+    const afterNext = lines[i + 2];
+    if (
+      next !== undefined &&
+      afterNext !== undefined &&
+      isUnderline(line) &&
+      next.trim() !== "" &&
+      isUnderline(afterNext) &&
+      line.trim()[0] === afterNext.trim()[0]
+    ) {
+      const level = line.trim().startsWith("=") ? 2 : 3;
+      out.push(`${"#".repeat(level)} ${next.trim()}`);
+      i += 3;
+      continue;
+    }
     if (next !== undefined && isUnderline(next) && line.trim() !== "") {
       const level = next.trim().startsWith("=") ? 2 : 3;
       out.push(`${"#".repeat(level)} ${line.trim()}`);

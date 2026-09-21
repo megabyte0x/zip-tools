@@ -1,0 +1,164 @@
+import rehypeKatex from "rehype-katex";
+import rehypeParse from "rehype-parse";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+import rehypeStringify from "rehype-stringify";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import { unified } from "unified";
+import type { PreparedReader, ReaderHeading } from "./workbenchContracts";
+import { readerAssetUrl, readerProposalHref } from "./readerLinks";
+import { rstSourceToMarkdown } from "./rstSource";
+import { allocateHeadingId } from "./toc";
+import type { BodyFormat, ZipRecord } from "./types";
+
+type HastNode = {
+  type: string;
+  value?: string;
+  tagName?: string;
+  properties?: Record<string, unknown>;
+  children?: HastNode[];
+};
+
+const MATHML_TAGS = [
+  "math", "semantics", "annotation", "mrow", "mi", "mo", "mn", "mtext", "mspace",
+  "mfrac", "msqrt", "mroot", "mstyle", "msub", "msup", "msubsup", "munder", "mover",
+  "munderover", "mtable", "mtr", "mtd", "mpadded", "mphantom", "menclose",
+];
+
+const sanitizeSchema = {
+  ...defaultSchema,
+  clobberPrefix: "",
+  tagNames: [...(defaultSchema.tagNames ?? []), ...MATHML_TAGS],
+  attributes: {
+    ...defaultSchema.attributes,
+    code: [...(defaultSchema.attributes?.code ?? []), ["className", /^language-[\w-]+$/]],
+    span: [
+      ...(defaultSchema.attributes?.span ?? []),
+      ["className", /^(?:katex|katex-display|katex-html|katex-mathml|base|strut|mord|mop|mbin|mrel|mopen|mclose|mpunct|minner|msupsub|vlist-t|vlist-r|vlist|pstrut|sizing|reset-size\d+|size\d+|mathnormal|mathrm|mathbf|amsrm)$/],
+      "ariaHidden",
+    ],
+    div: [
+      ...(defaultSchema.attributes?.div ?? []),
+      ["className", /^(?:katex-display)$/],
+    ],
+    math: ["xmlns", "display"],
+    annotation: ["encoding"],
+    mi: ["mathVariant"],
+    mo: ["stretchy", "fence", "separator", "lspace", "rspace"],
+  },
+  protocols: {
+    ...defaultSchema.protocols,
+    href: ["http", "https", "mailto"],
+    src: ["http", "https"],
+  },
+};
+
+function legacyFormat(zip: ZipRecord): BodyFormat {
+  if (zip.body === null) return "none";
+  if (zip.bodyFormat !== undefined) return zip.bodyFormat;
+  if (zip.bodyKind === "rst") return /^\s*</.test(zip.body) ? "html" : "rst-source";
+  if (zip.bodyKind === "md") return "markdown";
+  if (zip.bodyKind === "draft") {
+    if (/\.rst$/i.test(zip.sourcePath)) return /^\s*</.test(zip.body) ? "html" : "rst-source";
+    return "markdown";
+  }
+  return "none";
+}
+
+async function markdownTree(markdown: string): Promise<HastNode> {
+  const processor = unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkMath)
+    .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeKatex);
+  const tree = await processor.run(processor.parse(markdown));
+  const html = String(
+    unified().use(rehypeStringify, { allowDangerousHtml: true }).stringify(tree),
+  );
+  return await htmlTree(html);
+}
+
+async function htmlTree(html: string): Promise<HastNode> {
+  const processor = unified().use(rehypeParse, { fragment: true });
+  return await processor.run(processor.parse(html)) as HastNode;
+}
+
+async function sanitize(tree: HastNode): Promise<HastNode> {
+  return await unified().use(rehypeSanitize, sanitizeSchema as never).run(tree as never) as HastNode;
+}
+
+function textContent(node: HastNode): string {
+  if (node.type === "text") return node.value ?? "";
+  if (node.tagName === "img") {
+    const alt = node.properties?.alt;
+    return typeof alt === "string" ? alt : "";
+  }
+  return (node.children ?? []).map(textContent).join("");
+}
+
+function elements(tree: HastNode): HastNode[] {
+  const found: HastNode[] = [];
+  const visit = (node: HastNode): void => {
+    if (node.type === "element") found.push(node);
+    for (const child of node.children ?? []) visit(child);
+  };
+  visit(tree);
+  return found;
+}
+
+function prepareTree(tree: HastNode, zip: ZipRecord): ReaderHeading[] {
+  const all = elements(tree);
+  for (const node of all) {
+    if (node.tagName === "a" && typeof node.properties?.href === "string") {
+      node.properties.href = readerProposalHref(node.properties.href);
+    }
+    if (node.tagName === "img" && typeof node.properties?.src === "string") {
+      const src = readerAssetUrl(zip, node.properties.src);
+      if (src) node.properties.src = src;
+      else delete node.properties.src;
+    }
+  }
+
+  const headings = all.filter((node) => node.tagName === "h2" || node.tagName === "h3");
+  const reserved = new Set<string>();
+  const keepExisting = new Set<HastNode>();
+  for (const heading of headings) {
+    const id = heading.properties?.id;
+    if (typeof id === "string" && id !== "" && !reserved.has(id)) {
+      reserved.add(id);
+      keepExisting.add(heading);
+    }
+  }
+
+  const used = new Set(reserved);
+  return headings.map((heading) => {
+    const text = textContent(heading).trim();
+    const id = keepExisting.has(heading)
+      ? String(heading.properties?.id)
+      : allocateHeadingId(text, used);
+    heading.properties ??= {};
+    heading.properties.id = id;
+    return { id, text, level: heading.tagName === "h2" ? 2 : 3 };
+  });
+}
+
+export async function prepareReader(zip: ZipRecord): Promise<PreparedReader> {
+  const format = legacyFormat(zip);
+  if (zip.body === null || format === "none") {
+    return { html: "", toc: [], mode: "missing", warnings: [] };
+  }
+
+  const degraded = format === "rst-source";
+  const source = degraded ? rstSourceToMarkdown(zip.body) : zip.body;
+  const parsed = format === "html" ? await htmlTree(source) : await markdownTree(source);
+  const tree = await sanitize(parsed);
+  const toc = prepareTree(tree, zip);
+  const html = String(unified().use(rehypeStringify).stringify(tree as never));
+  const warnings = [...zip.parseWarnings];
+  if (degraded) warnings.push("Full-fidelity RST conversion was unavailable.");
+
+  return { html, toc, mode: degraded ? "degraded" : "full", warnings };
+}
