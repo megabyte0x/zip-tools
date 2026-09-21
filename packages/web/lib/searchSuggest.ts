@@ -14,6 +14,6 @@ export function searchSuggestions(
     .map((zip) => ({
       id: zip.id,
       href: zipHref(zip),
-      label: zip.number != null ? `${zip.number} — ${zip.title}` : zip.title,
+      label: zip.number != null ? `${zip.number} — ${zip.title}` : `Draft — ${zip.title}`,
     }));
 }

@@ -1,5 +1,6 @@
 .section {
   margin-bottom: 1.75rem;
+  min-width: 0;
 }
 
 .header {
@@ -34,10 +35,14 @@
 
 .title {
   margin: 0 0 0.75rem;
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .link {
   color: var(--color-accent);
+  overflow-wrap: anywhere;
   text-decoration: none;
 }
 
@@ -60,6 +65,7 @@
   padding: 0.65rem 0.85rem;
   text-align: left;
   vertical-align: top;
+  overflow-wrap: anywhere;
 }
 
 .table th {
@@ -74,4 +80,38 @@
 .table tbody tr:last-child th,
 .table tbody tr:last-child td {
   border-bottom: none;
+}
+
+@media (max-width: 35rem) {
+  .header {
+    align-items: flex-start;
+  }
+
+  .table,
+  .table tbody,
+  .table tr,
+  .table th,
+  .table td {
+    display: block;
+    width: 100%;
+  }
+
+  .table tr {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .table th,
+  .table td {
+    padding: 0;
+    border: 0;
+  }
+
+  .table th {
+    margin-bottom: 0.2rem;
+  }
+
+  .table tbody tr:last-child {
+    border-bottom: 0;
+  }
 }

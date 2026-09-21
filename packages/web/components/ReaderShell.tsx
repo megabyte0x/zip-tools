@@ -4,6 +4,7 @@ import { readerMode } from "../lib/readerMode";
 import { rstSourceToMarkdown } from "../lib/rstSource";
 import { tocFromHtml, tocFromMarkdown, type TocEntry } from "../lib/toc";
 import type { ZipRecord } from "../lib/types";
+import type { PreparedReader } from "../lib/workbenchContracts";
 import { zipHref } from "../lib/zipHref";
 import { GeneratedSummary } from "./GeneratedSummary";
 import { ReadingListButton } from "./ReadingListButton";
@@ -40,13 +41,15 @@ export function ReaderShell({
   prev,
   next,
   children,
+  document: preparedDocument,
 }: {
   zip: ZipRecord;
   prev: ZipRecord | null;
   next: ZipRecord | null;
   children: ReactNode;
+  document?: PreparedReader;
 }) {
-  const toc = tocForZip(zip);
+  const toc = preparedDocument?.toc ?? tocForZip(zip);
   const tocNav = toc.length > 0 ? <TocNav toc={toc} /> : null;
 
   return (
@@ -60,6 +63,7 @@ export function ReaderShell({
           <nav className={styles.prevNext} aria-label="Adjacent ZIPs">
             {prev?.number != null ? (
               <Link
+                aria-label={`Previous ZIP ${prev.number}: ${prev.title}`}
                 className={styles.navBtn}
                 href={zipHref(prev)}
                 title={`ZIP ${prev.number}: ${prev.title}`}
@@ -71,6 +75,7 @@ export function ReaderShell({
             )}
             {next?.number != null ? (
               <Link
+                aria-label={`Next ZIP ${next.number}: ${next.title}`}
                 className={styles.navBtn}
                 href={zipHref(next)}
                 title={`ZIP ${next.number}: ${next.title}`}
@@ -86,13 +91,28 @@ export function ReaderShell({
           {zip.number != null ? `ZIP ${zip.number}` : zip.slug}
         </p>
         <h1 className={styles.title}>{zip.title}</h1>
+        <ul className={styles.statusCompact} aria-label="Status">
+          {zip.status.map((entry, index) => (
+            <li key={`${entry.label}-${index}`}>{entry.label}</li>
+          ))}
+        </ul>
+        <div className={styles.metaMobile}>
+          <details>
+            <summary>Proposal metadata</summary>
+            <ZipMeta zip={zip} />
+          </details>
+          <ReadingListButton zip={zip} />
+        </div>
         {tocNav ? (
           <details className={styles.tocMobile}>
             <summary>Contents</summary>
             {tocNav}
           </details>
         ) : null}
-        <GeneratedSummary id={zip.id} body={zip.body} />
+        <GeneratedSummary
+          id={zip.id}
+          body={preparedDocument ? (preparedDocument.mode === "missing" ? null : "") : zip.body}
+        />
         {children}
       </article>
       <aside className={styles.metaColumn}>

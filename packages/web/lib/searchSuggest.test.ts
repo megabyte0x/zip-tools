@@ -23,6 +23,24 @@ test("searchSuggestions caps at 8", () => {
   assert.equal(searchSuggestions(many, "alpha").length, 8);
 });
 
+test("searchSuggestions honors a smaller explicit limit", () => {
+  const many = Array.from({ length: 4 }, (_, i) =>
+    makeZip({ id: String(i + 1), number: i + 1, slug: `zip-${i + 1}`, title: `Alpha ${i}` }),
+  );
+  assert.equal(searchSuggestions(many, "alpha", 2).length, 2);
+});
+
+test("searchSuggestions returns internal numbered and draft destinations", () => {
+  assert.deepEqual(searchSuggestions(zips, "draft"), [
+    {
+      id: "draft-foo",
+      href: "/draft/draft-foo",
+      label: "Draft — Draft Something",
+    },
+  ]);
+  assert.equal(searchSuggestions(zips, "317")[0]?.href, "/zip/317");
+});
+
 test("searchSuggestions empty text returns []", () => {
   assert.deepEqual(searchSuggestions(zips, "  "), []);
 });

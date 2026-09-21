@@ -1,5 +1,8 @@
 .section {
   margin-bottom: 1.75rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .heading {
@@ -17,42 +20,53 @@
   list-style: none;
   margin: 0;
   overflow-x: auto;
-  padding: 0 0 0.35rem;
+  max-width: 100%;
+  padding: 0 0 0.5rem;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: inline proximity;
+  scrollbar-width: thin;
 }
 
 .item {
-  flex: 0 0 14rem;
+  flex: 0 0 clamp(15rem, 26vw, 20rem);
+  min-width: 0;
+  scroll-snap-align: start;
 }
 
-.card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-surface);
+.cardLink {
+  display: block;
+  height: 100%;
   color: inherit;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-height: 100%;
-  padding: 0.85rem 1rem;
   text-decoration: none;
 }
 
-.card:hover {
-  border-color: var(--color-accent);
+.card {
+  height: 100%;
+  padding-block: 0.75rem;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
-.number {
-  color: var(--color-accent);
-  font-weight: 600;
+.cardLink:hover .card,
+.cardLink:focus-visible .card {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
 }
 
 .title {
   font-size: 0.95rem;
+  line-height: 1.35;
 }
 
 .status {
-  color: var(--color-muted);
-  font-size: 0.75rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  max-width: 100%;
+  height: auto;
+  white-space: normal;
+  line-height: 1.35;
+  text-align: left;
+}
+
+@media (max-width: 35rem) {
+  .item {
+    flex-basis: min(82vw, 18rem);
+  }
 }

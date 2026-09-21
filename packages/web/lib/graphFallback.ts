@@ -49,14 +49,11 @@ export function graphRecords(zips: ZipRecord[], dangling: number[]): GraphRecord
   for (const zip of zips) {
     if (zip.number === null) continue;
     for (const to of zip.citations) {
-      if (to === zip.number) continue;
+      if (to === zip.number || !nodes.has(to)) continue;
       const key = `${zip.number}->${to}`;
       if (seen.has(key)) continue;
       seen.add(key);
       links.push({ source: zip.number, target: to });
-      if (!nodes.has(to)) {
-        nodes.set(to, { id: to, title: "Unassigned", unassigned: true, status: "" });
-      }
     }
   }
 

@@ -8,6 +8,7 @@ import { FALLBACK_CTA, readerMode } from "../lib/readerMode";
 import { rstSourceToMarkdown } from "../lib/rstSource";
 import { allocateHeadingId, headingTextFromNode, tocFromHtml } from "../lib/toc";
 import type { ZipRecord } from "../lib/types";
+import type { PreparedReader } from "../lib/workbenchContracts";
 import styles from "./ReaderBody.module.css";
 
 export { FALLBACK_CTA, readerMode };
@@ -37,20 +38,53 @@ export function ReaderBody({
   body,
   bodyKind,
   officialUrl,
+  document: preparedDocument,
 }: {
   body: string | null;
   bodyKind: ZipRecord["bodyKind"];
   officialUrl: string;
+  document?: PreparedReader;
 }) {
+  if (preparedDocument?.mode === "missing") {
+    return (
+      <div data-testid="reader-body">
+        <p className={styles.fallback}>
+          <a className={styles.cta} href={officialUrl}>
+            {FALLBACK_CTA}
+          </a>
+        </p>
+      </div>
+    );
+  }
+
+  if (preparedDocument) {
+    return (
+      <div data-testid="reader-body">
+        {preparedDocument.mode === "degraded" ? (
+          <aside className={styles.conversionNotice} role="status">
+            <strong>Limited conversion.</strong>{" "}
+            {preparedDocument.warnings.join(" ")}
+          </aside>
+        ) : null}
+        <div
+          className={styles.body}
+          dangerouslySetInnerHTML={{ __html: preparedDocument.html }}
+        />
+      </div>
+    );
+  }
+
   const mode = readerMode(body, bodyKind);
 
   if (mode === "fallback") {
     return (
-      <p className={styles.fallback}>
-        <a className={styles.cta} href={officialUrl}>
-          {FALLBACK_CTA}
-        </a>
-      </p>
+      <div data-testid="reader-body">
+        <p className={styles.fallback}>
+          <a className={styles.cta} href={officialUrl}>
+            {FALLBACK_CTA}
+          </a>
+        </p>
+      </div>
     );
   }
 
@@ -59,6 +93,7 @@ export function ReaderBody({
     return (
       <div
         className={styles.body}
+        data-testid="reader-body"
         dangerouslySetInnerHTML={{ __html: html }}
       />
     );
@@ -66,7 +101,7 @@ export function ReaderBody({
 
   if (mode === "source") {
     return (
-      <div className={styles.body}>
+      <div className={styles.body} data-testid="reader-body">
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath]}
           rehypePlugins={[rehypeKatex]}
@@ -79,7 +114,7 @@ export function ReaderBody({
   }
 
   return (
-    <div className={styles.body}>
+    <div className={styles.body} data-testid="reader-body">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
