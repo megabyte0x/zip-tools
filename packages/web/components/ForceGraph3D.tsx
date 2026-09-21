@@ -102,6 +102,14 @@ function zoomBy(fg: ForceGraphMethods | undefined, factor: number, reducedMotion
   );
 }
 
+function injectRendererInitializationFailure() {
+  if (process.env.NODE_ENV === "production") return;
+  const testWindow = window as Window & { __ZIP_TEST_GRAPH_INIT_FAILURES__?: number };
+  const failures = testWindow.__ZIP_TEST_GRAPH_INIT_FAILURES__ ?? 0;
+  if (failures < 1) return;
+  throw new Error("WebGLRenderer initialization failed by test hook");
+}
+
 function GraphNodeList({
   data,
   heading,
@@ -236,6 +244,22 @@ function GraphCanvas({
   const [reducedMotion, setReducedMotion] = useState(false);
   const [cameraAction, setCameraAction] = useState("initial");
 
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    const testWindow = window as Window & {
+      __ZIP_TEST_GRAPH_CAMERA__?: () => [number, number, number];
+    };
+    const observe = (): [number, number, number] => {
+      const position = fgRef.current?.camera().position;
+      if (!position) throw new Error("Graph camera is not initialized");
+      return [position.x, position.y, position.z];
+    };
+    testWindow.__ZIP_TEST_GRAPH_CAMERA__ = observe;
+    return () => {
+      if (testWindow.__ZIP_TEST_GRAPH_CAMERA__ === observe) delete testWindow.__ZIP_TEST_GRAPH_CAMERA__;
+    };
+  }, []);
+
   const graphData = useMemo(
     () => ({
       nodes: data.nodes.map((node) => ({ ...node })),
@@ -344,6 +368,8 @@ function GraphCanvas({
   }
 
   const markReady = useCallback(() => setReady(true), []);
+
+  if (size.width > 0 && size.height > 0) injectRendererInitializationFailure();
 
   return (
     <div
@@ -461,6 +487,11 @@ export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
   const data = useMemo(() => graphRecords(filtered, dangling), [filtered, dangling]);
   const Heading = variant === "graph" ? "h1" : "h2";
   const onRetry = () => {
+    if (process.env.NODE_ENV !== "production") {
+      const testWindow = window as Window & { __ZIP_TEST_GRAPH_INIT_FAILURES__?: number };
+      const failures = testWindow.__ZIP_TEST_GRAPH_INIT_FAILURES__ ?? 0;
+      if (failures > 0) testWindow.__ZIP_TEST_GRAPH_INIT_FAILURES__ = failures - 1;
+    }
     setFailed(false);
     setRetry((value) => value + 1);
   };

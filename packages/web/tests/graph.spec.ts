@@ -1,5 +1,43 @@
 import { expect, test } from "@playwright/test";
 
+async function classifyRenderedPixels(page: import("@playwright/test").Page, png: Buffer) {
+  return page.evaluate(async (encoded) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${encoded}`;
+    await image.decode();
+    const copy = document.createElement("canvas");
+    copy.width = image.naturalWidth;
+    copy.height = image.naturalHeight;
+    const context = copy.getContext("2d", { willReadFrequently: true });
+    context!.drawImage(image, 0, 0);
+    const pixels = context!.getImageData(0, 0, copy.width, copy.height).data;
+    let nodePixels = 0;
+    let edgePixels = 0;
+    for (let index = 0; index < pixels.length; index += 4) {
+      const red = pixels[index];
+      const green = pixels[index + 1];
+      const blue = pixels[index + 2];
+      const spread = Math.max(red, green, blue) - Math.min(red, green, blue);
+      if (red > 95 && green > 75 && blue < red - 18 && spread > 25) nodePixels += 1;
+      if (
+        red >= 85 && red <= 125 &&
+        Math.abs(red - green) <= 5 &&
+        green - blue >= 2 && green - blue <= 10
+      ) edgePixels += 1;
+    }
+    return { nodePixels, edgePixels };
+  }, png.toString("base64"));
+}
+
+async function cameraPosition(page: import("@playwright/test").Page) {
+  return page.evaluate(() => {
+    const observe = (window as Window & { __ZIP_TEST_GRAPH_CAMERA__?: () => [number, number, number] })
+      .__ZIP_TEST_GRAPH_CAMERA__;
+    if (!observe) throw new Error("Graph camera observation hook is unavailable");
+    return observe();
+  });
+}
+
 async function readyGraph(page: import("@playwright/test").Page, path: "/" | "/graph") {
   await page.goto(path);
   const surface = page.getByTestId("graph-surface");
@@ -34,14 +72,20 @@ test("expanded graph camera controls change pixels and reset", async ({ page }) 
   const { surface } = await readyGraph(page, "/graph");
   const canvas = surface.locator("canvas");
   const before = await canvas.screenshot();
+  const cameraBefore = await cameraPosition(page);
   await page.getByRole("button", { name: "Zoom in" }).click();
   await page.waitForTimeout(500);
   const zoomed = await canvas.screenshot();
+  const cameraZoomed = await cameraPosition(page);
   expect(zoomed.equals(before)).toBe(false);
+  expect(Math.hypot(...cameraZoomed)).toBeLessThan(Math.hypot(...cameraBefore));
   await page.getByRole("button", { name: "Reset" }).click();
   await page.waitForTimeout(500);
   await expect(surface).toHaveAttribute("data-camera-action", "reset");
   const reset = await canvas.screenshot();
+  expect(reset.equals(zoomed), "reset must visibly reverse the zoomed camera state").toBe(false);
+  const cameraReset = await cameraPosition(page);
+  expect(cameraReset, "reset must move the actual renderer camera from its zoomed position").not.toEqual(cameraZoomed);
   const box = await canvas.boundingBox();
   await page.mouse.move(box!.x + box!.width * 0.45, box!.y + box!.height * 0.5);
   await page.mouse.down();
@@ -61,14 +105,18 @@ test("actual canvas context loss shows fallback and retry restores 3D", async ({
   await expect(page.getByTestId("graph-surface")).toHaveAttribute("data-state", "ready", { timeout: 15_000 });
 });
 
-test("renderer initialization errors enter the failed state", async ({ page }) => {
-  await readyGraph(page, "/graph");
-  await page.evaluate(() => {
-    window.dispatchEvent(new ErrorEvent("error", { error: new Error("WebGLRenderer initialization failed") }));
+test("pre-ready renderer initialization failure shows fallback and retry recovers", async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as Window & { __ZIP_TEST_GRAPH_INIT_FAILURES__?: number }).__ZIP_TEST_GRAPH_INIT_FAILURES__ = 1;
   });
+  await page.goto("/graph");
   const surface = page.getByTestId("graph-surface");
   await expect(surface).toHaveAttribute("data-state", "failed");
   await expect(surface).toContainText("Citation graph is unavailable in this browser.");
+  await expect(surface.locator("canvas")).toHaveCount(0);
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByTestId("graph-surface")).toHaveAttribute("data-state", "ready", { timeout: 15_000 });
+  await expect(page.getByTestId("graph-surface").locator("canvas")).toBeVisible();
 });
 
 test("empty filtered graph has a distinct empty state", async ({ page }) => {
@@ -94,6 +142,9 @@ test("focused assigned node can be clicked on the real canvas", async ({ page })
   await page.waitForTimeout(1_000);
   const canvas = surface.locator("canvas");
   const rendered = await canvas.screenshot();
+  const classes = await classifyRenderedPixels(page, rendered);
+  expect(classes.nodePixels, JSON.stringify(classes)).toBeGreaterThan(100);
+  expect(classes.edgePixels, JSON.stringify(classes)).toBeGreaterThan(100);
   const [box, point] = await Promise.all([
     canvas.boundingBox(),
     page.evaluate(async (png) => {
