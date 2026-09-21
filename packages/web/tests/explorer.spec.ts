@@ -124,6 +124,22 @@ test("search and discrete filters survive navigation, back, and reload", async (
   expect(page.url()).toBe(restoredUrl);
 });
 
+test("immediate Back restores the filtered explorer after a cached reader navigation", async ({ page }) => {
+  await page.goto("/zip/312");
+  await page.goto("/zips?q=317&kind=numbered");
+  await page.getByText("Draft (revision details)").click();
+  await expect(
+    page.getByText("[Revision 0] Active, [Revision 1: NU6.3] Draft, [Revision 2] Draft"),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: "Proportional Transfer Fee Mechanism" }).click();
+  await page.goBack({ waitUntil: "domcontentloaded" });
+
+  await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
+  await expect(page.getByRole("searchbox", { name: "Search", exact: true })).toHaveValue("317");
+  await expect(page.getByLabel("Kind", { exact: true })).toHaveValue("numbered");
+});
+
 test("owner search, drafts, sorting, and empty-state clearing work", async ({ page }) => {
   await page.goto("/zips");
 

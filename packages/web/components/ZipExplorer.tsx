@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { filterZips } from "../lib/filter";
 import type { ZipRecord } from "../lib/types";
 import type { ExplorerQuery } from "../lib/workbenchContracts";
@@ -120,8 +120,37 @@ export function ZipExplorer({
     changeDiscrete({ [key]: key === "sort" ? "number" : "" });
   };
 
+  const followResultLink = (event: MouseEvent<HTMLElement>) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    const target = event.target;
+    const anchor = target instanceof Element ? target.closest("a[href]") : null;
+    if (!(anchor instanceof HTMLAnchorElement) || anchor.target || anchor.hasAttribute("download")) {
+      return;
+    }
+
+    const destination = new URL(anchor.href, window.location.href);
+    if (destination.origin !== window.location.origin) return;
+
+    event.preventDefault();
+    window.location.assign(destination.href);
+  };
+
   return (
-    <section className={styles.explorer} aria-label="ZIP explorer">
+    <section
+      className={styles.explorer}
+      aria-label="ZIP explorer"
+      onClickCapture={followResultLink}
+    >
       <SearchBand
         text={query.text}
         kind={query.kind}
