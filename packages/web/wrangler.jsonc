@@ -19,14 +19,14 @@
     {
       "binding": "DB",
       "database_name": "zip-tools",
-      "database_id": "local-stub",
+      "database_id": "5c2199c2-9b50-4b0a-977e-21cfe2c62dbc",
       "migrations_dir": "migrations"
     }
   ],
   "kv_namespaces": [
     {
       "binding": "KV",
-      "id": "local-stub"
+      "id": "352fc94e2a8e4a708aa60c27787841ab"
     }
   ],
   "ai": {
