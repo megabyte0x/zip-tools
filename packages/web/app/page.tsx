@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { ForceGraph3D } from "../components/ForceGraph3D";
-import { ZipExplorer } from "../components/ZipExplorer";
 import { ZipOfTheDay } from "../components/ZipOfTheDay";
 import { ZipRail } from "../components/ZipRail";
 import { featuredZips } from "../lib/featured";
+import { cloudflareEnv } from "../lib/cloudflareEnv";
 import { loadIndex } from "../lib/loadIndex";
 import type { ZipRecord } from "../lib/types";
 import { handleTrendingGet, type ViewsEnv } from "../lib/views";
@@ -13,13 +13,7 @@ import styles from "./page.module.css";
 export const dynamic = "force-dynamic";
 
 async function loadEnv(): Promise<ViewsEnv> {
-  try {
-    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
-    const ctx = await getCloudflareContext({ async: true });
-    return (ctx.env ?? {}) as ViewsEnv;
-  } catch {
-    return {};
-  }
+  return cloudflareEnv<ViewsEnv>();
 }
 
 function zipForViewId(zips: ZipRecord[], id: string): ZipRecord | undefined {
@@ -56,7 +50,7 @@ export default async function HomePage() {
           <h1 id="home-heading">Read and explore Zcash proposals</h1>
           <p>Browse the pinned ZIP corpus, follow citations, and read proposals in place.</p>
         </div>
-        <Link className={styles.browseLink} href="#explorer">
+        <Link className={styles.browseLink} href="/zips">
           Browse ZIPs
         </Link>
       </section>
@@ -86,9 +80,6 @@ export default async function HomePage() {
         variant="home"
       />
       <ZipOfTheDay zip={daily ? slimZipOfTheDay(daily) : null} numbered={numbered} />
-      <section id="explorer" aria-label="ZIP explorer">
-        <ZipExplorer zips={bodyFreeZips} />
-      </section>
     </div>
   );
 }

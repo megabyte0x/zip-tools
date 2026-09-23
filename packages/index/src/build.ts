@@ -1,11 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { basename, extname, join, relative } from "node:path";
 import { extractCitations } from "./citations.ts";
+import { parseIssueRef, validateIssueSnapshotFile } from "./issueSnapshots.ts";
 import { applyOverlay } from "./overlay.ts";
 import { parseHeader } from "./parseHeader.ts";
 import { parseStatus } from "./parseStatus.ts";
 import { renderBody } from "./renderBody.ts";
-import type { NuOverlay, ZipIndexFile, ZipRecord } from "./types.ts";
+import { hasSubstantiveBody } from "./sourceBody.ts";
+import type { IssueSnapshotFile, NuOverlay, ZipIndexFile, ZipRecord } from "./types.ts";
 import { githubBlobUrl, officialUrl, padZip } from "./urls.ts";
 
 export type BuildIndexOpts = {
@@ -13,6 +15,7 @@ export type BuildIndexOpts = {
   overlay: NuOverlay;
   sha: string;
   date: string;
+  issueSnapshots?: IssueSnapshotFile;
 };
 
 function snapshotUrl(sha: string): string {
@@ -60,7 +63,12 @@ function slugFor(number: number | null, filename: string): string {
   return basename(filename, extname(filename));
 }
 
-function recordFromFile(path: string, sourceDir: string, sha: string): ZipRecord {
+function recordFromFile(
+  path: string,
+  sourceDir: string,
+  sha: string,
+  snapshots: IssueSnapshotFile,
+): ZipRecord {
   const text = readFileSync(path, "utf8");
   const header = parseHeader(text);
   const sourcePath = relative(sourceDir, path).replaceAll("\\", "/");
@@ -69,6 +77,33 @@ function recordFromFile(path: string, sourceDir: string, sha: string): ZipRecord
   const rendered = renderBody(sourcePath, text);
   const parseWarnings = [...header.warnings];
   if (rendered.warning) parseWarnings.push(rendered.warning);
+  const ref = parseIssueRef(header.discussionsTo);
+  const issue =
+    ref && Object.hasOwn(snapshots.issues, ref.url)
+      ? snapshots.issues[ref.url]
+      : undefined;
+  const selection = hasSubstantiveBody(text)
+    ? { ...rendered, bodySource: { kind: "repository" as const } }
+    : issue
+      ? {
+          body: issue.body,
+          bodyKind: "md" as const,
+          bodyFormat: "markdown" as const,
+          bodySource: {
+            kind: "github-issue" as const,
+            url: issue.url,
+            title: issue.title,
+            updatedAt: issue.updatedAt,
+            fetchedAt: issue.fetchedAt,
+            contentHash: issue.contentHash,
+          },
+        }
+      : {
+          body: null,
+          bodyKind: "none" as const,
+          bodyFormat: "none" as const,
+          bodySource: { kind: "none" as const },
+        };
 
   return {
     id,
@@ -88,9 +123,10 @@ function recordFromFile(path: string, sourceDir: string, sha: string): ZipRecord
     sourcePath,
     officialUrl: officialUrl(header.number, slug),
     githubUrl: githubBlobUrl(sha, sourcePath),
-    bodyKind: rendered.bodyKind,
-    bodyFormat: rendered.bodyFormat,
-    body: rendered.body,
+    bodyKind: selection.bodyKind,
+    bodyFormat: selection.bodyFormat,
+    body: selection.body,
+    bodySource: selection.bodySource,
     parseWarnings,
   };
 }
@@ -120,8 +156,13 @@ function invertCitations(zips: ZipRecord[]): number[] {
 }
 
 export function buildIndex(opts: BuildIndexOpts): ZipIndexFile {
+  const snapshots = validateIssueSnapshotFile(
+    opts.issueSnapshots ?? { version: 1, issues: {} },
+  );
   const files = listSourceFiles(opts.sourceDir);
-  const raw = files.map((f) => recordFromFile(f, opts.sourceDir, opts.sha));
+  const raw = files.map((f) =>
+    recordFromFile(f, opts.sourceDir, opts.sha, snapshots),
+  );
   const { zips } = applyOverlay(raw, opts.overlay);
   const dangling = invertCitations(zips);
 

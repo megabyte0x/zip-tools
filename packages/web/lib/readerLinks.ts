@@ -1,3 +1,4 @@
+import { supportedIssueUrl } from "./readerSource";
 import type { ZipRecord } from "./types";
 
 const UNSAFE_SCHEME = /^(?:javascript|data|vbscript|file):/i;
@@ -62,6 +63,18 @@ export function readerAssetUrl(zip: ZipRecord, href: string): string {
     if (!/^https?:/i.test(value)) return "";
     return safeAbsoluteUrl(value) ?? "";
   }
+
+  if (zip.bodySource?.kind === "github-issue") {
+    const issueUrl = supportedIssueUrl(zip.bodySource.url);
+    if (issueUrl === null) return "";
+    try {
+      const resolved = new URL(value, issueUrl);
+      return /^https?:$/.test(resolved.protocol) ? resolved.href : "";
+    } catch {
+      return "";
+    }
+  }
+
   if (!zip.githubUrl) return "";
 
   try {

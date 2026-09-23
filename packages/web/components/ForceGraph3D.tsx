@@ -102,75 +102,7 @@ function zoomBy(fg: ForceGraphMethods | undefined, factor: number, reducedMotion
   );
 }
 
-function GraphNodeList({
-  data,
-  heading,
-  initiallyOpen = false,
-}: {
-  data: GraphRecords;
-  heading: string;
-  initiallyOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(initiallyOpen);
-  const nodesById = useMemo(() => new Map(data.nodes.map((node) => [node.id, node])), [data.nodes]);
-  const directions = useMemo(() => {
-    const result = new Map<number, { cites: number[]; citedBy: number[] }>();
-    for (const node of data.nodes) result.set(node.id, { cites: [], citedBy: [] });
-    for (const link of data.links) {
-      result.get(link.source)?.cites.push(link.target);
-      result.get(link.target)?.citedBy.push(link.source);
-    }
-    return result;
-  }, [data]);
-
-  const describe = (ids: number[]) =>
-    ids.length === 0
-      ? "None"
-      : ids
-          .map((id) => {
-            const node = nodesById.get(id);
-            return node?.unassigned ? `${id} (Unassigned)` : `ZIP ${id}: ${node?.title ?? "Unknown"}`;
-          })
-          .join(", ");
-
-  return (
-    <details
-      className={styles.nodeList}
-      role="region"
-      aria-label={heading}
-      open={open}
-      onToggle={(event) => setOpen(event.currentTarget.open)}
-    >
-      <summary className={styles.listHeading}>{heading}</summary>
-      {data.nodes.length === 0 ? (
-        <p className={styles.empty}>None</p>
-      ) : (
-        <ul className={styles.list}>
-          {data.nodes.map((node) => {
-            const direction = directions.get(node.id) ?? { cites: [], citedBy: [] };
-            return (
-              <li key={node.id} className={styles.nodeListItem}>
-                <div>
-                  {node.unassigned ? (
-                    <span className={styles.muted}>{node.id} — Unassigned (not navigable)</span>
-                  ) : (
-                    <Link className={styles.link} href={`/zip/${node.id}`}>
-                      ZIP {node.id}: {node.title}
-                    </Link>
-                  )}
-                </div>
-                <span className={styles.direction}>Cites: {describe(direction.cites)}</span>
-                <span className={styles.direction}>Cited by: {describe(direction.citedBy)}</span>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </details>
-  );
-}
-
-function Fallback({ data, variant, onRetry }: { data: GraphRecords; variant: "home" | "graph"; onRetry: () => void }) {
+function Fallback({ variant, onRetry }: { variant: "home" | "graph"; onRetry: () => void }) {
   return (
     <div
       className={`${styles.fallback}${variant === "graph" ? ` ${styles.pageFallback}` : ""}`}
@@ -178,7 +110,6 @@ function Fallback({ data, variant, onRetry }: { data: GraphRecords; variant: "ho
       data-state="failed"
     >
       <p className={styles.unavailable}>{GRAPH_UNAVAILABLE}</p>
-      <GraphNodeList data={data} heading="Citation nodes with direction" initiallyOpen />
       <div className={styles.actions}>
         <button className={styles.button} type="button" onClick={onRetry}>
           Try again
@@ -482,7 +413,6 @@ function GraphCanvas({
           />
         ) : null}
       </div>
-      <GraphNodeList data={data} heading="Accessible citation nodes" />
     </div>
   );
 }
@@ -506,7 +436,7 @@ export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
     setRetry((value) => value + 1);
   };
   const onRuntimeError = useCallback(() => setFailed(true), []);
-  const fallback = <Fallback data={data} variant={variant} onRetry={onRetry} />;
+  const fallback = <Fallback variant={variant} onRetry={onRetry} />;
 
   return (
     <section

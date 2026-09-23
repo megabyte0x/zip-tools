@@ -40,6 +40,7 @@ test("empty dir throws", () => {
   }
 });
 
+// Catches newly built records omitting explicit repository provenance while preserving existing fixture metadata.
 test("buildIndex over the fixture tree", () => {
   const index = buildIndex({
     sourceDir: fixturesDir,
@@ -50,6 +51,10 @@ test("buildIndex over the fixture tree", () => {
 
   const ids = index.zips.map((z) => z.id).sort();
   assert.deepEqual(ids, ["0", "229", "32", "draft-arya-deploy-nu7"]);
+  assert.deepEqual(
+    index.zips.map((z) => z.bodySource),
+    index.zips.map(() => ({ kind: "repository" })),
+  );
 
   assert.equal(
     index.zips.some((z) => z.id === "zip-guide" || z.slug === "zip-guide"),
@@ -71,17 +76,22 @@ test("buildIndex over the fixture tree", () => {
   );
 });
 
+// Catches CLI fixture tests sharing a global output directory or requiring a snapshot cache to exist.
 test("cli build writes parseable zip-index.json", () => {
   const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-  const outDir = "/tmp/zip-index-out";
-  rmSync(outDir, { recursive: true, force: true });
-  const result = spawnSync(
-    "tsx",
-    ["src/cli.ts", "build", "--source", "test/fixtures/zips", "--out", outDir],
-    { cwd: pkgRoot, encoding: "utf8" },
-  );
-  assert.equal(result.status, 0, `${result.stderr}${result.stdout}`);
-  const outFile = join(outDir, "zip-index.json");
-  assert.equal(existsSync(outFile), true);
-  JSON.parse(readFileSync(outFile, "utf8"));
+  const tempDir = mkdtempSync(join(tmpdir(), "zip-index-out-"));
+  const outDir = join(tempDir, "out");
+  try {
+    const result = spawnSync(
+      "tsx",
+      ["src/cli.ts", "build", "--source", "test/fixtures/zips", "--out", outDir],
+      { cwd: pkgRoot, encoding: "utf8" },
+    );
+    assert.equal(result.status, 0, `${result.stderr}${result.stdout}`);
+    const outFile = join(outDir, "zip-index.json");
+    assert.equal(existsSync(outFile), true);
+    JSON.parse(readFileSync(outFile, "utf8"));
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
 });

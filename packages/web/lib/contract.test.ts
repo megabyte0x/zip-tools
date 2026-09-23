@@ -35,11 +35,26 @@ const graphInput: GraphInput = {
   variant: 'home',
 };
 
+// Catches drift or missing variants in the web copy of the body provenance contract.
+const repositoryBodySource: ZipRecord['bodySource'] = { kind: 'repository' };
+const issueBodySource: ZipRecord['bodySource'] = {
+  kind: 'github-issue',
+  url: 'https://github.com/zcash/zips/issues/1302',
+  title: 'Issue',
+  updatedAt: '2026-07-05T21:00:43Z',
+  fetchedAt: '2026-09-23T00:00:00Z',
+  contentHash: '0123456789abcdef'.repeat(4),
+};
+const noBodySource: ZipRecord['bodySource'] = { kind: 'none' };
+
 void bodyFormats;
 void headings;
 void preparedReaders;
 void explorerQuery;
 void graphInput;
+void repositoryBodySource;
+void issueBodySource;
+void noBodySource;
 
 test('reader fixture anchors and TOC agree', () => {
   for (const heading of fullReaderFixture.toc) {

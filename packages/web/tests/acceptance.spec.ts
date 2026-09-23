@@ -88,6 +88,19 @@ async function contrastRatio(page: Page, selector: string) {
   });
 }
 
+test("site header omits the network-upgrade tab strip", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.locator('[aria-label="Network upgrades"]')).toHaveCount(0);
+});
+
+test("home links to the ZIP directory without mounting its explorer", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.getByRole("region", { name: "ZIP explorer" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Browse ZIPs", exact: true })).toHaveAttribute("href", "/zips");
+});
+
 test("required production routes render without console failures or document overflow", async ({ page }) => {
   const failures = consoleFailures(page);
   for (const route of requiredRoutes) {

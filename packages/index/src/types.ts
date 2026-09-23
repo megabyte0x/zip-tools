@@ -8,6 +8,35 @@ export type Owner = { name: string; email?: string };
 
 export type BodyFormat = "html" | "markdown" | "rst-source" | "none";
 
+export type BodySource =
+  | { kind: "repository" }
+  | {
+      kind: "github-issue";
+      url: string;
+      title: string;
+      updatedAt: string;
+      fetchedAt: string;
+      contentHash: string;
+    }
+  | { kind: "none" };
+
+export type IssueRef = { url: string; number: number };
+
+export type IssueSnapshot = {
+  url: string;
+  number: number;
+  title: string;
+  body: string;
+  updatedAt: string;
+  fetchedAt: string;
+  contentHash: string;
+};
+
+export type IssueSnapshotFile = {
+  version: 1;
+  issues: Record<string, IssueSnapshot>;
+};
+
 export type ZipRecord = {
   id: string;
   number: number | null;
@@ -29,6 +58,7 @@ export type ZipRecord = {
   bodyKind: "md" | "rst" | "draft" | "none";
   bodyFormat?: BodyFormat;
   body: string | null;
+  bodySource?: BodySource;
   parseWarnings: string[];
 };
 

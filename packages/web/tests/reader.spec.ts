@@ -61,11 +61,47 @@ void (async () => {
       body: zip.body, bodyKind: zip.bodyKind, officialUrl, document: fullReaderFixture,
     }),
   ));
+  const issueSource = {
+    kind: 'github-issue', url: 'https://github.com/zcash/zips/issues/1302',
+    title: 'Issue #1302 fixture', updatedAt: '2026-07-05T21:00:43Z',
+    fetchedAt: '2026-09-23T00:00:00Z', contentHash: 'a'.repeat(64),
+  };
+  const issueDocument = {
+    html: '<h2 id="motivation">Motivation</h2><p>Issue fixture body is rendered from the snapshot.</p>',
+    toc: [{ id: 'motivation', text: 'Motivation', level: 2 }], mode: 'full', warnings: [],
+  };
+  const issueZip = {
+    ...zip, status: [{ label: 'Reserved' }], statusRaw: 'Reserved', bodySource: issueSource,
+  };
+  const issue = renderToStaticMarkup(createElement(ReaderBody, {
+    body: 'Legacy body must not render.', bodyKind: 'md', officialUrl, bodySource: issueSource,
+    discussionsTo: issueSource.url, document: issueDocument,
+  }));
+  const legacyIssue = renderToStaticMarkup(createElement(ReaderBody, {
+    body: 'Legacy issue fixture body.', bodyKind: 'md', officialUrl, bodySource: issueSource,
+    discussionsTo: issueSource.url,
+  }));
+  const missingWithDiscussion = renderToStaticMarkup(createElement(ReaderBody, {
+    body: null, bodyKind: 'none', officialUrl, bodySource: { kind: 'none' },
+    discussionsTo: issueSource.url, document: missingReaderFixture,
+  }));
+  const issueShell = renderToStaticMarkup(createElement(
+    ReaderShell,
+    { zip: issueZip, prev: null, next: null, document: issueDocument },
+    createElement(ReaderBody, {
+      body: issueZip.body, bodyKind: issueZip.bodyKind, officialUrl, bodySource: issueSource,
+      discussionsTo: issueZip.discussionsTo, document: issueDocument,
+    }),
+  ));
   console.log(JSON.stringify({
     full: renderBody(fullReaderFixture),
     degraded: renderBody(degradedReaderFixture),
     missing: renderBody(missingReaderFixture),
     shell,
+    issue,
+    legacyIssue,
+    missingWithDiscussion,
+    issueShell,
   }));
 })();
 `;
@@ -75,6 +111,10 @@ type FixtureMarkup = {
   degraded: string;
   missing: string;
   shell: string;
+  issue: string;
+  legacyIssue: string;
+  missingWithDiscussion: string;
+  issueShell: string;
 };
 
 let fixtureMarkup: FixtureMarkup | undefined;
@@ -113,9 +153,41 @@ test('degraded fixture renders its notice and prepared prose', () => {
 test('missing fixture renders exactly one official fallback', () => {
   const html = renderedFixtures().missing;
 
+  expect(html).toContain('No proposal body is available in this snapshot.');
   expect(occurrences(html, 'Open on zips.z.cash')).toBe(1);
   expect(occurrences(html, `href="${officialUrl}"`)).toBe(1);
+  expect(html).not.toContain('Read the linked GitHub issue');
   expect(html).not.toContain('Legacy body must not render.');
+});
+
+test('issue-backed fixtures render their saved body without a provenance callout', () => {
+  const { issue, legacyIssue, issueShell } = renderedFixtures();
+  const notice = 'No proposal body is present in this ZIP snapshot. Showing the linked GitHub issue description.';
+  const issueUrl = 'https://github.com/zcash/zips/issues/1302';
+
+  for (const html of [issue, legacyIssue]) {
+    expect(occurrences(html, 'data-testid="issue-body-notice"')).toBe(0);
+    expect(html).not.toContain(notice);
+    expect(html).not.toContain('Issue #1302 fixture');
+    expect(occurrences(html, `href="${issueUrl}"`)).toBe(0);
+    expect(html).not.toContain('dateTime="2026-07-05T21:00:43Z"');
+    expect(html).not.toContain('dateTime="2026-09-23T00:00:00Z"');
+  }
+  expect(issue).toContain('Issue fixture body is rendered from the snapshot.');
+  expect(issue).not.toContain('Legacy body must not render.');
+  expect(legacyIssue).toContain('Legacy issue fixture body.');
+  expect(issueShell).toContain('Reserved');
+});
+
+test('missing-with-discussion fixture renders one issue link and one official fallback', () => {
+  const html = renderedFixtures().missingWithDiscussion;
+  const issueUrl = 'https://github.com/zcash/zips/issues/1302';
+
+  expect(html).toContain('No proposal body is available in this snapshot.');
+  expect(html).toContain('Read the linked GitHub issue');
+  expect(occurrences(html, `href="${issueUrl}"`)).toBe(1);
+  expect(occurrences(html, 'Open on zips.z.cash')).toBe(1);
+  expect(occurrences(html, `href="${officialUrl}"`)).toBe(1);
 });
 
 test('prepared fixture TOC replaces legacy body headings', () => {

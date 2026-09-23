@@ -94,7 +94,7 @@ async function readyGraph(page: import("@playwright/test").Page, path: "/" | "/g
 test("home renders a ready 3D graph and reports focus search results", async ({ page }) => {
   const { surface } = await readyGraph(page, "/");
   await expect(surface.getByText("Graph ready")).toBeVisible();
-  await expect(page.getByRole("region", { name: "Accessible citation nodes" })).toContainText("ZIP");
+  await expect(page.getByRole("region", { name: "Accessible citation nodes" })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Activate graph" })).toBeVisible();
   await page.getByRole("button", { name: "Activate graph" }).click();
@@ -162,6 +162,7 @@ test("actual canvas context loss shows fallback and retry restores 3D", async ({
   await surface.locator("canvas").dispatchEvent("webglcontextlost");
   await expect(surface).toHaveAttribute("data-state", "failed");
   await expect(page.getByText("Citation graph is unavailable in this browser.")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Citation nodes with direction" })).toHaveCount(0);
   await surface.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByTestId("graph-surface")).toHaveAttribute("data-state", "ready", { timeout: 15_000 });
 });

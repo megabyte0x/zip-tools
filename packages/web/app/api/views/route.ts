@@ -1,13 +1,8 @@
 import { handleViewsPost, type ViewsEnv } from "../../../lib/views";
+import { cloudflareEnv } from "../../../lib/cloudflareEnv";
 
 async function loadEnv(): Promise<ViewsEnv> {
-  try {
-    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
-    const ctx = await getCloudflareContext({ async: true });
-    return (ctx.env ?? {}) as ViewsEnv;
-  } catch {
-    return {};
-  }
+  return cloudflareEnv<ViewsEnv>();
 }
 
 export async function POST(request: Request): Promise<Response> {

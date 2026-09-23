@@ -8,6 +8,18 @@ export type Owner = { name: string; email?: string };
 
 export type BodyFormat = "html" | "markdown" | "rst-source" | "none";
 
+export type BodySource =
+  | { kind: "repository" }
+  | {
+      kind: "github-issue";
+      url: string;
+      title: string;
+      updatedAt: string;
+      fetchedAt: string;
+      contentHash: string;
+    }
+  | { kind: "none" };
+
 export type ZipRecord = {
   id: string;
   number: number | null;
@@ -29,6 +41,7 @@ export type ZipRecord = {
   bodyKind: "md" | "rst" | "draft" | "none";
   bodyFormat?: BodyFormat;
   body: string | null;
+  bodySource?: BodySource;
   parseWarnings: string[];
 };
 

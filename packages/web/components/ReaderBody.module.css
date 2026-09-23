@@ -11,7 +11,7 @@
   max-width: 100%;
 }
 
-.body :is(pre, table, .katex-display),
+.body :is(pre, .katex-display),
 .body p:has(math mtable) {
   max-width: 100%;
   overflow-x: auto;
@@ -19,14 +19,21 @@
 
 .body table {
   border-collapse: collapse;
-  display: block;
+  min-width: 44rem;
   width: max-content;
+}
+
+.body :global(.reader-table-scroll) {
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .body :is(th, td) {
   border: 1px solid var(--color-border);
+  overflow-wrap: normal;
   padding: 0.4rem 0.6rem;
   text-align: left;
+  word-break: normal;
 }
 
 .body :is(h1, h2, h3, h4) {
@@ -83,6 +90,14 @@
   font-size: 0.875rem;
   margin: 0 0 1rem;
   padding: 0.65rem 0.8rem;
+}
+
+
+@media (max-width: 767px) {
+  .body :is(th, td) {
+    max-width: calc(100vw - 5rem);
+    overflow-wrap: anywhere;
+  }
 }
 
 @media (min-width: 768px) {

@@ -46,3 +46,47 @@ test("readerAssetUrl does not let relative paths escape the pinned repository", 
   });
   assert.equal(readerAssetUrl(zip, "../../../../outside.svg"), "");
 });
+
+test("readerAssetUrl resolves issue assets from a canonical issue instead of the pinned ZIP", () => {
+  const zip = makeZip({
+    githubUrl: "https://github.com/zcash/zips/blob/deadbeef/zips/zip-2007.md",
+    bodySource: {
+      kind: "github-issue",
+      url: "https://github.com/zcash/zips/issues/1302",
+      title: "Fixture",
+      updatedAt: "2026-07-05T21:00:43Z",
+      fetchedAt: "2026-09-23T00:00:00Z",
+      contentHash: "a".repeat(64),
+    },
+  });
+
+  assert.equal(
+    readerAssetUrl(zip, "diagram.png"),
+    "https://github.com/zcash/zips/issues/diagram.png",
+  );
+  assert.equal(
+    readerAssetUrl(zip, "https://github.com/user-attachments/assets/123/diagram.png"),
+    "https://github.com/user-attachments/assets/123/diagram.png",
+  );
+  assert.equal(readerAssetUrl(zip, "javascript:alert(1)"), "");
+});
+
+test("readerAssetUrl rejects relative issue assets when the issue URL is invalid", () => {
+  const zip = makeZip({
+    githubUrl: "https://github.com/zcash/zips/blob/deadbeef/zips/zip-2007.md",
+    bodySource: {
+      kind: "github-issue",
+      url: "https://github.com/zcash/zips/issues/01302",
+      title: "Invalid fixture",
+      updatedAt: "2026-07-05T21:00:43Z",
+      fetchedAt: "2026-09-23T00:00:00Z",
+      contentHash: "a".repeat(64),
+    },
+  });
+
+  assert.equal(readerAssetUrl(zip, "diagram.png"), "");
+  assert.equal(
+    readerAssetUrl(zip, "https://github.com/user-attachments/assets/123/diagram.png"),
+    "https://github.com/user-attachments/assets/123/diagram.png",
+  );
+});

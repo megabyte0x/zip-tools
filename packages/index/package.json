@@ -5,7 +5,8 @@
   "bin": { "zip-index": "./src/cli.ts" },
   "scripts": {
     "test": "tsx --test test/*.test.ts",
-    "build-index": "tsx src/cli.ts build --source ../../submodule/zips --out ../web/data"
+    "build-index": "tsx src/cli.ts build --source ../../submodule/zips --out ../web/data --snapshots ./issue-snapshots.json",
+    "refresh-issues": "tsx src/cli.ts refresh-issues --source ../../submodule/zips --snapshots ./issue-snapshots.json"
   },
   "devDependencies": { "tsx": "^4.19.3", "typescript": "^5.8.2" }
 }

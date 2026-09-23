@@ -126,3 +126,79 @@ test("prepareReader returns missing mode only when content is absent", async () 
   const doc = await prepareReader(makeZip({ bodyFormat: "none", bodyKind: "none", body: null }));
   assert.deepEqual(doc, { html: "", toc: [], mode: "missing", warnings: [] });
 });
+
+test("issue descriptions use the sanitized reader, local TOC fragments, and issue-relative URLs", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyKind: "md",
+    bodyFormat: "markdown",
+    githubUrl: "https://github.com/zcash/zips/blob/deadbeef/zips/zip-2007.md",
+    body: [
+      "## Motivation",
+      "",
+      "[Fragment](#motivation) [ZIP 2005](https://zips.z.cash/zip-2005) [Issue](../1303)",
+      "[Nested ZIP](notes/zip-0032.rst) [Unsafe](javascript:alert(1))",
+      "",
+      "| A | B |",
+      "| - | - |",
+      "| 1 | 2 |",
+      "",
+      "$x^2$",
+      "",
+      "![Issue diagram](diagram.png)",
+      "![Attachment](https://github.com/user-attachments/assets/123/diagram.png)",
+      "",
+      "<script>alert(1)</script>",
+    ].join("\n"),
+    bodySource: {
+      kind: "github-issue",
+      url: "https://github.com/zcash/zips/issues/1302",
+      title: "Fixture",
+      updatedAt: "2026-07-05T21:00:43Z",
+      fetchedAt: "2026-09-23T00:00:00Z",
+      contentHash: "a".repeat(64),
+    },
+  }));
+
+  assert.equal(doc.mode, "full");
+  assert.equal(doc.toc[0]?.id, "motivation");
+  assert.match(doc.html, /<div class="reader-table-scroll"><table>/);
+  assert.match(doc.html, /<table>/);
+  assert.match(doc.html, /<math/);
+  assert.match(doc.html, /href="#motivation"/);
+  assert.match(doc.html, /href="\/zip\/2005"/);
+  assert.match(doc.html, /href="https:\/\/github\.com\/zcash\/zips\/1303"/);
+  assert.match(
+    doc.html,
+    /href="https:\/\/github\.com\/zcash\/zips\/issues\/notes\/zip-0032\.rst"/,
+  );
+  assert.doesNotMatch(doc.html, /href="\/zip\/32"/);
+  assert.match(
+    doc.html,
+    /src="https:\/\/github\.com\/zcash\/zips\/issues\/diagram\.png"/,
+  );
+  assert.match(
+    doc.html,
+    /src="https:\/\/github\.com\/user-attachments\/assets\/123\/diagram\.png"/,
+  );
+  assert.doesNotMatch(doc.html, /<script|javascript:|raw\.githubusercontent\.com/i);
+});
+
+test("prepareReader rejects relative issue destinations when issue provenance is invalid", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyKind: "md",
+    bodyFormat: "markdown",
+    githubUrl: "https://github.com/zcash/zips/blob/deadbeef/zips/zip-2007.md",
+    body: "[Relative ZIP](zip-0032.rst) ![Relative image](diagram.png)",
+    bodySource: {
+      kind: "github-issue",
+      url: "https://github.com/zcash/zips/issues/01302",
+      title: "Invalid fixture",
+      updatedAt: "2026-07-05T21:00:43Z",
+      fetchedAt: "2026-09-23T00:00:00Z",
+      contentHash: "a".repeat(64),
+    },
+  }));
+
+  assert.match(doc.html, /href="#"/);
+  assert.doesNotMatch(doc.html, /href="\/zip\/32"|src=|raw\.githubusercontent\.com/);
+});

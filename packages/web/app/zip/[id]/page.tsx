@@ -28,6 +28,8 @@ export default async function ZipPage({
         body={zip.body}
         bodyKind={zip.bodyKind}
         officialUrl={zip.officialUrl}
+        bodySource={zip.bodySource}
+        discussionsTo={zip.discussionsTo}
         document={document}
       />
       {zip.number != null ? (

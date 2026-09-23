@@ -9,6 +9,7 @@ import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 import type { PreparedReader, ReaderHeading } from "./workbenchContracts";
 import { readerAssetUrl, readerProposalHref } from "./readerLinks";
+import { supportedIssueUrl } from "./readerSource";
 import { rstSourceToMarkdown } from "./rstSource";
 import { allocateHeadingId } from "./toc";
 import type { BodyFormat, ZipRecord } from "./types";
@@ -113,11 +114,48 @@ function elements(tree: HastNode): HastNode[] {
   return found;
 }
 
+function issueRelativeHref(zip: ZipRecord, href: string): string {
+  if (zip.bodySource?.kind !== "github-issue") return href;
+
+  const value = href.trim();
+  if (
+    value === "" ||
+    value.startsWith("#") ||
+    value.startsWith("//") ||
+    /^[a-z][a-z0-9+.-]*:/i.test(value)
+  ) {
+    return href;
+  }
+
+  const issueUrl = supportedIssueUrl(zip.bodySource.url);
+  if (issueUrl === null) return "#";
+  try {
+    return new URL(value, issueUrl).href;
+  } catch {
+    return "#";
+  }
+}
+
+function wrapTables(node: HastNode): void {
+  if (!node.children) return;
+  node.children = node.children.map((child) => {
+    wrapTables(child);
+    if (child.tagName !== "table") return child;
+    return {
+      type: "element",
+      tagName: "div",
+      properties: { className: ["reader-table-scroll"] },
+      children: [child],
+    };
+  });
+}
+
 function prepareTree(tree: HastNode, zip: ZipRecord): ReaderHeading[] {
+  wrapTables(tree);
   const all = elements(tree);
   for (const node of all) {
     if (node.tagName === "a" && typeof node.properties?.href === "string") {
-      node.properties.href = readerProposalHref(node.properties.href);
+      node.properties.href = readerProposalHref(issueRelativeHref(zip, node.properties.href));
     }
     if (node.tagName === "img" && typeof node.properties?.src === "string") {
       const src = readerAssetUrl(zip, node.properties.src);

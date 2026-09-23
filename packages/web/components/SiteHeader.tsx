@@ -20,7 +20,6 @@ function SearchParamsSync({ onChange }: { onChange: (query: string) => void }) {
 export function SiteHeader({
   zipCount,
   draftCount,
-  nus,
   zips,
 }: {
   zipCount: number;
@@ -95,20 +94,6 @@ export function SiteHeader({
               Reading List <ReadingListBadge />
             </Link>
           </div>
-          {nus.length > 0 ? (
-            <div className={styles.nuLinks} aria-label="Network upgrades">
-              {nus.map((nu) => (
-                <Link
-                  key={nu.id}
-                  className={styles.nuLink}
-                  href={nu.href}
-                  aria-current={current(nu.href)}
-                >
-                  {nu.id}
-                </Link>
-              ))}
-            </div>
-          ) : null}
         </nav>
       </header>
     </>

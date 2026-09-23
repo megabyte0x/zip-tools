@@ -11,6 +11,14 @@ const expectedReleasedRouteErrors = new Set([
   "route.continue: Target page, context or browser has been closed",
 ]);
 
+declare global {
+  interface Window {
+    React: { createElement(component: unknown, props: unknown): unknown };
+    ReactDOM: { createRoot(container: Element | null): { render(node: unknown): void } };
+    ZipExplorer: unknown;
+  }
+}
+
 type ReleasedRouteSettlement =
   | { outcome: "continued" }
   | { outcome: "cancelled"; message: string };

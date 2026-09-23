@@ -1,15 +1,10 @@
 import { loadIndex } from "../../../../lib/loadIndex";
 import { resolveDraft, resolveZip } from "../../../../lib/resolve";
 import { handleSummaryGet, type SummaryEnv } from "../../../../lib/summary";
+import { cloudflareEnv } from "../../../../lib/cloudflareEnv";
 
 async function loadEnv(): Promise<SummaryEnv> {
-  try {
-    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
-    const ctx = await getCloudflareContext({ async: true });
-    return (ctx.env ?? {}) as SummaryEnv;
-  } catch {
-    return {};
-  }
+  return cloudflareEnv<SummaryEnv>();
 }
 
 async function loadZip(id: string) {
@@ -19,7 +14,12 @@ async function loadZip(id: string) {
     resolveZip(index, id) ??
     resolveDraft(index, id);
   if (!zip) return null;
-  return { title: zip.title, body: zip.body, snapshotSha: index.snapshot.sha };
+  return {
+    title: zip.title,
+    body: zip.body,
+    snapshotSha: index.snapshot.sha,
+    bodySource: zip.bodySource,
+  };
 }
 
 export async function GET(
