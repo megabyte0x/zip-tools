@@ -8,3 +8,4 @@ packages/web/.wrangler/
 packages/web/.open-next/
 .worktrees/
 .superpowers/
+docs/
