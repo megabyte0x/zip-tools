@@ -202,3 +202,42 @@ test("prepareReader rejects relative issue destinations when issue provenance is
   assert.match(doc.html, /href="#"/);
   assert.doesNotMatch(doc.html, /href="\/zip\/32"|src=|raw\.githubusercontent\.com/);
 });
+
+test("prepareReader tucks a markdown ZIP's leading header block into a collapsed details", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "markdown",
+    bodyKind: "md",
+    body: [
+      "    ZIP: 229",
+      "    Title: Version 6 Transaction Format",
+      "    Status: Draft",
+      "",
+      "# Terminology",
+      "",
+      "Body text.",
+    ].join("\n"),
+  }));
+
+  assert.match(
+    doc.html,
+    /^<details class="zip-raw-header"><summary>Original header<\/summary><pre><code>ZIP: 229\n/,
+  );
+  assert.match(doc.html, /<\/pre><\/details>/);
+  assert.ok(doc.html.includes("Body text."));
+});
+
+test("prepareReader leaves ordinary code blocks alone", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "markdown",
+    bodyKind: "md",
+    body: "## Intro\n\n    ZIP: not a header, it is prose code\n",
+  }));
+  assert.ok(!doc.html.includes("zip-raw-header"));
+
+  const plain = await prepareReader(makeZip({
+    bodyFormat: "markdown",
+    bodyKind: "md",
+    body: "    let x = 1;\n\n## Intro\n",
+  }));
+  assert.ok(!plain.html.includes("zip-raw-header"));
+});

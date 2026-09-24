@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { headerModel } from "./headerModel.ts";
+import { headerModel, showHeaderSearch } from "./headerModel.ts";
 import { makeZip } from "./test-zip.ts";
 
 test("headerModel counts numbered vs draft and lists NU hrefs", () => {
@@ -20,4 +20,13 @@ test("headerModel counts numbered vs draft and lists NU hrefs", () => {
     { id: "nu6.2", href: "/nu/nu6.2" },
     { id: "nu7", href: "/nu/nu7" },
   ]);
+});
+
+test("header search hides where the page owns the search", () => {
+  assert.equal(showHeaderSearch("/"), false);
+  assert.equal(showHeaderSearch("/zips"), false);
+  assert.equal(showHeaderSearch("/zip/32"), true);
+  assert.equal(showHeaderSearch("/graph"), true);
+  assert.equal(showHeaderSearch("/list"), true);
+  assert.equal(showHeaderSearch("/zipsx"), true);
 });
