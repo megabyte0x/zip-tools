@@ -246,3 +246,8 @@
 .body :global(.katex-display) {
   padding: 0.25em 0;
 }
+
+/* Headerless RST grid tables arrive with an empty header row. */
+.body thead:not(:has(th:not(:empty))) {
+  display: none;
+}

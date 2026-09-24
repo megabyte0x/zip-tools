@@ -19,9 +19,91 @@ const ADMONITIONS = new Set([
 
 const CODE_DIRECTIVES = new Set(["code", "code-block", "sourcecode"]);
 
+/** A run of one repeated RST adornment character (any printable punctuation), except "::". */
 function isUnderline(line: string): boolean {
   const t = line.trim();
-  return t.length >= 2 && /^[=~\-`#"'^]+$/.test(t);
+  return t.length >= 2 && t !== "::" && /^([!-/:-@[-`{-~])\1+$/.test(t);
+}
+
+/** Simple table ("====  ====" borders) to a GitHub table, splitting cells at the border's column starts. */
+function simpleTable(rows: string[]): string[] {
+  const border = /^=+(?: +=+)+$/;
+  const starts = [...rows[0].matchAll(/=+/g)].map((match) => match.index ?? 0);
+  const cellsOf = (row: string) =>
+    starts.map((start, n) => row.slice(start, starts[n + 1] ?? row.length).trim());
+  const borders = rows.flatMap((row, n) => (border.test(row.trim()) ? [n] : []));
+  const hasHeader = borders.length >= 3;
+  const records: string[][] = [];
+  let header: string[] | null = null;
+  rows.forEach((row, n) => {
+    if (border.test(row.trim()) || row.trim() === "") return;
+    const cells = cellsOf(row);
+    if (hasHeader && n < borders[1]) {
+      header = header ? header.map((cell, c) => `${cell} ${cells[c]}`.trim()) : cells;
+      return;
+    }
+    // A row with an empty first column continues the row above.
+    if (cells[0] === "" && records.length > 0) {
+      const last = records[records.length - 1];
+      cells.forEach((cell, c) => (last[c] = `${last[c]} ${cell}`.trim()));
+      return;
+    }
+    records.push(cells);
+  });
+  const format = (cells: string[]) => `| ${cells.map(tableCell).join(" | ")} |`;
+  const head: string[] = header ?? starts.map(() => "");
+  return [format(head), `| ${starts.map(() => "---").join(" | ")} |`, ...records.map(format)];
+}
+
+/** One table cell: bars inside math become \\Vert / \\vert, other pipes are escaped. */
+function tableCell(text: string): string {
+  return inline(text)
+    .split(/(\$[^$]+\$)/)
+    .map((part, n) =>
+      n % 2 === 1
+        ? part.replace(/\\\|/g, "\\Vert ").replace(/\|/g, "\\vert ")
+        : part.replace(/\|/g, "\\|"),
+    )
+    .join("");
+}
+
+const LIST_ITEM = /^(\s*)(?:[-*+]|\d+[.)]|#\.)\s+/;
+
+/**
+ * Grid table to a GitHub table when every row uses the border's column positions.
+ * Tables with spanning cells return null and stay preformatted.
+ */
+function gridTable(rows: string[]): string[] | null {
+  const border = /^\+(?:[-=]+\+)+$/;
+  if (!border.test(rows[0] ?? "")) return null;
+  const cuts = [...rows[0]].flatMap((ch, at) => (ch === "+" ? [at] : []));
+  const groups: string[][][] = [];
+  let headerRows = 0;
+  let current: string[][] = [];
+  for (const row of rows.slice(1)) {
+    if (border.test(row)) {
+      if ([...row].flatMap((ch, at) => (ch === "+" ? [at] : [])).join() !== cuts.join()) return null;
+      if (current.length > 0) groups.push(current);
+      current = [];
+      if (row.includes("=")) headerRows = groups.length;
+      continue;
+    }
+    if (!row.startsWith("|") || cuts.some((at) => row[at] !== "|")) return null;
+    current.push(cuts.slice(0, -1).map((at, n) => row.slice(at + 1, cuts[n + 1]).trim()));
+  }
+  if (current.length > 0 || groups.length === 0) return null;
+  const cells = groups.map((group) =>
+    group[0].map((_, column) =>
+      tableCell(group.map((line) => line[column]).filter(Boolean).join(" ")),
+    ),
+  );
+  const header = headerRows === 1 ? cells[0] : cells[0].map(() => " ");
+  const body = headerRows === 1 ? cells.slice(1) : cells;
+  return [
+    `| ${header.join(" | ")} |`,
+    `| ${header.map(() => "---").join(" | ")} |`,
+    ...body.map((row) => `| ${row.join(" | ")} |`),
+  ];
 }
 
 function indentOf(line: string): number {
@@ -115,7 +197,7 @@ function csvTable(options: Map<string, string>, content: string[]): string[] {
 function directive(name: string, arg: string, body: string[], pad: string): string[] {
   const { options, content } = splitOptions(body);
   const indentAll = (lines: string[]) => lines.map((line) => (line === "" ? "" : pad + line));
-  if (name === "math") return indentAll(["$$", ...content, "$$"]);
+  if (name === "math") return indentAll(["$$", ...(arg.trim() ? [arg.trim()] : []), ...content, "$$"]);
   if (CODE_DIRECTIVES.has(name)) return indentAll([`\`\`\`${arg.trim()}`, ...content, "```"]);
   if (name === "raw") return indentAll(content);
   if (name === "figure" || name === "image") {
@@ -156,6 +238,13 @@ export function rstSourceToMarkdown(source: string): string {
   }
 
   const out: string[] = [];
+  const styles: string[] = [];
+  const heading = (style: string, title: string) => {
+    if (!styles.includes(style)) styles.push(style);
+    const level = Math.min(styles.indexOf(style) + 2, 6);
+    return `${"#".repeat(level)} ${inline(title.trim())}`;
+  };
+  let listContext = false;
   while (i < lines.length) {
     const line = lines[i];
     const next = lines[i + 1];
@@ -198,7 +287,9 @@ export function rstSourceToMarkdown(source: string): string {
     if (/^\s*\+[-=+]+\+\s*$/.test(line)) {
       let end = i;
       while (end < lines.length && /^\s*[+|]/.test(lines[end])) end += 1;
-      out.push(pad + "```", ...dedent(lines.slice(i, end)), pad + "```");
+      const rows = dedent(lines.slice(i, end)).map((row) => row.trimEnd());
+      const table = gridTable(rows);
+      out.push(...(table ? table.map((row) => pad + row) : [pad + "```", ...rows, pad + "```"]));
       i = end;
       continue;
     }
@@ -211,7 +302,7 @@ export function rstSourceToMarkdown(source: string): string {
         end += 1;
         if (borders === 3) break;
       }
-      out.push(pad + "```", ...dedent(lines.slice(i, end)), pad + "```");
+      out.push(...simpleTable(dedent(lines.slice(i, end)).map((row) => row.trimEnd())).map((row) => pad + row));
       i = end;
       continue;
     }
@@ -240,18 +331,32 @@ export function rstSourceToMarkdown(source: string): string {
       isUnderline(afterNext) &&
       line.trim()[0] === afterNext.trim()[0]
     ) {
-      const level = line.trim().startsWith("=") ? 2 : 3;
-      out.push(`${"#".repeat(level)} ${inline(next.trim())}`);
+      out.push(heading(`over${line.trim()[0]}`, next));
+      listContext = false;
       i += 3;
       continue;
     }
     if (next !== undefined && isUnderline(next) && line.trim() !== "") {
-      const level = next.trim().startsWith("=") ? 2 : 3;
-      out.push(`${"#".repeat(level)} ${inline(line.trim())}`);
+      out.push(heading(`under${next.trim()[0]}`, line));
+      listContext = false;
       i += 2;
       continue;
     }
-    out.push(inline(line));
+    // An indented block after a blank line, outside a list, is an RST block quote. Markdown
+    // would read four spaces as code, so convert its contents and quote them.
+    if (indent > 0 && !listContext && (i === 0 || lines[i - 1].trim() === "")) {
+      const block = indentedBlock(lines, i, indent - 1);
+      const inner = rstSourceToMarkdown(dedent(block.lines).join("\n"));
+      out.push(...inner.split("\n").map((row) => (row.trim() === "" ? ">" : `> ${row}`)));
+      i = block.end;
+      continue;
+    }
+
+    if (line.trim() !== "") {
+      if (LIST_ITEM.test(line)) listContext = true;
+      else if (indent === 0) listContext = false;
+    }
+    out.push(inline(line.replace(/^(\s*)#\.(\s)/, "$11.$2")));
     i += 1;
   }
   return out.join("\n").trim();
