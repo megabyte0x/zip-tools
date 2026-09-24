@@ -115,7 +115,7 @@ export function HeaderSearch({
             setActiveIndex(-1);
           }}
           onKeyDown={onKeyDown}
-          placeholder={variant === "hero" ? "Search 317, Orchard, or an owner" : "Number, title, or owner"}
+          placeholder={variant === "hero" ? "Try 317 or Orchard" : "Number, title, or owner"}
           autoComplete="off"
         />
         <kbd className={styles.kbd} aria-hidden="true">/</kbd>

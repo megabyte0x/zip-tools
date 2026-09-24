@@ -28,7 +28,7 @@ const LEAKS: Array<[string, RegExp]> = [
   ["rst directive", /(?:^|\s)\.\. [a-z-]+::/],
   ["rst link", /`[^`]+ <[^>]+>`_/],
   ["rst literal", /``[^`]+``/],
-  ["rst citation", /\[#?[\w-]+\]_/],
+  ["rst citation", /\[#?[\w-]+\]_|\[#[\w.-]+\]/],
   ["rst substitution", /\|br\|/],
 ];
 
@@ -43,6 +43,9 @@ const KNOWN_SOURCE_ISSUES = new Map([
   ["228 rst role", "same malformed math, zip-0228.rst:134"],
   ["231 tex delimiter", "escaped \\$mathtt typo, zip-0231.md:399"],
   ["1012 tex delimiter", "dollar amounts ($700k/month), not math"],
+  ["208 rst citation", "citation missing its trailing _, zip-0208.rst:68"],
+  ["230 rst citation", "citation missing its trailing _, zip-0230.rst:329"],
+  ["draft-ecc-authenticated-reply-addrs rst citation", "[#BCP14] with a nonstandard definition, draft-ecc-authenticated-reply-addrs.md:17"],
   ["218 rst citation", "RST citation [#slowfastblocks]_ inside a markdown ZIP, zip-0218.md:85"],
   ["draft-str4d-orchard-balance-proof rst citation", "RST citation [#BCP14]_ inside a markdown ZIP"],
 ]);
