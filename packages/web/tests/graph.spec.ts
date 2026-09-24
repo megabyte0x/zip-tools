@@ -96,8 +96,8 @@ test("home renders a ready 3D graph and reports focus search results", async ({ 
   await expect(surface.getByText("Graph ready")).toBeVisible();
   await expect(page.getByRole("region", { name: "Accessible citation nodes" })).toHaveCount(0);
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Activate graph" })).toBeVisible();
-  await page.getByRole("button", { name: "Activate graph" }).click();
+  await expect(page.getByRole("button", { name: "Explore graph", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Explore graph", exact: true }).click();
 
   const search = surface.getByRole("textbox", { name: "Search" });
   await search.fill("ZIP 999999");

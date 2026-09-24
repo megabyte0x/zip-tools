@@ -215,7 +215,8 @@ test("home graph preserves mobile page scroll outside its inactive canvas", asyn
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   const homeSurface = await expectReadyGraph(page);
-  await expect(page.getByRole("button", { name: "Activate graph" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Explore graph", exact: true })).toBeVisible();
   await page.evaluate(() => scrollTo(0, 900));
   await page.mouse.move(8, 160);
   const initialY = await page.evaluate(() => scrollY);

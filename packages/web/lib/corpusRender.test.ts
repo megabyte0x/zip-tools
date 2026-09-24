@@ -42,6 +42,8 @@ const KNOWN_SOURCE_ISSUES = new Map([
   ["228 rst role", "same malformed math, zip-0228.rst:134"],
   ["231 tex delimiter", "escaped \\$mathtt typo, zip-0231.md:399"],
   ["1012 tex delimiter", "dollar amounts ($700k/month), not math"],
+  ["218 rst citation", "RST citation [#slowfastblocks]_ inside a markdown ZIP, zip-0218.md:85"],
+  ["draft-str4d-orchard-balance-proof rst citation", "RST citation [#BCP14]_ inside a markdown ZIP"],
 ]);
 
 test("every ZIP in the built index renders without leaked TeX or raw RST", { skip: !existsSync(INDEX) }, async () => {

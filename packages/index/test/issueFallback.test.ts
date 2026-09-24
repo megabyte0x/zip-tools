@@ -685,7 +685,7 @@ test("normal CLI build call graph permits only local metadata and RST-converter 
     {
       file: "src/renderBody.ts",
       command: "pandoc",
-      args: ["-f", "rst", "-t", "html"],
+      args: ["-f", "rst", "-t", "html", "--mathjax", "--wrap=none"],
     },
     {
       file: "src/snapshot.ts",

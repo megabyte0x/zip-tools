@@ -120,3 +120,12 @@ test("rstSourceToMarkdown keeps grid tables readable as preformatted text", () =
   const md = rstSourceToMarkdown("+----+----+\n| a  | b  |\n+----+----+\n\nAfter.");
   assert.match(md, /```\n\+----\+----\+\n\| a  \| b  \|\n\+----\+----\+\n```/);
 });
+
+test("rstSourceToMarkdown joins inline literals that wrap across lines", () => {
+  assert.equal(rstSourceToMarkdown("uses ``sum(a\n  * b)`` here"), "uses `sum(a * b)` here");
+});
+
+test("rstSourceToMarkdown keeps backtick section underlines as headings", () => {
+  const md = rstSourceToMarkdown("Magic Bytes\n``````````\n\nEach ``net`` has bytes.");
+  assert.equal(md, "### Magic Bytes\n\nEach `net` has bytes.");
+});
