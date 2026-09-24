@@ -1,14 +1,35 @@
 "use client";
 
+import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import { searchSuggestions } from "../lib/searchSuggest";
 import type { ZipRecord } from "../lib/types";
 import { Input } from "./ui/input";
 import styles from "./HeaderSearch.module.css";
 
-export function HeaderSearch({ zips }: { zips: ZipRecord[] }) {
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName);
+}
+
+export function HeaderSearch({
+  zips,
+  variant = "header",
+}: {
+  zips: ZipRecord[];
+  variant?: "header" | "hero";
+}) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const listboxId = useId();
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
@@ -16,6 +37,17 @@ export function HeaderSearch({ zips }: { zips: ZipRecord[] }) {
   const hits = useMemo(() => searchSuggestions(zips, text), [zips, text]);
   const expanded = open && hits.length > 0;
   const active = expanded && activeIndex >= 0 ? hits[activeIndex] : undefined;
+
+  useEffect(() => {
+    const focusOnSlash = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (isTypingTarget(event.target)) return;
+      event.preventDefault();
+      formRef.current?.querySelector("input")?.focus();
+    };
+    window.addEventListener("keydown", focusOnSlash);
+    return () => window.removeEventListener("keydown", focusOnSlash);
+  }, []);
 
   function navigate(href: string) {
     setOpen(false);
@@ -54,9 +86,15 @@ export function HeaderSearch({ zips }: { zips: ZipRecord[] }) {
   }
 
   return (
-    <form className={styles.form} onSubmit={onSubmit} role="search">
+    <form
+      ref={formRef}
+      className={variant === "hero" ? `${styles.form} ${styles.hero}` : styles.form}
+      onSubmit={onSubmit}
+      role="search"
+    >
       <label className={styles.label}>
         <span className={styles.srOnly}>Search ZIPs</span>
+        <Search className={styles.icon} aria-hidden="true" />
         <Input
           className={styles.input}
           type="search"
@@ -77,9 +115,10 @@ export function HeaderSearch({ zips }: { zips: ZipRecord[] }) {
             setActiveIndex(-1);
           }}
           onKeyDown={onKeyDown}
-          placeholder="Number, title, or owner"
+          placeholder={variant === "hero" ? "Search 317, Orchard, or an owner" : "Number, title, or owner"}
           autoComplete="off"
         />
+        <kbd className={styles.kbd} aria-hidden="true">/</kbd>
       </label>
       {expanded ? (
         <ul id={listboxId} className={styles.suggestions} role="listbox">

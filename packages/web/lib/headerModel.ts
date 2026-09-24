@@ -16,3 +16,8 @@ export function headerModel(index: { zips: ZipRecord[]; nus: NuEntry[] }): {
     .map((nu) => ({ id: nu.id, href: `/nu/${nu.id}` }));
   return { zipCount, draftCount, nus };
 }
+
+/** Home and Browse carry their own search box, so the header copy would be a second one. */
+export function showHeaderSearch(pathname: string): boolean {
+  return pathname !== "/" && pathname !== "/zips";
+}

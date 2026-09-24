@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { ForceGraph3D } from "../components/ForceGraph3D";
+import { HeaderSearch } from "../components/HeaderSearch";
 import { ZipOfTheDay } from "../components/ZipOfTheDay";
 import { ZipRail } from "../components/ZipRail";
-import { featuredZips } from "../lib/featured";
 import { cloudflareEnv } from "../lib/cloudflareEnv";
 import { loadIndex } from "../lib/loadIndex";
-import type { ZipRecord } from "../lib/types";
+import { newestZips } from "../lib/recent";
+import type { NuEntry, ZipRecord } from "../lib/types";
 import { handleTrendingGet, type ViewsEnv } from "../lib/views";
+import { zipHref } from "../lib/zipHref";
 import { zipOfTheDay, slimZipOfTheDay } from "../lib/zipOfTheDay";
 import styles from "./page.module.css";
 
@@ -31,10 +33,50 @@ async function mostViewedZips(zips: ZipRecord[], todayUtc: string): Promise<ZipR
     .filter((zip): zip is ZipRecord => zip != null);
 }
 
+const PREVIEW_COUNT = 3;
+
+function UpgradeCard({ nu, byNumber }: { nu: NuEntry; byNumber: Map<number, ZipRecord> }) {
+  const preview = nu.zips
+    .map((number) => byNumber.get(number))
+    .filter((zip): zip is ZipRecord => zip != null)
+    .slice(0, PREVIEW_COUNT);
+  const more = nu.zips.length - preview.length;
+  return (
+    <li className={styles.upgrade}>
+      <Link className={styles.upgradeLink} href={`/nu/${nu.id}`}>
+        <span className={styles.upgradeKind}>Candidate upgrade</span>
+        <span className={styles.upgradeTitle}>{nu.title}</span>
+        <span className={styles.upgradeCount}>
+          {nu.zips.length} ZIP{nu.zips.length === 1 ? "" : "s"}
+        </span>
+      </Link>
+      <ul className={styles.upgradeZips}>
+        {preview.map((zip) => (
+          <li key={zip.id}>
+            <Link href={zipHref(zip)}>
+              <span className={styles.upgradeNumber}>{zip.number}</span>
+              {zip.title}
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {more > 0 ? (
+        <Link className={styles.upgradeMore} href={`/nu/${nu.id}`}>
+          +{more} more in {nu.title} <span aria-hidden="true">→</span>
+        </Link>
+      ) : null}
+    </li>
+  );
+}
+
 export default async function HomePage() {
   const index = loadIndex();
   const { zips, nus } = index;
-  const featured = featuredZips(index);
+  const byNumber = new Map<number, ZipRecord>();
+  for (const zip of zips) if (zip.number != null) byNumber.set(zip.number, zip);
+  const candidates = nus.filter((nu) => nu.kind === "candidate");
+  const settled = nus.filter((nu) => nu.kind === "settled");
+  const newest = newestZips(zips, 12);
   const utcDate = new Date().toISOString().slice(0, 10);
   const daily = zipOfTheDay(zips, utcDate);
   const numbered = zips
@@ -44,42 +86,55 @@ export default async function HomePage() {
   const bodyFreeZips = zips.map((zip) => ({ ...zip, body: null }));
 
   return (
-    <div>
-      <section className={styles.intro} aria-labelledby="home-heading">
-        <div>
-          <h1 id="home-heading">Read and explore Zcash proposals</h1>
-          <p>Browse the pinned ZIP corpus, follow citations, and read proposals in place.</p>
+    <div className={styles.home}>
+      <section className={styles.hero} aria-labelledby="home-heading">
+        <p className={styles.eyebrow}>Zcash Improvement Proposals</p>
+        <h1 id="home-heading" className={styles.title}>
+          Read and explore Zcash proposals
+        </h1>
+        <p className={styles.lede}>Search ZIPs by number, title, or owner.</p>
+        <div className={styles.heroSearch}>
+          <HeaderSearch zips={bodyFreeZips} variant="hero" />
         </div>
-        <Link className={styles.browseLink} href="/zips">
-          Browse ZIPs
-        </Link>
+        <nav className={styles.quick} aria-label="Shortcuts">
+          <Link href="/zips">Browse ZIPs</Link>
+          <Link href="/zips?kind=draft">Drafts</Link>
+          <Link href="/graph">Citation graph</Link>
+        </nav>
       </section>
-      <ZipRail title="Featured" zips={featured} />
-      <section className={styles.boards} aria-labelledby="nu-boards-heading">
-        <h2 id="nu-boards-heading" className={styles.heading}>
-          Network upgrades
-        </h2>
-        <ul className={styles.boardList}>
-          {nus.map((nu) => (
-            <li key={nu.id}>
-              <Link className={styles.board} href={`/nu/${nu.id}`}>
-                <span className={styles.boardId}>{nu.id}</span>
-                <span className={styles.boardKind}>{nu.kind}</span>
-                <span className={styles.boardCount}>
-                  {nu.zips.length} ZIP{nu.zips.length === 1 ? "" : "s"}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
+
+      {candidates.length > 0 ? (
+        <section className={styles.upgrades} aria-labelledby="nu-boards-heading">
+          <div className={styles.sectionHead}>
+            <h2 id="nu-boards-heading" className={styles.heading}>
+              Network upgrades
+            </h2>
+            {settled.length > 0 ? (
+              <p className={styles.settled}>
+                Live on Mainnet:{" "}
+                {settled.map((nu, i) => (
+                  <span key={nu.id}>
+                    {i > 0 ? ", " : null}
+                    <Link href={`/nu/${nu.id}`}>
+                      {nu.title} · {nu.zips.length} ZIP{nu.zips.length === 1 ? "" : "s"}
+                    </Link>
+                  </span>
+                ))}
+              </p>
+            ) : null}
+          </div>
+          <ul className={styles.upgradeGrid}>
+            {candidates.map((nu) => (
+              <UpgradeCard key={nu.id} nu={nu} byNumber={byNumber} />
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <ZipRail title="Newest proposals" zips={newest} showCreated />
       {mostViewed.length > 0 ? <ZipRail title="Most viewed (7 days)" zips={mostViewed} /> : null}
-      <ForceGraph3D
-        zips={bodyFreeZips}
-        dangling={index.dangling}
-        variant="home"
-      />
       <ZipOfTheDay zip={daily ? slimZipOfTheDay(daily) : null} numbered={numbered} />
+      <ForceGraph3D zips={bodyFreeZips} dangling={index.dangling} variant="home" />
     </div>
   );
 }

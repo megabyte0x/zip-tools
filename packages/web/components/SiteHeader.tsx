@@ -4,6 +4,7 @@ import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { showHeaderSearch } from "../lib/headerModel";
 import type { ZipRecord } from "../lib/types";
 import { HeaderSearch } from "./HeaderSearch";
 import { ReadingListBadge } from "./ReadingListButton";
@@ -62,9 +63,13 @@ export function SiteHeader({
         >
           {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
         </button>
-        <div className={styles.search}>
-          <HeaderSearch zips={zips} />
-        </div>
+        {showHeaderSearch(pathname) ? (
+          <div className={styles.search}>
+            <HeaderSearch zips={zips} />
+          </div>
+        ) : (
+          <div className={styles.search} aria-hidden="true" />
+        )}
         <nav
           id="site-navigation"
           className={`${styles.nav} ${menuOpen ? styles.navOpen : ""}`}
