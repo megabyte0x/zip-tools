@@ -1,3 +1,4 @@
+import { footerLabel } from "../lib/footer";
 import type { ZipIndexFile } from "../lib/types";
 import styles from "./Footer.module.css";
 
@@ -15,12 +16,19 @@ function GitHubIcon() {
 }
 
 export function Footer({ snapshot }: { snapshot: ZipIndexFile["snapshot"] }) {
-  const label = `zcash/zips ${snapshot.sha.slice(0, 7)} ${snapshot.date}`;
+  const label = footerLabel(snapshot);
   return (
     <footer className={styles.footer}>
-      <a className={styles.link} href={snapshot.url}>
-        {label}
-      </a>
+      <p className={styles.sync}>
+        <span className={styles.pulse} aria-hidden="true" />
+        {snapshot.url ? (
+          <a className={styles.link} href={snapshot.url}>
+            {label}
+          </a>
+        ) : (
+          label
+        )}
+      </p>
       <a
         className={styles.repositoryLink}
         href={REPOSITORY_URL}
