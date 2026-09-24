@@ -8,6 +8,7 @@ import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 import type { PreparedReader, ReaderHeading } from "./workbenchContracts";
+import { escapeTextUnderscores, fenceDisplayMath } from "./mathCompat";
 import { readerAssetUrl, readerProposalHref } from "./readerLinks";
 import { supportedIssueUrl } from "./readerSource";
 import { rstSourceToMarkdown } from "./rstSource";
@@ -78,12 +79,58 @@ async function markdownTree(markdown: string): Promise<HastNode> {
     .use(remarkGfm)
     .use(remarkMath)
     .use(remarkRehype, { allowDangerousHtml: true });
-  const tree = await processor.run(processor.parse(markdown));
+  const tree = await processor.run(processor.parse(fenceDisplayMath(markdown)));
   const html = String(
     unified().use(rehypeStringify, { allowDangerousHtml: true }).stringify(tree),
   );
   const safeTree = await sanitize(await htmlTree(html));
-  return await unified().use(rehypeKatex).run(safeTree as never) as HastNode;
+  return await katex(safeTree);
+}
+
+/**
+ * pandoc --mathjax emits <span class="math inline">\(tex\)</span> and
+ * <span class="math display">\[tex\]</span>. Re-shape them into the code elements that
+ * remark-math produces, so the sanitizer keeps them and rehype-katex renders them.
+ */
+function pandocMathToKatex(node: HastNode): void {
+  for (const child of node.children ?? []) {
+    pandocMathToKatex(child);
+    const className = child.properties?.className;
+    const classes = Array.isArray(className) ? className.map(String) : [];
+    if (child.tagName !== "span" || !classes.includes("math")) continue;
+    const display = classes.includes("display");
+    const tex = textContent(child)
+      .trim()
+      .replace(display ? /^\\\[([\s\S]*)\\\]$/ : /^\\\(([\s\S]*)\\\)$/, "$1")
+      .trim();
+    const code: HastNode = {
+      type: "element",
+      tagName: "code",
+      properties: { className: ["language-math"] },
+      children: [{ type: "text", value: tex }],
+    };
+    // rehype-katex renders a <pre><code class="language-math"> as display math.
+    child.tagName = display ? "pre" : "code";
+    child.properties = display ? {} : code.properties;
+    child.children = display ? [code] : code.children;
+  }
+}
+
+async function katex(tree: HastNode): Promise<HastNode> {
+  for (const node of elements(tree)) {
+    const className = node.properties?.className;
+    if (!Array.isArray(className) || !className.includes("language-math")) continue;
+    for (const child of node.children ?? []) {
+      if (child.type === "text") child.value = escapeTextUnderscores(child.value ?? "");
+    }
+  }
+  return await unified().use(rehypeKatex).run(tree as never) as HastNode;
+}
+
+async function htmlMathTree(html: string): Promise<HastNode> {
+  const tree = await htmlTree(html);
+  pandocMathToKatex(tree);
+  return await katex(await sanitize(tree));
 }
 
 async function htmlTree(html: string): Promise<HastNode> {
@@ -150,7 +197,47 @@ function wrapTables(node: HastNode): void {
   });
 }
 
+/**
+ * Markdown ZIPs open with their RFC-style header ("ZIP: 229", "Title: ...") as a code
+ * block. The sidebar already shows those fields, so keep the original but fold it away.
+ */
+function collapseRawHeader(tree: HastNode): void {
+  const children = tree.children ?? [];
+  const index = children.findIndex(
+    (child) => child.type === "element" || (child.type === "text" && (child.value ?? "").trim() !== ""),
+  );
+  const first = children[index];
+  if (!first || first.tagName !== "pre") return;
+  const text = textContent(first);
+  if (!/^\s*ZIP:\s*\S/.test(text) || !/^\s*Title:/m.test(text)) return;
+  children[index] = {
+    type: "element",
+    tagName: "details",
+    properties: { className: ["zip-raw-header"] },
+    children: [
+      { type: "element", tagName: "summary", properties: {}, children: [{ type: "text", value: "Original header" }] },
+      first,
+    ],
+  };
+}
+
+const HEADING = /^h([1-6])$/;
+
+/**
+ * The page title is the only h1. Bodies that open sections with h1 (markdown "# Rationale",
+ * pandoc's top-level RST sections) shift every heading down one level instead.
+ */
+function demoteHeadings(all: HastNode[]): void {
+  if (!all.some((node) => node.tagName === "h1")) return;
+  for (const node of all) {
+    const level = HEADING.exec(node.tagName ?? "");
+    if (level) node.tagName = `h${Math.min(Number(level[1]) + 1, 6)}`;
+  }
+}
+
 function prepareTree(tree: HastNode, zip: ZipRecord): ReaderHeading[] {
+  collapseRawHeader(tree);
+  demoteHeadings(elements(tree));
   wrapTables(tree);
   const all = elements(tree);
   for (const node of all) {
@@ -198,7 +285,7 @@ export async function prepareReader(zip: ZipRecord): Promise<PreparedReader> {
   const degraded = format === "rst-source";
   const source = degraded ? rstSourceToMarkdown(zip.body) : zip.body;
   const tree = format === "html"
-    ? await sanitize(await htmlTree(source))
+    ? await htmlMathTree(source)
     : await markdownTree(source);
   const toc = prepareTree(tree, zip);
   const html = String(unified().use(rehypeStringify).stringify(tree as never));

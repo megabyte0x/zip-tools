@@ -202,3 +202,118 @@ test("prepareReader rejects relative issue destinations when issue provenance is
   assert.match(doc.html, /href="#"/);
   assert.doesNotMatch(doc.html, /href="\/zip\/32"|src=|raw\.githubusercontent\.com/);
 });
+
+test("prepareReader tucks a markdown ZIP's leading header block into a collapsed details", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "markdown",
+    bodyKind: "md",
+    body: [
+      "    ZIP: 229",
+      "    Title: Version 6 Transaction Format",
+      "    Status: Draft",
+      "",
+      "# Terminology",
+      "",
+      "Body text.",
+    ].join("\n"),
+  }));
+
+  assert.match(
+    doc.html,
+    /^<details class="zip-raw-header"><summary>Original header<\/summary><pre><code>ZIP: 229\n/,
+  );
+  assert.match(doc.html, /<\/pre><\/details>/);
+  assert.ok(doc.html.includes("Body text."));
+});
+
+test("prepareReader leaves ordinary code blocks alone", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "markdown",
+    bodyKind: "md",
+    body: "## Intro\n\n    ZIP: not a header, it is prose code\n",
+  }));
+  assert.ok(!doc.html.includes("zip-raw-header"));
+
+  const plain = await prepareReader(makeZip({
+    bodyFormat: "markdown",
+    bodyKind: "md",
+    body: "    let x = 1;\n\n## Intro\n",
+  }));
+  assert.ok(!plain.html.includes("zip-raw-header"));
+});
+
+test("prepareReader demotes body h1 sections so the page keeps one h1 and the TOC sees them", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "markdown",
+    bodyKind: "md",
+    body: "# Abstract\n\nText.\n\n# Specification\n\n## Encoding\n\n### Bytes\n\nMore.",
+  }));
+
+  assert.ok(!doc.html.includes("<h1"));
+  assert.match(doc.html, /<h2 id="abstract">Abstract<\/h2>/);
+  assert.match(doc.html, /<h3 id="encoding">Encoding<\/h3>/);
+  assert.match(doc.html, /<h4[^>]*>Bytes<\/h4>/);
+  assert.deepEqual(
+    doc.toc.map((entry) => [entry.level, entry.text]),
+    [[2, "Abstract"], [2, "Specification"], [3, "Encoding"]],
+  );
+});
+
+test("prepareReader leaves heading levels alone when the body has no h1", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "markdown",
+    bodyKind: "md",
+    body: "## Intro\n\n### Detail\n",
+  }));
+  assert.deepEqual(doc.toc.map((entry) => entry.level), [2, 3]);
+});
+
+test("prepareReader renders pandoc --mathjax spans with KaTeX", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyKind: "rst",
+    bodyFormat: "html",
+    body: [
+      '<p>Let <span class="math inline">\\(\\mathsf{a}_b\\)</span> hold.</p>',
+      '<p><span class="math display">\\[\\mathsf{f}(x) := 1\\]</span></p>',
+    ].join(""),
+  }));
+
+  assert.match(doc.html, /class="katex"/);
+  assert.match(doc.html, /class="katex-display"/);
+  assert.ok(!doc.html.includes("\\("), "inline delimiters are consumed");
+  assert.ok(!doc.html.includes("\\["), "display delimiters are consumed");
+  assert.match(doc.html, /<annotation encoding="application\/x-tex">\\mathsf\{a\}_b<\/annotation>/);
+});
+
+test("prepareReader accepts pandoc-style $$ display math inside a paragraph", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "markdown",
+    bodyKind: "md",
+    body: [
+      "By section 5,",
+      "$$\\mathsf{a} =",
+      "\\mathsf{b}\\textsf{,}$$",
+      "where $\\mathcal{S}$ is the base",
+      "$$\\mathcal{S} := 1\\textsf{,}$$",
+      "and more.",
+      "",
+      "```",
+      "cost $$ stays $$ literal",
+      "```",
+    ].join("\n"),
+  }));
+  assert.equal((doc.html.match(/class="katex-display"/g) ?? []).length, 2);
+  assert.ok(!doc.html.includes("katex-error"));
+  assert.match(doc.html, /where/);
+  assert.match(doc.html, /cost \$\$ stays \$\$ literal/);
+});
+
+test("prepareReader tolerates underscores inside \\text{} like MathJax does", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "markdown",
+    bodyKind: "md",
+    body: 'Let $\\text{"Zc_SaplingKD"} \\,||\\, x_1$ hold.',
+  }));
+  assert.ok(!doc.html.includes("katex-error"));
+  assert.match(doc.html, /Zc_SaplingKD/);
+});

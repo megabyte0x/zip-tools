@@ -204,7 +204,7 @@ test("Back during a pending client transition restores the exact filtered explor
   });
 
   await openFilteredExplorerFromReader(page);
-  await page.getByText("Draft (revision details)").click();
+  await page.getByText("Revision details", { exact: true }).first().click();
   await expect(
     page.getByText("[Revision 0] Active, [Revision 1: NU6.3] Draft, [Revision 2] Draft"),
   ).toBeVisible();
@@ -476,7 +476,7 @@ test("revision detail is disclosed and mobile layout does not overflow", async (
     ),
   ).toEqual(["Number", "Title", "Status", "Category", "NU"]);
 
-  await page.getByText("Draft (revision details)").click();
+  await page.getByText("Revision details", { exact: true }).first().click();
   await expect(
     page.getByText("[Revision 0] Active, [Revision 1: NU6.3] Draft, [Revision 2] Draft"),
   ).toBeVisible();

@@ -3,6 +3,7 @@ import { ZipExplorer } from "../../components/ZipExplorer";
 import { loadIndex } from "../../lib/loadIndex";
 import { pageMetadata } from "../../lib/pageMetadata";
 import { parseZipsQuery } from "../../lib/zipsQuery";
+import styles from "./page.module.css";
 
 export async function generateMetadata({
   searchParams,
@@ -36,9 +37,14 @@ export default async function ZipsPage({
   const { zips } = loadIndex();
   const parsed = parseZipsQuery(searchParamsToQuery(await searchParams));
   return (
-    <ZipExplorer
-      zips={zips.map((zip) => ({ ...zip, body: null }))}
-      initialQuery={parsed}
-    />
+    <div className={styles.page}>
+      <h1 className={styles.heading}>Browse proposals</h1>
+      {/* A link that changes the query (header Drafts, Back) remounts the explorer from the URL. */}
+      <ZipExplorer
+        key={JSON.stringify(parsed)}
+        zips={zips.map((zip) => ({ ...zip, body: null }))}
+        initialQuery={parsed}
+      />
+    </div>
   );
 }

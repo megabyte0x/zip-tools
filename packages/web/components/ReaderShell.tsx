@@ -8,6 +8,7 @@ import type { PreparedReader } from "../lib/workbenchContracts";
 import { zipHref } from "../lib/zipHref";
 import { GeneratedSummary } from "./GeneratedSummary";
 import { ReadingListButton } from "./ReadingListButton";
+import { StatusPill } from "./StatusPill";
 import { TocNav } from "./TocNav";
 import { ZipMeta } from "./ZipMeta";
 import styles from "./ReaderShell.module.css";
@@ -94,8 +95,10 @@ export function ReaderShell({
         </p>
         <h1 className={styles.title}>{zip.title}</h1>
         <ul className={styles.statusCompact} aria-label="Status">
-          {zip.status.map((entry, index) => (
-            <li key={`${entry.label}-${index}`}>{entry.label}</li>
+          {[...new Set(zip.status.map((entry) => entry.label))].map((label) => (
+            <li key={label}>
+              <StatusPill label={label} />
+            </li>
           ))}
         </ul>
         <div className={styles.metaMobile}>

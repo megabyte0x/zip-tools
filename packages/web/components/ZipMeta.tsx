@@ -1,9 +1,6 @@
 import type { ZipRecord } from "../lib/types";
+import { StatusPills } from "./StatusPill";
 import styles from "./ZipMeta.module.css";
-
-function ownerLabel(owner: ZipRecord["owners"][number]): string {
-  return owner.email ? `${owner.name} <${owner.email}>` : owner.name;
-}
 
 export function ZipMeta({ zip }: { zip: ZipRecord }) {
   const idLabel = zip.number != null ? String(zip.number) : zip.slug;
@@ -22,11 +19,7 @@ export function ZipMeta({ zip }: { zip: ZipRecord }) {
       <div className={styles.item}>
         <dt className={styles.term}>Status</dt>
         <dd className={styles.value}>
-          <ul className={styles.labels}>
-            {zip.status.map((entry, index) => (
-              <li key={`${entry.label}-${index}`}>{entry.label}</li>
-            ))}
-          </ul>
+          <StatusPills labels={zip.status.map((entry) => entry.label)} />
         </dd>
       </div>
       <div className={styles.item}>
@@ -38,7 +31,7 @@ export function ZipMeta({ zip }: { zip: ZipRecord }) {
         <dd className={styles.value}>
           <ul className={styles.owners}>
             {zip.owners.map((owner) => (
-              <li key={owner.name}>{ownerLabel(owner)}</li>
+              <li key={owner.name}>{owner.name}</li>
             ))}
           </ul>
         </dd>

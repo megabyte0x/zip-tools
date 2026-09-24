@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { basename } from "node:path";
+import { protectRstMath } from "./rstMath.ts";
 import type { ZipRecord } from "./types.ts";
 
 export type RenderBodyResult = {
@@ -13,8 +14,9 @@ export type RstConverter = (source: string) => { body: string | null; warning?: 
 
 function rstToHtml(text: string): ReturnType<RstConverter> {
   try {
-    const result = spawnSync("pandoc", ["-f", "rst", "-t", "html"], {
-      input: text,
+    // --mathjax keeps TeX in \( \) and \[ \] spans; the reader renders them with KaTeX.
+    const result = spawnSync("pandoc", ["-f", "rst", "-t", "html", "--mathjax", "--wrap=none"], {
+      input: protectRstMath(text),
       encoding: "utf8",
       timeout: 15_000,
       maxBuffer: 16 * 1024 * 1024,

@@ -39,7 +39,7 @@ test("graphRecords returns an empty graph for empty filtered membership", () => 
 });
 
 test("graph copy constants match spec", () => {
-  assert.equal(GRAPH_HELP, "Left-click: rotate, Mouse-wheel: zoom, Right-click: pan");
+  assert.equal(GRAPH_HELP, "Drag to rotate, scroll to zoom, right-drag to pan. Click a node to open it.");
   assert.equal(GRAPH_UNAVAILABLE, "Citation graph is unavailable in this browser.");
 });
 

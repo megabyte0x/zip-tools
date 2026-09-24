@@ -1,5 +1,6 @@
 "use client";
 
+import { Bookmark } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
@@ -48,8 +49,17 @@ export default function ReadingListPage() {
     return (
       <div className={styles.page}>
         <h1 className={styles.heading}>Reading List</h1>
-        <p className={styles.empty}>Bookmarks stay in this browser.</p>
-        {unavailable ? <p className={styles.empty}>Storage is unavailable.</p> : null}
+        <div className={styles.emptyCard}>
+          <Bookmark className={styles.emptyIcon} aria-hidden="true" />
+          <p className={styles.emptyTitle}>Nothing saved yet</p>
+          <p className={styles.empty}>
+            Bookmark any ZIP to save it here. Bookmarks stay in this browser.
+          </p>
+          {unavailable ? <p className={styles.empty}>Storage is unavailable.</p> : null}
+          <Link className={styles.browse} href="/zips">
+            Browse ZIPs
+          </Link>
+        </div>
       </div>
     );
   }

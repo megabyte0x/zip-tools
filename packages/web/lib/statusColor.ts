@@ -1,21 +1,19 @@
-const TOKEN = {
-  surface: "#141613",
-  mutedSurface: "#1c1e19",
-  fg: "#f4f1e8",
-  muted: "#a3a091",
-  accent: "#c4a35a",
-} as const;
+const FALLBACK = "#a3a091";
 
-/** Distinct hex drawn from (or interpolated between) `lib/tokens.css` colors. */
+/**
+ * One hue per status, so the graph and pills read at a glance on the dark canvas.
+ * Every pair is at least CIE76 dE 25 apart and every colour clears 3:1 on #141613
+ * (see statusColor.test.ts).
+ */
 const STATUS_HEX: Record<string, string> = {
-  Draft: "#d4c9a3",
-  Proposed: "#b7a06a",
-  Active: TOKEN.accent,
-  Final: TOKEN.fg,
-  Withdrawn: "#6e6c62",
-  Rejected: "#5c4a32",
-  Obsolete: TOKEN.mutedSurface,
-  Reserved: TOKEN.surface,
+  Draft: "#6ea6f5",
+  Proposed: "#e8b04a",
+  Active: "#3fc9b0",
+  Final: "#86d17a",
+  Withdrawn: "#b3b0a6",
+  Rejected: "#ef6f62",
+  Obsolete: "#8f6a4a",
+  Reserved: "#c58cf0",
 };
 
 export const STATUS_LEGEND = [
@@ -30,5 +28,5 @@ export const STATUS_LEGEND = [
 ] as const;
 
 export function statusColor(label: string): string {
-  return STATUS_HEX[label] ?? TOKEN.muted;
+  return STATUS_HEX[label] ?? FALLBACK;
 }

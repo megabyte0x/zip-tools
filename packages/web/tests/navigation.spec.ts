@@ -159,3 +159,12 @@ for (const width of [768, 1440]) {
     expect(overflow).toBeLessThanOrEqual(0);
   });
 }
+test("header Drafts link filters an already open explorer", async ({ page }) => {
+  await page.goto("/zips");
+  await expect(page.getByLabel("Kind", { exact: true })).toHaveValue("");
+  await page.getByRole("link", { name: "Drafts", exact: true }).click();
+
+  await expect(page).toHaveURL(/\/zips\?kind=draft$/);
+  await expect(page.getByLabel("Kind", { exact: true })).toHaveValue("draft");
+  await expect(page.getByText(/^\d+ results?$/)).not.toHaveText("132 results");
+});

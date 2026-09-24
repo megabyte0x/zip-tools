@@ -413,7 +413,38 @@ test('mobile metadata is a closed disclosure after the title', async ({ page }) 
   )).toBe(true);
 
   await metadata.click();
-  await expect(page.getByRole('link', { name: 'Official' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'GitHub', exact: true })).toBeVisible();
+  await expect(disclosure.getByRole('link', { name: 'Official', exact: true })).toBeVisible();
+  await expect(disclosure.getByRole('link', { name: 'GitHub', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('reader body restores prose spacing and list markers under the CSS reset', async ({ page }) => {
+  await page.goto('/draft/draft-ecc-authenticated-reply-addrs');
+
+  const body = page.getByTestId('reader-body');
+  const style = await body.evaluate((node) => {
+    const list = node.querySelector('ul');
+    const nested = node.querySelector('ul ul');
+    const paragraph = node.querySelector('p');
+    if (!list || !nested || !paragraph) throw new Error('fixture lost its lists');
+    return {
+      listStyle: getComputedStyle(list).listStyleType,
+      listPadding: Number.parseFloat(getComputedStyle(list).paddingLeft),
+      nestedStyle: getComputedStyle(nested).listStyleType,
+      paragraphGap: Number.parseFloat(getComputedStyle(paragraph).marginBottom),
+    };
+  });
+  expect(style.listStyle).toBe('disc');
+  expect(style.listPadding).toBeGreaterThan(8);
+  expect(style.nestedStyle).toBe('circle');
+  expect(style.paragraphGap).toBeGreaterThan(8);
+});
+
+test('owner emails are not printed in the metadata sidebar', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/draft/draft-ecc-authenticated-reply-addrs');
+
+  const sidebar = page.locator('aside');
+  await expect(sidebar.getByText('Jack Grigg', { exact: true })).toBeVisible();
+  expect(await sidebar.innerText()).not.toMatch(/@|<[^>]+>/);
 });

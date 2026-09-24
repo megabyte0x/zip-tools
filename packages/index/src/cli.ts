@@ -6,6 +6,7 @@ import { parseIssueRef, readIssueSnapshots, writeIssueSnapshots } from "./issueS
 import { refreshIssueSnapshots } from "./refreshIssues.ts";
 import { readSnapshotMeta } from "./snapshot.ts";
 import type { NuOverlay } from "./types.ts";
+import { degradedSummary } from "./degraded.ts";
 
 function argValue(argv: string[], flag: string): string | undefined {
   const i = argv.indexOf(flag);
@@ -63,6 +64,8 @@ async function main(): Promise<void> {
         issueSnapshots,
       });
       writeIndex(outDir, index);
+      const degraded = degradedSummary(index.zips);
+      if (degraded) console.error(degraded);
       return;
     }
 

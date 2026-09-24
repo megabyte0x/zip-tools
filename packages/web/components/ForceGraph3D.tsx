@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { Minus, Plus, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -399,53 +400,25 @@ function GraphCanvas({
     >
       <div className={styles.toolbar}>
         <form className={styles.searchForm} onSubmit={onSearch}>
-          <label className={styles.filter}>
-            Search
-            <input
-              aria-label="Search"
-              className={styles.search}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="ZIP number or title"
-            />
-          </label>
+          <input
+            aria-label="Search"
+            className={styles.search}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Find a ZIP by number or title"
+          />
           <button className={styles.button} type="submit">
             Focus
           </button>
         </form>
-        <button
-          className={styles.button}
-          type="button"
-          onClick={() => {
-            zoomBy(fgRef.current, 0.8, reducedMotion);
-            setCameraAction("zoom-in");
-          }}
-        >
-          Zoom in
-        </button>
-        <button
-          className={styles.button}
-          type="button"
-          onClick={() => {
-            zoomBy(fgRef.current, 1.25, reducedMotion);
-            setCameraAction("zoom-out");
-          }}
-        >
-          Zoom out
-        </button>
-        <button
-          className={styles.button}
-          type="button"
-          onClick={() => {
-            fgRef.current?.zoomToFit(reducedMotion ? 0 : 400, 40);
-            setCameraAction("reset");
-          }}
-        >
-          Reset
-        </button>
         {variant === "home" ? (
-          <button className={styles.button} type="button" onClick={() => setActive((value) => !value)}>
-            {active ? "Deactivate graph" : "Activate graph"}
+          <button
+            className={`${styles.button} ${active ? "" : styles.primary}`}
+            type="button"
+            aria-pressed={active}
+            onClick={() => setActive((value) => !value)}
+          >
+            {active ? "Done exploring" : "Explore graph"}
           </button>
         ) : null}
         <label className={styles.toggle}>
@@ -453,10 +426,12 @@ function GraphCanvas({
           Show labels
         </label>
       </div>
-      <p className={styles.graphStatus} aria-live="polite" role="status">
-        {feedback || (ready ? "Graph ready" : "Loading citation graph…")}
+      <p className={styles.statusLine}>
+        <span className={styles.graphStatus} aria-live="polite" role="status">
+          {feedback || (ready ? "Graph ready" : "Loading citation graph…")}
+        </span>
+        <span className={styles.counts}>{data.nodes.length} nodes · {data.links.length} citations</span>
       </p>
-      <p className={styles.counts}>{data.nodes.length} nodes · {data.links.length} citations</p>
       <div className={styles.nodeDetails} data-testid="graph-node-details">
         {detail ? (
           <>
@@ -478,13 +453,51 @@ function GraphCanvas({
         aria-label="Interactive 3D citation graph"
       >
         {!ready ? <span className={styles.loading}>Loading citation graph…</span> : null}
+        <div className={styles.canvasControls}>
+          <button
+            className={styles.iconButton}
+            type="button"
+            aria-label="Zoom in"
+            title="Zoom in"
+            onClick={() => {
+              zoomBy(fgRef.current, 0.8, reducedMotion);
+              setCameraAction("zoom-in");
+            }}
+          >
+            <Plus aria-hidden="true" />
+          </button>
+          <button
+            className={styles.iconButton}
+            type="button"
+            aria-label="Zoom out"
+            title="Zoom out"
+            onClick={() => {
+              zoomBy(fgRef.current, 1.25, reducedMotion);
+              setCameraAction("zoom-out");
+            }}
+          >
+            <Minus aria-hidden="true" />
+          </button>
+          <button
+            className={styles.iconButton}
+            type="button"
+            aria-label="Reset"
+            title="Reset view"
+            onClick={() => {
+              fgRef.current?.zoomToFit(reducedMotion ? 0 : 400, 40);
+              setCameraAction("reset");
+            }}
+          >
+            <RotateCcw aria-hidden="true" />
+          </button>
+        </div>
         {size.width > 0 && size.height > 0 ? (
           <ForceGraphImpl
             ref={fgRef}
             width={size.width}
             height={size.height}
             graphData={graphData}
-            backgroundColor="#141613"
+            backgroundColor="#101210"
             showNavInfo={false}
             nodeLabel={nodeLabel}
             nodeColor={nodeColor}
@@ -545,27 +558,29 @@ export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
         ) : null}
       </div>
       <p className={styles.help}>{GRAPH_HELP}</p>
-      {variant === "graph" ? (
-        <label className={styles.filter}>
-          NU
-          <select className={styles.select} value={nuId} onChange={(event) => setNuId(event.target.value)}>
-            <option value="">All</option>
-            {nuIds.map((id) => (
-              <option key={id} value={id}>
-                {id}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
-      <ul className={styles.legend}>
-        {STATUS_LEGEND.map((label) => (
-          <li key={label} className={styles.legendItem}>
-            <span className={styles.swatch} style={{ background: statusColor(label) }} />
-            {label}
-          </li>
-        ))}
-      </ul>
+      <div className={styles.filters}>
+        {variant === "graph" ? (
+          <label className={styles.filter}>
+            NU
+            <select className={styles.select} value={nuId} onChange={(event) => setNuId(event.target.value)}>
+              <option value="">All upgrades</option>
+              {nuIds.map((id) => (
+                <option key={id} value={id}>
+                  {id}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        <ul className={styles.legend} aria-label="Status colours">
+          {STATUS_LEGEND.map((label) => (
+            <li key={label} className={styles.legendItem}>
+              <span className={styles.swatch} style={{ background: statusColor(label) }} />
+              {label}
+            </li>
+          ))}
+        </ul>
+      </div>
       {data.nodes.length === 0 ? (
         <EmptyGraph variant={variant} />
       ) : failed ? (
