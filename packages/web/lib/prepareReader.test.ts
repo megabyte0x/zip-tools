@@ -284,3 +284,36 @@ test("prepareReader renders pandoc --mathjax spans with KaTeX", async () => {
   assert.ok(!doc.html.includes("\\["), "display delimiters are consumed");
   assert.match(doc.html, /<annotation encoding="application\/x-tex">\\mathsf\{a\}_b<\/annotation>/);
 });
+
+test("prepareReader accepts pandoc-style $$ display math inside a paragraph", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "markdown",
+    bodyKind: "md",
+    body: [
+      "By section 5,",
+      "$$\\mathsf{a} =",
+      "\\mathsf{b}\\textsf{,}$$",
+      "where $\\mathcal{S}$ is the base",
+      "$$\\mathcal{S} := 1\\textsf{,}$$",
+      "and more.",
+      "",
+      "```",
+      "cost $$ stays $$ literal",
+      "```",
+    ].join("\n"),
+  }));
+  assert.equal((doc.html.match(/class="katex-display"/g) ?? []).length, 2);
+  assert.ok(!doc.html.includes("katex-error"));
+  assert.match(doc.html, /where/);
+  assert.match(doc.html, /cost \$\$ stays \$\$ literal/);
+});
+
+test("prepareReader tolerates underscores inside \\text{} like MathJax does", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "markdown",
+    bodyKind: "md",
+    body: 'Let $\\text{"Zc_SaplingKD"} \\,||\\, x_1$ hold.',
+  }));
+  assert.ok(!doc.html.includes("katex-error"));
+  assert.match(doc.html, /Zc_SaplingKD/);
+});
