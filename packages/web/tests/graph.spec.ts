@@ -265,3 +265,83 @@ test("development scene observer finds actual visible citation-link objects", as
   await readyGraph(page, "/graph");
   expect(await visibleLinkCount(page), "real scene must contain independently visible citation links").toBeGreaterThan(100);
 });
+
+test("hovering a node shows a styled tooltip and fills the details panel", async ({ page }) => {
+  const { surface } = await readyGraph(page, "/graph");
+  const details = surface.getByTestId("graph-node-details");
+  await expect(details).toHaveText("Hover or tap a node to see its title and citations.");
+
+  await surface.getByRole("textbox", { name: "Search" }).fill("ZIP 32");
+  await surface.getByRole("button", { name: "Focus" }).click();
+  await expect(details).toContainText("ZIP 32:");
+  await expect(details).toContainText(/Cites \d+ · Cited by \d+/);
+  await expect(details.getByRole("link", { name: "Open ZIP 32" })).toHaveAttribute("href", "/zip/32");
+  await page.waitForTimeout(1_000);
+
+  // Sweep the canvas until the pointer lands on a node, the same way a user would find one.
+  const canvas = surface.locator("canvas");
+  const box = (await canvas.boundingBox())!;
+  const tooltip = surface.locator(".float-tooltip-kap");
+  let hit = false;
+  for (let y = box.y + 20; y < box.y + box.height - 20 && !hit; y += 12) {
+    for (let x = box.x + 20; x < box.x + box.width - 20 && !hit; x += 12) {
+      await page.mouse.move(x, y);
+      hit = (await tooltip.evaluate((el) => getComputedStyle(el).display)) !== "none"
+        && ((await tooltip.textContent()) ?? "").length > 0;
+    }
+  }
+  expect(hit, "pointer sweep must find at least one node").toBe(true);
+  await expect(tooltip).toContainText(/(ZIP \d+: .+|\d+ — Unassigned)/);
+  await expect(tooltip).toContainText(/Cites \d+ · Cited by \d+/);
+  await expect(details).toContainText(/Cites \d+ · Cited by \d+/);
+  const style = await tooltip.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { border: s.borderTopColor, radius: s.borderTopLeftRadius };
+  });
+  expect(style.border).not.toBe("rgba(0, 0, 0, 0)");
+  expect(style.radius).not.toBe("3px");
+});
+
+test("node number labels render and the toggle removes them", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const { surface } = await readyGraph(page, "/graph");
+  const canvas = surface.locator("canvas");
+  await page.waitForTimeout(1_000);
+  const withLabels = await canvas.screenshot();
+  const toggle = surface.getByRole("checkbox", { name: "Show labels" });
+  await expect(toggle).toBeChecked();
+  await toggle.uncheck();
+  await page.waitForTimeout(500);
+  const withoutLabels = await canvas.screenshot();
+  await toggle.check();
+  await page.waitForTimeout(500);
+  const labelsAgain = await canvas.screenshot();
+  expect(withLabels.equals(withoutLabels), "hiding labels must change rendered pixels").toBe(false);
+  expect(labelsAgain.equals(withoutLabels), "re-showing labels must change rendered pixels").toBe(false);
+  const classes = await classifyRenderedPixels(page, withoutLabels);
+  expect(classes.nodePixels, "nodes must still render without labels").toBeGreaterThan(100);
+});
+
+test("development observer counts one visible label per node", async ({ page }) => {
+  test.skip(!expectDevelopmentObservers, "development-only scene observer");
+  const { surface } = await readyGraph(page, "/graph");
+  const nodeCount = Number((await surface.getByText(/\d+ nodes ·/).textContent())!.match(/\d+/)![0]);
+  const labels = () => page.evaluate(() =>
+    (window as Window & { __ZIP_TEST_GRAPH_LABELS__?: () => number }).__ZIP_TEST_GRAPH_LABELS__!());
+  await expect.poll(labels).toBe(nodeCount);
+  await surface.getByRole("checkbox", { name: "Show labels" }).uncheck();
+  await expect.poll(labels).toBe(0);
+});
+
+test("touch: first tap selects a node, the details panel links to the reader", async ({ browser }) => {
+  const context = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  const { surface } = await readyGraph(page, "/graph");
+  await surface.getByRole("textbox", { name: "Search" }).fill("ZIP 32");
+  await surface.getByRole("button", { name: "Focus" }).click();
+  const details = surface.getByTestId("graph-node-details");
+  await expect(details).toContainText("ZIP 32:");
+  await details.getByRole("link", { name: "Open ZIP 32" }).tap();
+  await expect(page).toHaveURL(/\/zip\/32(?:$|[?#])/);
+  await context.close();
+});

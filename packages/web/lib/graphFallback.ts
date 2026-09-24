@@ -8,6 +8,8 @@ export type GraphRecordNode = {
   title: string;
   unassigned: boolean;
   status: string;
+  citesCount: number;
+  citedByCount: number;
 };
 
 export type GraphRecordLink = { source: number; target: number };
@@ -34,6 +36,8 @@ export function graphRecords(zips: ZipRecord[], dangling: number[]): GraphRecord
       title: zip.title,
       unassigned: false,
       status: primaryStatus(zip),
+      citesCount: 0,
+      citedByCount: 0,
     });
     for (const to of zip.citations) {
       if (to !== zip.number) cited.add(to);
@@ -42,7 +46,7 @@ export function graphRecords(zips: ZipRecord[], dangling: number[]): GraphRecord
 
   for (const id of dangling) {
     if (!nodes.has(id) && cited.has(id)) {
-      nodes.set(id, { id, title: "Unassigned", unassigned: true, status: "" });
+      nodes.set(id, { id, title: "Unassigned", unassigned: true, status: "", citesCount: 0, citedByCount: 0 });
     }
   }
 
@@ -55,6 +59,11 @@ export function graphRecords(zips: ZipRecord[], dangling: number[]): GraphRecord
       seen.add(key);
       links.push({ source: zip.number, target: to });
     }
+  }
+
+  for (const link of links) {
+    nodes.get(link.source)!.citesCount += 1;
+    nodes.get(link.target)!.citedByCount += 1;
   }
 
   return {
