@@ -1,9 +1,25 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadIndex } from "../../../lib/loadIndex";
 import { nuRows } from "../../../lib/nuBoard";
 import { StatusPills } from "../../../components/StatusPill";
+import { pageMetadata } from "../../../lib/pageMetadata";
 import styles from "./page.module.css";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const nu = loadIndex().nus.find((entry) => entry.id === id);
+  if (!nu) return { title: "Network upgrade not found" };
+  return pageMetadata({
+    title: `${nu.title} network upgrade`,
+    description: `ZIPs in the ${nu.title} ${nu.kind} network upgrade (${nu.zips.length} ZIP${nu.zips.length === 1 ? "" : "s"}).`,
+  });
+}
 
 export default async function NuPage({
   params,

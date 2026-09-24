@@ -3,8 +3,15 @@ import { test } from "node:test";
 import { findGraphNode } from "./graphSearch.ts";
 
 const nodes = [
-  { id: 32, title: "Wallets", status: "Final", unassigned: false },
-  { id: 317, title: "Proportional Transfer Fee Mechanism", status: "Draft", unassigned: false },
+  { id: 32, title: "Wallets", status: "Final", unassigned: false, citesCount: 0, citedByCount: 0 },
+  {
+    id: 317,
+    title: "Proportional Transfer Fee Mechanism",
+    status: "Draft",
+    unassigned: false,
+    citesCount: 0,
+    citedByCount: 0,
+  },
 ];
 
 test("findGraphNode finds exact ZIP-number queries", () => {

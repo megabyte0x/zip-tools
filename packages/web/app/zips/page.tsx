@@ -1,7 +1,22 @@
+import type { Metadata } from "next";
 import { ZipExplorer } from "../../components/ZipExplorer";
 import { loadIndex } from "../../lib/loadIndex";
+import { pageMetadata } from "../../lib/pageMetadata";
 import { parseZipsQuery } from "../../lib/zipsQuery";
 import styles from "./page.module.css";
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  const drafts = (await searchParams).kind === "draft";
+  return pageMetadata(
+    drafts
+      ? { title: "Draft ZIPs", description: "Unnumbered draft Zcash Improvement Proposals in the pinned snapshot." }
+      : { title: "Browse ZIPs", description: "Search and filter every Zcash Improvement Proposal by status, category, and network upgrade." },
+  );
+}
 
 function searchParamsToQuery(searchParams: Record<string, string | string[] | undefined>): string {
   const p = new URLSearchParams();

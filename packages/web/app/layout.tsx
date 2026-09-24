@@ -4,12 +4,11 @@ import { Footer } from "../components/Footer";
 import { SiteHeader } from "../components/SiteHeader";
 import { headerModel } from "../lib/headerModel";
 import { loadIndex } from "../lib/loadIndex";
+import { rootMetadata } from "../lib/pageMetadata";
 import "./globals.css";
 import styles from "./layout.module.css";
 
-export const metadata = {
-  title: "ZIP.tools",
-};
+export const metadata = rootMetadata();
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const index = loadIndex();
@@ -19,7 +18,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className="dark">
       <body className={styles.body}>
         <SiteHeader
-          zipCount={model.zipCount}
+          browseCount={model.browseCount}
           draftCount={model.draftCount}
           nus={model.nus}
           zips={zips}

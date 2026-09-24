@@ -441,8 +441,12 @@ test("owner search, drafts, sorting, and empty-state clearing work", async ({ pa
   await page.getByRole("button", { name: "Clear filters" }).click();
   await page.getByLabel("Kind", { exact: true }).selectOption("draft");
   await expect(page).toHaveURL(/kind=draft/);
+  const draftIds = await page.locator("tbody tr td:first-child a").allTextContents();
+  expect(draftIds.length).toBeGreaterThan(1);
+  for (const text of draftIds) expect(text).toMatch(/^Draft\s+\S+/);
+  expect(new Set(draftIds).size).toBe(draftIds.length);
   await expect(
-    page.locator("tbody tr").first().getByRole("link", { name: "Draft", exact: true }),
+    page.locator("tbody tr").first().getByRole("link", { name: /^Draft [a-z0-9-]+$/ }),
   ).toBeVisible();
 
   await page.getByLabel("Sort", { exact: true }).selectOption("title");

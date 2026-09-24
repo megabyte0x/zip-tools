@@ -31,6 +31,11 @@ type NavigationWithEvents = EventTarget & {
   removeEventListener(type: "navigate", listener: (event: Event) => void): void;
 };
 
+type NavigateEvent = Event & {
+  navigationType?: string;
+  destination?: { url: string };
+};
+
 function hasExplorerUrlKeys(search: string): boolean {
   const params = new URLSearchParams(search);
   return EXPLORER_URL_KEYS.some((key) => params.has(key));
@@ -82,15 +87,35 @@ export function ZipExplorer({
   latestQuery.current = query;
 
   useEffect(() => {
-    const cancelPendingTraversal = (event: Event) => {
+    // Any client-side navigation (ours or a same-route <Link> click elsewhere, e.g. the
+    // header's Browse/Drafts links) fires a Navigation API "navigate" event with the real
+    // destination URL. Back/forward ("traverse") is handled by restoreFromUrl below via the
+    // popstate listener; useSearchParams() is deliberately avoided here because Next's router
+    // doesn't know about the raw history.pushState/replaceState entries writeBrowserQuery
+    // creates, so it can report a stale search string right after a real popstate restore.
+    const handleNavigate = (event: NavigateEvent) => {
       const transaction = resultNavigation.current;
-      const navigationEvent = event as Event & { navigationType?: string };
-      if (!transaction || navigationEvent.navigationType !== "traverse" || !event.cancelable) return;
-
-      event.preventDefault();
-      resultNavigation.current = null;
-      setNavigationPhase("idle");
-      startNavigation(() => router.replace(transaction.sourceUrl, { scroll: false }));
+      if (event.navigationType === "traverse") {
+        if (!transaction || !event.cancelable) return;
+        event.preventDefault();
+        resultNavigation.current = null;
+        setNavigationPhase("idle");
+        startNavigation(() => router.replace(transaction.sourceUrl, { scroll: false }));
+        return;
+      }
+      if (transaction) return;
+      const destination = event.destination?.url;
+      if (!destination) return;
+      let url: URL;
+      try {
+        url = new URL(destination);
+      } catch {
+        return;
+      }
+      if (url.pathname !== window.location.pathname) return;
+      const parsed = parseZipsQuery(url.search);
+      if (serializeZipsQuery(parsed, "") === serializeZipsQuery(latestQuery.current, "")) return;
+      setQuery(parsed);
     };
     const restoreFromUrl = () => {
       const transaction = resultNavigation.current;
@@ -113,10 +138,10 @@ export function ZipExplorer({
     if (hasExplorerUrlKeys(window.location.search)) restoreFromUrl();
     setBrowserReady(true);
     const navigation = (window as Window & { navigation?: NavigationWithEvents }).navigation;
-    navigation?.addEventListener("navigate", cancelPendingTraversal);
+    navigation?.addEventListener("navigate", handleNavigate);
     window.addEventListener("popstate", restoreFromUrl);
     return () => {
-      navigation?.removeEventListener("navigate", cancelPendingTraversal);
+      navigation?.removeEventListener("navigate", handleNavigate);
       window.removeEventListener("popstate", restoreFromUrl);
       resultNavigation.current = null;
     };

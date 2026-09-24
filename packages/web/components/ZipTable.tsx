@@ -4,11 +4,8 @@ import { shouldNavigateRow } from "../lib/rowNavigation";
 import type { ZipRecord } from "../lib/types";
 import { zipHref } from "../lib/zipHref";
 import { StatusPills } from "./StatusPill";
+import { zipIdentityParts } from "../lib/zipIdentity";
 import styles from "./ZipTable.module.css";
-
-function zipIdentity(zip: ZipRecord): string {
-  return zip.number != null ? `ZIP ${zip.number}` : "Draft";
-}
 
 function statusLabels(zip: ZipRecord): string[] {
   const labels = [...new Set(zip.status.map((entry) => entry.label))];
@@ -112,7 +109,17 @@ export function ZipTable({
                       onResultNavigate(href);
                     }}
                   >
-                    {zipIdentity(zip)}
+                    {(() => {
+                      const { prefix, id } = zipIdentityParts(zip);
+                      return prefix === "ZIP" ? (
+                        `ZIP ${id}`
+                      ) : (
+                        <>
+                          <span className={styles.draftTag}>Draft</span>{" "}
+                          <span className={styles.draftId}>{id}</span>
+                        </>
+                      );
+                    })()}
                   </Link>
                 </td>
                 <td data-label="Title" headers="zip-column-title">

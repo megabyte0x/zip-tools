@@ -124,6 +124,20 @@ test("390px menu exposes navigation without page-width overflow", async ({ page 
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
+test("Browse and Drafts badges equal the explorer result counts they link to", async ({ page }) => {
+  await page.goto("/");
+  const browse = page.getByRole("link", { name: "Browse", exact: true });
+  const drafts = page.getByRole("link", { name: "Drafts", exact: true });
+  const browseBadge = Number((await browse.textContent())!.replace(/\D+/g, ""));
+  const draftBadge = Number((await drafts.textContent())!.replace(/\D+/g, ""));
+
+  await browse.click();
+  await expect(page.getByText(`${browseBadge} results`, { exact: true })).toBeVisible();
+
+  await drafts.click();
+  await expect(page.getByText(`${draftBadge} ${draftBadge === 1 ? "result" : "results"}`, { exact: true })).toBeVisible();
+});
+
 test("390px menu closes after query-only Drafts navigation", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/zips");

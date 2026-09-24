@@ -13,7 +13,22 @@
 }
 
 .identityColumn {
-  width: 6rem;
+  width: 8.5rem;
+}
+
+.draftTag {
+  color: var(--color-muted);
+  display: block;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.draftId {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
 }
 
 .titleColumn {

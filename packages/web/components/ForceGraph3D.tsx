@@ -15,6 +15,7 @@ import {
   useState,
 } from "react";
 import type { ForceGraphMethods, NodeObject } from "react-force-graph-3d";
+import SpriteText from "three-spritetext";
 import { filterZips } from "../lib/filter";
 import {
   GRAPH_HELP,
@@ -23,6 +24,9 @@ import {
   type GraphRecordNode,
   type GraphRecords,
 } from "../lib/graphFallback";
+import {
+  GRAPH_DETAILS_IDLE, graphNodeFacts, graphNodeHeading, graphNodeLabel, graphTooltipHtml,
+} from "../lib/graphLabels";
 import { findGraphNode } from "../lib/graphSearch";
 import { STATUS_LEGEND, statusColor } from "../lib/statusColor";
 import type { ZipRecord } from "../lib/types";
@@ -167,12 +171,61 @@ function GraphCanvas({
   const [active, setActive] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [cameraAction, setCameraAction] = useState("initial");
+  const [showLabels, setShowLabels] = useState(true);
+  const [coarsePointer, setCoarsePointer] = useState(false);
+  const [hovered, setHovered] = useState<GraphRecordNode | null>(null);
+  const [selected, setSelected] = useState<GraphRecordNode | null>(null);
+  const detail = hovered ?? selected;
+
+  // react-force-graph-3d's default export is generic, but next/dynamic() erases that
+  // genericity to its default (untyped) instantiation, so accessor props only see a
+  // loosely-shaped runtime object here; cast it to our real node shape, the same way
+  // `onSearch` already casts findGraphNode's result before handing it to focusNode.
+  const nodeLabel = useCallback((node: unknown) => graphTooltipHtml(node as GraphRecordNode), []);
+  const nodeColor = useCallback((node: unknown) => {
+    const typed = node as GraphRecordNode;
+    return typed.unassigned ? "#a3a091" : statusColor(typed.status);
+  }, []);
+  const linkColor = useCallback(() => "rgba(244, 241, 232, 0.38)", []);
+  const nodeThreeObject = useCallback((node: unknown) => {
+    const typed = node as GraphRecordNode;
+    const sprite = new SpriteText(graphNodeLabel(typed), 4, "rgba(244, 241, 232, 0.88)");
+    sprite.fontFace = "IBM Plex Mono, ui-monospace, monospace";
+    sprite.position.set(0, 7, 0);
+    sprite.userData.zipGraphLabel = true;
+    return sprite;
+  }, []);
+  const onNodeHover = useCallback(
+    (node: unknown) => setHovered(node ? (node as GraphRecordNode) : null),
+    [],
+  );
+  const onNodeClick = useCallback(
+    (node: unknown) => {
+      const typed = node as NodeObject<GraphRecordNode>;
+      if (typed.unassigned || typed.id == null) {
+        setSelected(typed);
+        return;
+      }
+      // On touch, the first tap selects (so details are readable) and the second tap opens.
+      if (coarsePointer && selected?.id !== typed.id) {
+        setSelected(typed);
+        return;
+      }
+      router.push(`/zip/${typed.id}`);
+    },
+    [coarsePointer, router, selected],
+  );
+  const showPointerCursor = useCallback(
+    (object: unknown) => Boolean(object && typeof object === "object" && "unassigned" in object && !(object as GraphRecordNode).unassigned),
+    [],
+  );
 
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return;
     const testWindow = window as Window & {
       __ZIP_TEST_GRAPH_CAMERA__?: () => [number, number, number];
       __ZIP_TEST_GRAPH_VISIBLE_LINKS__?: () => number;
+      __ZIP_TEST_GRAPH_LABELS__?: () => number;
     };
     const observe = (): [number, number, number] => {
       const position = fgRef.current?.camera().position;
@@ -199,13 +252,28 @@ function GraphCanvas({
       });
       return visibleLinks;
     };
+    const observeLabels = () => {
+      const scene = fgRef.current?.scene();
+      if (!scene) throw new Error("Graph scene is not initialized");
+      let labels = 0;
+      scene.traverse((object) => {
+        if (object.userData?.zipGraphLabel !== true) return;
+        for (let current: typeof object | null = object; current; current = current.parent) {
+          if (!current.visible) return;
+        }
+        labels += 1;
+      });
+      return labels;
+    };
     testWindow.__ZIP_TEST_GRAPH_CAMERA__ = observe;
     testWindow.__ZIP_TEST_GRAPH_VISIBLE_LINKS__ = observeVisibleLinks;
+    testWindow.__ZIP_TEST_GRAPH_LABELS__ = observeLabels;
     return () => {
       if (testWindow.__ZIP_TEST_GRAPH_CAMERA__ === observe) delete testWindow.__ZIP_TEST_GRAPH_CAMERA__;
       if (testWindow.__ZIP_TEST_GRAPH_VISIBLE_LINKS__ === observeVisibleLinks) {
         delete testWindow.__ZIP_TEST_GRAPH_VISIBLE_LINKS__;
       }
+      if (testWindow.__ZIP_TEST_GRAPH_LABELS__ === observeLabels) delete testWindow.__ZIP_TEST_GRAPH_LABELS__;
     };
   }, []);
 
@@ -222,6 +290,7 @@ function GraphCanvas({
     const coarse = window.matchMedia("(pointer: coarse)");
     const sync = () => {
       setReducedMotion(reduced.matches);
+      setCoarsePointer(coarse.matches);
       if (variant === "home" && coarse.matches) setActive(false);
     };
     sync();
@@ -288,7 +357,10 @@ function GraphCanvas({
     if (!element || typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) fgRef.current?.resumeAnimation();
-      else fgRef.current?.pauseAnimation();
+      // Only pause once the graph has actually become ready: a taller "home" widget
+      // (search toolbar + node-details panel) can render below the fold on first
+      // paint, and pausing before the first tick would leave it stuck loading forever.
+      else if (ready) fgRef.current?.pauseAnimation();
     });
     observer.observe(element);
     return () => observer.disconnect();
@@ -312,6 +384,7 @@ function GraphCanvas({
     }
     const positionedNode = node as NodeObject<GraphRecordNode>;
     focusNode(fgRef.current, positionedNode, reducedMotion);
+    setSelected(node);
     setCameraAction(`focus-${node.id}`);
     setFeedback(node.unassigned ? `Focused ${node.id}: Unassigned.` : `Focused ZIP ${node.id}: ${node.title}.`);
   }
@@ -348,6 +421,10 @@ function GraphCanvas({
             {active ? "Done exploring" : "Explore graph"}
           </button>
         ) : null}
+        <label className={styles.toggle}>
+          <input type="checkbox" checked={showLabels} onChange={(event) => setShowLabels(event.target.checked)} />
+          Show labels
+        </label>
       </div>
       <p className={styles.statusLine}>
         <span className={styles.graphStatus} aria-live="polite" role="status">
@@ -355,6 +432,21 @@ function GraphCanvas({
         </span>
         <span className={styles.counts}>{data.nodes.length} nodes · {data.links.length} citations</span>
       </p>
+      <div className={styles.nodeDetails} data-testid="graph-node-details">
+        {detail ? (
+          <>
+            <strong className={styles.nodeHeading}>{graphNodeHeading(detail)}</strong>
+            <span className={styles.nodeFacts}>{graphNodeFacts(detail)}</span>
+            {!detail.unassigned ? (
+              <Link className={styles.link} href={`/zip/${detail.id}`}>
+                Open ZIP {detail.id}
+              </Link>
+            ) : null}
+          </>
+        ) : (
+          <span className={styles.nodeFacts}>{GRAPH_DETAILS_IDLE}</span>
+        )}
+      </div>
       <div
         ref={wrapRef}
         className={`${styles.canvas} ${heightClass}${active ? "" : ` ${styles.inactive}`}`}
@@ -407,22 +499,21 @@ function GraphCanvas({
             graphData={graphData}
             backgroundColor="#101210"
             showNavInfo={false}
-            nodeLabel={(node) =>
-              node.unassigned ? `${node.id} — Unassigned` : `ZIP ${node.id}: ${node.title}`
-            }
-            nodeColor={(node) => (node.unassigned ? "#a3a091" : statusColor(node.status))}
+            nodeLabel={nodeLabel}
+            nodeColor={nodeColor}
             nodeRelSize={5}
-            linkColor={() => "rgba(244, 241, 232, 0.22)"}
+            nodeThreeObject={showLabels ? nodeThreeObject : undefined}
+            nodeThreeObjectExtend
+            linkColor={linkColor}
             linkWidth={0.8}
             enableNavigationControls={active}
             enablePointerInteraction={active}
             cooldownTicks={reducedMotion ? 1 : undefined}
             onEngineTick={markReady}
             onEngineStop={markReady}
-            onNodeClick={(node) => {
-              if (!node.unassigned && node.id != null) router.push(`/zip/${node.id}`);
-            }}
-            showPointerCursor={(object) => Boolean(object && "unassigned" in object && !object.unassigned)}
+            onNodeHover={onNodeHover}
+            onNodeClick={onNodeClick}
+            showPointerCursor={showPointerCursor}
           />
         ) : null}
       </div>
