@@ -1,0 +1,33 @@
+.group {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.pill {
+  align-items: center;
+  background: color-mix(in srgb, var(--status) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--status) 38%, transparent);
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--status) 70%, var(--color-fg));
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 500;
+  gap: 0.4rem;
+  line-height: 1.2;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 0.2rem 0.6rem 0.2rem 0.5rem;
+}
+
+.dot {
+  background: var(--status);
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status) 18%, transparent);
+  flex: none;
+  height: 0.45rem;
+  width: 0.45rem;
+}

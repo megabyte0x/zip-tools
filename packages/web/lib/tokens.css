@@ -27,6 +27,10 @@
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "IBM Plex Serif", "Iowan Old Style", Palatino, serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* One display face for the hero, proposal titles and page headings. */
+  --font-display: var(--font-serif);
+  --color-accent-soft: rgba(196, 163, 90, 0.12);
+  --color-accent-line: rgba(196, 163, 90, 0.35);
 }
 
 @media (max-width: 767px) {
