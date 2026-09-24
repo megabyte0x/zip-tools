@@ -62,9 +62,8 @@ async function mountZipExplorer(
 
   await page.addScriptTag({
     content: `
-      const { useCallback, useEffect, useMemo, useRef, useState, useTransition, Suspense } = React;
+      const { useEffect, useMemo, useRef, useState, useTransition } = React;
       const useRouter = () => ({ push() {} });
-      const useSearchParams = () => new URLSearchParams(window.location.search);
       const styles = new Proxy({}, { get: (_, key) => String(key) });
       const filterZips = (zips) => zips;
       const parseZipsQuery = (search) => {

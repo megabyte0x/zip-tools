@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { filterZips } from "../lib/filter";
 import type { ZipRecord } from "../lib/types";
 import type { ExplorerQuery } from "../lib/workbenchContracts";
@@ -31,6 +31,11 @@ type NavigationWithEvents = EventTarget & {
   removeEventListener(type: "navigate", listener: (event: Event) => void): void;
 };
 
+type NavigateEvent = Event & {
+  navigationType?: string;
+  destination?: { url: string };
+};
+
 function hasExplorerUrlKeys(search: string): boolean {
   const params = new URLSearchParams(search);
   return EXPLORER_URL_KEYS.some((key) => params.has(key));
@@ -38,20 +43,6 @@ function hasExplorerUrlKeys(search: string): boolean {
 
 function uniqueSorted(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
-}
-
-// Next's <Link> (e.g. the header's Browse/Drafts links) navigates client-side without
-// remounting this component when only the search string changes on the same route, so the
-// locally-owned `query` state never learns about it on its own. useSearchParams() is reactive
-// to every client-side navigation (unlike our own writes below, which use the raw History API
-// and intentionally bypass the router), so this reports external URL changes back up.
-function ExternalQuerySync({ onExternalChange }: { onExternalChange: (search: string) => void }) {
-  const searchParams = useSearchParams();
-  const serialized = searchParams.toString();
-
-  useEffect(() => onExternalChange(serialized), [serialized, onExternalChange]);
-
-  return null;
 }
 
 function queryFromCompatibility(
@@ -96,15 +87,35 @@ export function ZipExplorer({
   latestQuery.current = query;
 
   useEffect(() => {
-    const cancelPendingTraversal = (event: Event) => {
+    // Any client-side navigation (ours or a same-route <Link> click elsewhere, e.g. the
+    // header's Browse/Drafts links) fires a Navigation API "navigate" event with the real
+    // destination URL. Back/forward ("traverse") is handled by restoreFromUrl below via the
+    // popstate listener; useSearchParams() is deliberately avoided here because Next's router
+    // doesn't know about the raw history.pushState/replaceState entries writeBrowserQuery
+    // creates, so it can report a stale search string right after a real popstate restore.
+    const handleNavigate = (event: NavigateEvent) => {
       const transaction = resultNavigation.current;
-      const navigationEvent = event as Event & { navigationType?: string };
-      if (!transaction || navigationEvent.navigationType !== "traverse" || !event.cancelable) return;
-
-      event.preventDefault();
-      resultNavigation.current = null;
-      setNavigationPhase("idle");
-      startNavigation(() => router.replace(transaction.sourceUrl, { scroll: false }));
+      if (event.navigationType === "traverse") {
+        if (!transaction || !event.cancelable) return;
+        event.preventDefault();
+        resultNavigation.current = null;
+        setNavigationPhase("idle");
+        startNavigation(() => router.replace(transaction.sourceUrl, { scroll: false }));
+        return;
+      }
+      if (transaction) return;
+      const destination = event.destination?.url;
+      if (!destination) return;
+      let url: URL;
+      try {
+        url = new URL(destination);
+      } catch {
+        return;
+      }
+      if (url.pathname !== window.location.pathname) return;
+      const parsed = parseZipsQuery(url.search);
+      if (serializeZipsQuery(parsed, "") === serializeZipsQuery(latestQuery.current, "")) return;
+      setQuery(parsed);
     };
     const restoreFromUrl = () => {
       const transaction = resultNavigation.current;
@@ -127,10 +138,10 @@ export function ZipExplorer({
     if (hasExplorerUrlKeys(window.location.search)) restoreFromUrl();
     setBrowserReady(true);
     const navigation = (window as Window & { navigation?: NavigationWithEvents }).navigation;
-    navigation?.addEventListener("navigate", cancelPendingTraversal);
+    navigation?.addEventListener("navigate", handleNavigate);
     window.addEventListener("popstate", restoreFromUrl);
     return () => {
-      navigation?.removeEventListener("navigate", cancelPendingTraversal);
+      navigation?.removeEventListener("navigate", handleNavigate);
       window.removeEventListener("popstate", restoreFromUrl);
       resultNavigation.current = null;
     };
@@ -143,21 +154,6 @@ export function ZipExplorer({
     }, 250);
     return () => window.clearTimeout(timeout);
   }, [browserReady, query.text]);
-
-  const skippedInitialExternalSync = useRef(false);
-  const handleExternalQueryChange = useCallback((search: string) => {
-    // The mount effect above already owns initial-state derivation (props vs. restored URL);
-    // only react to searchParams changes that happen *after* mount, i.e. a real navigation.
-    if (!skippedInitialExternalSync.current) {
-      skippedInitialExternalSync.current = true;
-      return;
-    }
-    if (resultNavigation.current) return;
-    const parsed = parseZipsQuery(search ? `?${search}` : "");
-    setQuery((current) =>
-      serializeZipsQuery(parsed, "") === serializeZipsQuery(current, "") ? current : parsed,
-    );
-  }, []);
 
   const statuses = useMemo(
     () => uniqueSorted(zips.flatMap((zip) => zip.status.map((entry) => entry.label))),
@@ -216,9 +212,6 @@ export function ZipExplorer({
       aria-label="ZIP explorer"
       aria-busy={navigationPhase !== "idle"}
     >
-      <Suspense fallback={null}>
-        <ExternalQuerySync onExternalChange={handleExternalQueryChange} />
-      </Suspense>
       <SearchBand
         text={query.text}
         kind={query.kind}
