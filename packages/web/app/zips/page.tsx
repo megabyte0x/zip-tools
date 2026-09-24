@@ -24,7 +24,9 @@ export default async function ZipsPage({
   return (
     <div className={styles.page}>
       <h1 className={styles.heading}>Browse proposals</h1>
+      {/* A link that changes the query (header Drafts, Back) remounts the explorer from the URL. */}
       <ZipExplorer
+        key={JSON.stringify(parsed)}
         zips={zips.map((zip) => ({ ...zip, body: null }))}
         initialQuery={parsed}
       />
