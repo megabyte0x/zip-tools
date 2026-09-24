@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import type { ZipRecord } from "./types";
 
+export { zotdRows, type ZotdRow } from "./zotdRows";
+
 export type ZipOfTheDayZip = Pick<
   ZipRecord,
   | "number"
@@ -24,7 +26,7 @@ export function slimZipOfTheDay(zip: ZipRecord): ZipOfTheDayZip {
     status: zip.status,
     statusRaw: zip.statusRaw,
     category: zip.category,
-    owners: zip.owners,
+    owners: zip.owners.map((owner) => ({ name: owner.name })),
     created: zip.created,
     discussionsTo: zip.discussionsTo,
     officialUrl: zip.officialUrl,

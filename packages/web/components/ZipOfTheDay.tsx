@@ -5,16 +5,11 @@ import { useRouter } from "next/navigation";
 import type { ZipRecord } from "../lib/types";
 import { zipHref } from "../lib/zipHref";
 import type { ZipOfTheDayZip } from "../lib/zipOfTheDay";
+import { formatDay } from "../lib/recent";
+import { zotdRows } from "../lib/zotdRows";
+import { StatusPills } from "./StatusPill";
 import { Button } from "./ui/button";
 import styles from "./ZipOfTheDay.module.css";
-
-function ownerLabel(owner: ZipOfTheDayZip["owners"][number]): string {
-  return owner.email ? `${owner.name} <${owner.email}>` : owner.name;
-}
-
-function statusLabel(zip: ZipOfTheDayZip): string {
-  return zip.status.map((entry) => entry.label).join(", ") || zip.statusRaw;
-}
 
 export function ZipOfTheDay({
   zip,
@@ -42,67 +37,55 @@ export function ZipOfTheDay({
         <h2 id="zip-of-the-day-heading" className={styles.heading}>
           ZIP of the day
         </h2>
+        <p className={styles.sub}>A new proposal every day, picked in UTC.</p>
         {numbered.length > 1 ? (
           <Button variant="outline" size="sm" type="button" onClick={onRandom}>
             Random ZIP
           </Button>
         ) : null}
       </div>
-      <p className={styles.title}>
-        <Link className={styles.link} href={zipHref(zip)}>
-          {zip.number != null ? `ZIP ${zip.number}` : zip.slug}: {zip.title}
-        </Link>
-      </p>
-      <table className={styles.table}>
-        <tbody>
-          <tr>
-            <th scope="row">Status</th>
-            <td>{statusLabel(zip)}</td>
-          </tr>
-          <tr>
-            <th scope="row">Category</th>
-            <td>{zip.category ?? ""}</td>
-          </tr>
-          <tr>
-            <th scope="row">Owners</th>
-            <td>{zip.owners.map(ownerLabel).join(", ")}</td>
-          </tr>
-          <tr>
-            <th scope="row">Created</th>
-            <td>{zip.created ?? ""}</td>
-          </tr>
-          <tr>
-            <th scope="row">Discussions</th>
-            <td>
-              {zip.discussionsTo ? (
-                <a className={styles.link} href={zip.discussionsTo}>
-                  {zip.discussionsTo}
-                </a>
-              ) : (
-                ""
-              )}
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">Links</th>
-            <td>
-              {[
-                { href: zip.officialUrl, label: "Official" },
-                { href: zip.githubUrl, label: "GitHub" },
-              ]
-                .filter((link) => link.href)
-                .map((link, index, links) => (
-                  <span key={link.label}>
-                    {index > 0 && links.length > 1 ? " · " : null}
-                    <a className={styles.link} href={link.href}>
-                      {link.label}
-                    </a>
+      <div className={styles.card}>
+        <p className={styles.identity}>{zip.number != null ? `ZIP ${zip.number}` : zip.slug}</p>
+        <p className={styles.title}>
+          <Link className={styles.titleLink} href={zipHref(zip)}>
+            {zip.title}
+          </Link>
+        </p>
+        <div className={styles.status}>
+          <StatusPills labels={zip.status.map((entry) => entry.label)} />
+        </div>
+        <dl className={styles.rows}>
+          {zotdRows(zip).map((row) => (
+            <div key={row.label} className={styles.row}>
+              <dt>{row.label}</dt>
+              <dd>
+                {row.kind === "text" ? (row.label === "Created" ? formatDay(row.text) ?? row.text : row.text) : null}
+                {row.kind === "owners" ? (
+                  <ul className={styles.owners}>
+                    {row.owners.map((owner) => (
+                      <li key={owner.name}>{owner.name}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                {row.kind === "link" ? (
+                  <a className={styles.link} href={row.href}>
+                    {row.href.replace(/^https?:\/\//, "")}
+                  </a>
+                ) : null}
+                {row.kind === "links" ? (
+                  <span className={styles.links}>
+                    {row.links.map((link) => (
+                      <a key={link.label} className={styles.link} href={link.href}>
+                        {link.label}
+                      </a>
+                    ))}
                   </span>
-                ))}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+                ) : null}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </section>
   );
 }
