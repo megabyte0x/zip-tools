@@ -9,6 +9,7 @@ import type { ZipIndexFile } from "./types.ts";
 type Node = { type: string; value?: string; tagName?: string; properties?: Record<string, unknown>; children?: Node[] };
 
 const INDEX = new URL("../data/zip-index.json", import.meta.url);
+const SOURCE = new URL("../../../submodule/zips/", import.meta.url);
 
 /** Visible prose only: rendered KaTeX, code and preformatted blocks are skipped. */
 function visibleText(node: Node): string {
@@ -46,20 +47,41 @@ const KNOWN_SOURCE_ISSUES = new Map([
   ["draft-str4d-orchard-balance-proof rst citation", "RST citation [#BCP14]_ inside a markdown ZIP"],
 ]);
 
+function leaks(id: string, mode: string, html: string): string[] {
+  const tree = unified().use(rehypeParse, { fragment: true }).parse(html) as Node;
+  const text = visibleText(tree).replace(/\s+/g, " ");
+  const found: string[] = [];
+  for (const [kind, pattern] of LEAKS) {
+    const match = pattern.exec(text);
+    if (match && !KNOWN_SOURCE_ISSUES.has(`${id} ${kind}`)) {
+      const at = Math.max(0, match.index - 30);
+      found.push(`${id} [${mode}] ${kind}: …${text.slice(at, match.index + 50)}…`);
+    }
+  }
+  return found;
+}
+
 test("every ZIP in the built index renders without leaked TeX or raw RST", { skip: !existsSync(INDEX) }, async () => {
   const index = JSON.parse(readFileSync(INDEX, "utf8")) as ZipIndexFile;
   const failures: string[] = [];
   for (const zip of index.zips) {
     const doc = await prepareReader(zip);
-    const tree = unified().use(rehypeParse, { fragment: true }).parse(doc.html) as Node;
-    const text = visibleText(tree).replace(/\s+/g, " ");
-    for (const [kind, pattern] of LEAKS) {
-      const match = pattern.exec(text);
-      if (match && !KNOWN_SOURCE_ISSUES.has(`${zip.id} ${kind}`)) {
-        const at = Math.max(0, match.index - 30);
-        failures.push(`${zip.id} [${doc.mode}] ${kind}: …${text.slice(at, match.index + 50)}…`);
-      }
-    }
+    failures.push(...leaks(zip.id, doc.mode, doc.html));
+  }
+  assert.equal(failures.length, 0, `${failures.length} leaks:\n${failures.join("\n")}`);
+});
+
+/** Production may build without pandoc, so every RST ZIP must also read well through the fallback. */
+test("every RST ZIP also renders cleanly through the no-pandoc fallback", { skip: !existsSync(INDEX) || !existsSync(SOURCE) }, async () => {
+  const index = JSON.parse(readFileSync(INDEX, "utf8")) as ZipIndexFile;
+  const rst = index.zips.filter((zip) => zip.sourcePath.endsWith(".rst"));
+  assert.ok(rst.length > 50, `expected the full corpus, found ${rst.length} RST ZIPs`);
+  const failures: string[] = [];
+  for (const zip of rst) {
+    const source = readFileSync(new URL(zip.sourcePath, SOURCE), "utf8");
+    const doc = await prepareReader({ ...zip, bodyFormat: "rst-source", body: source });
+    assert.equal(doc.mode, "degraded");
+    failures.push(...leaks(zip.id, doc.mode, doc.html));
   }
   assert.equal(failures.length, 0, `${failures.length} leaks:\n${failures.join("\n")}`);
 });
