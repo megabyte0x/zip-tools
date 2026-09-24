@@ -241,3 +241,29 @@ test("prepareReader leaves ordinary code blocks alone", async () => {
   }));
   assert.ok(!plain.html.includes("zip-raw-header"));
 });
+
+test("prepareReader demotes body h1 sections so the page keeps one h1 and the TOC sees them", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "markdown",
+    bodyKind: "md",
+    body: "# Abstract\n\nText.\n\n# Specification\n\n## Encoding\n\n### Bytes\n\nMore.",
+  }));
+
+  assert.ok(!doc.html.includes("<h1"));
+  assert.match(doc.html, /<h2 id="abstract">Abstract<\/h2>/);
+  assert.match(doc.html, /<h3 id="encoding">Encoding<\/h3>/);
+  assert.match(doc.html, /<h4[^>]*>Bytes<\/h4>/);
+  assert.deepEqual(
+    doc.toc.map((entry) => [entry.level, entry.text]),
+    [[2, "Abstract"], [2, "Specification"], [3, "Encoding"]],
+  );
+});
+
+test("prepareReader leaves heading levels alone when the body has no h1", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "markdown",
+    bodyKind: "md",
+    body: "## Intro\n\n### Detail\n",
+  }));
+  assert.deepEqual(doc.toc.map((entry) => entry.level), [2, 3]);
+});
