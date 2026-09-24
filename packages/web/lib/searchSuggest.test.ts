@@ -35,7 +35,7 @@ test("searchSuggestions returns internal numbered and draft destinations", () =>
     {
       id: "draft-foo",
       href: "/draft/draft-foo",
-      label: "Draft — Draft Something",
+      label: "Draft foo — Draft Something",
     },
   ]);
   assert.equal(searchSuggestions(zips, "317")[0]?.href, "/zip/317");

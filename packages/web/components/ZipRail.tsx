@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ZipRecord } from "../lib/types";
 import { zipHref } from "../lib/zipHref";
+import { zipIdentityLabel } from "../lib/zipIdentity";
 import { Badge } from "./ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import styles from "./ZipRail.module.css";
@@ -24,7 +25,7 @@ export function ZipRail({ title, zips }: { title: string; zips: ZipRecord[] }) {
               <Card size="sm" className={styles.card}>
                 <CardHeader className="gap-1">
                   <CardDescription className="text-primary">
-                    {zip.number != null ? `ZIP ${zip.number}` : "Draft"}
+                    {zipIdentityLabel(zip)}
                   </CardDescription>
                   <CardTitle className={styles.title}>{zip.title}</CardTitle>
                 </CardHeader>
