@@ -212,3 +212,69 @@
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+
+.toggle {
+  align-items: center;
+  color: var(--color-fg);
+  display: inline-flex;
+  font-size: 0.875rem;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+}
+
+.toggle input {
+  accent-color: var(--color-accent);
+}
+
+.nodeDetails {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.875rem;
+  gap: 0.25rem 0.75rem;
+  margin: 0 0 0.5rem;
+  min-height: 1.5rem;
+}
+
+.nodeHeading {
+  color: var(--color-fg);
+  font-weight: 600;
+}
+
+.nodeFacts {
+  color: var(--color-muted);
+}
+
+/* Labels toggle + node-details panel add two rows of chrome above the canvas.
+   On narrow viewports, tighten the surrounding spacing so the canvas keeps a
+   usable minimum height instead of being squeezed by the extra chrome. */
+@media (max-width: 480px) {
+  .page {
+    padding-top: 0.375rem;
+  }
+
+  .header,
+  .help,
+  .toolbar,
+  .legend {
+    margin-bottom: 0.375rem;
+  }
+
+  .toolbar {
+    gap: 0.5rem;
+  }
+
+  .legend {
+    gap: 0.35rem 0.75rem;
+  }
+
+  .graphStatus,
+  .counts {
+    margin-bottom: 0.125rem;
+  }
+
+  .nodeDetails {
+    margin-bottom: 0.125rem;
+    min-height: 1.125rem;
+  }
+}

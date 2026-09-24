@@ -42,3 +42,23 @@ test("graph copy constants match spec", () => {
   assert.equal(GRAPH_HELP, "Left-click: rotate, Mouse-wheel: zoom, Right-click: pan");
   assert.equal(GRAPH_UNAVAILABLE, "Citation graph is unavailable in this browser.");
 });
+
+test("graphRecords counts cites and cited-by from emitted links only", () => {
+  const g = graphRecords(
+    [
+      makeZip({ number: 1, citations: [2, 3, 99] }),
+      makeZip({ number: 2, citations: [3] }),
+      makeZip({ number: 3 }),
+    ],
+    [99],
+  );
+  const byId = new Map(g.nodes.map((node) => [node.id, node]));
+  assert.deepEqual([byId.get(1)!.citesCount, byId.get(1)!.citedByCount], [3, 0]);
+  assert.deepEqual([byId.get(3)!.citesCount, byId.get(3)!.citedByCount], [0, 2]);
+  assert.deepEqual([byId.get(99)!.citesCount, byId.get(99)!.citedByCount], [0, 1]);
+});
+
+test("graphRecords counts ignore citations to assigned ZIPs removed by a filter", () => {
+  const g = graphRecords([makeZip({ number: 1, citations: [2] })], []);
+  assert.equal(g.nodes[0].citesCount, 0);
+});
