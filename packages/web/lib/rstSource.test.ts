@@ -116,9 +116,23 @@ test("rstSourceToMarkdown converts inline literals, links, citations and substit
   );
 });
 
-test("rstSourceToMarkdown keeps grid tables readable as preformatted text", () => {
-  const md = rstSourceToMarkdown("+----+----+\n| a  | b  |\n+----+----+\n\nAfter.");
-  assert.match(md, /```\n\+----\+----\+\n\| a  \| b  \|\n\+----\+----\+\n```/);
+test("rstSourceToMarkdown turns regular grid tables into tables, keeping math", () => {
+  const md = rstSourceToMarkdown([
+    "+------+-------------------+",
+    "| Name | Size              |",
+    "+======+===================+",
+    "| a    | :math:`2 \\cdot n` |",
+    "|      | bytes             |",
+    "+------+-------------------+",
+    "",
+    "After.",
+  ].join("\n"));
+  assert.match(md, /^\| Name \| Size \|\n\| --- \| --- \|\n\| a \| \$2 \\cdot n\$ bytes \|$/m);
+});
+
+test("rstSourceToMarkdown keeps grid tables with spanning cells preformatted", () => {
+  const md = rstSourceToMarkdown("+----+----+\n| spans both |\n+----+----+\n\nAfter.");
+  assert.match(md, /```\n\+----\+----\+\n\| spans both \|\n\+----\+----\+\n```/);
 });
 
 test("rstSourceToMarkdown joins inline literals that wrap across lines", () => {
@@ -127,5 +141,85 @@ test("rstSourceToMarkdown joins inline literals that wrap across lines", () => {
 
 test("rstSourceToMarkdown keeps backtick section underlines as headings", () => {
   const md = rstSourceToMarkdown("Magic Bytes\n``````````\n\nEach ``net`` has bytes.");
-  assert.equal(md, "### Magic Bytes\n\nEach `net` has bytes.");
+  assert.equal(md, "## Magic Bytes\n\nEach `net` has bytes.");
+});
+
+test("rstSourceToMarkdown turns indented block quotes into quotes, keeping their math", () => {
+  const md = rstSourceToMarkdown([
+    "it will be modified to read:",
+    "",
+    "    Each element of $\\mathsf{fs.Recipients}$ MUST represent",
+    "    a transparent P2SH address.",
+    "",
+    "    Define $x$ as follows:",
+    "",
+    "After.",
+  ].join("\n"));
+  assert.match(md, /^> Each element of \$\\mathsf\{fs\.Recipients\}\$ MUST represent\n> a transparent P2SH address\.\n>\n> Define \$x\$ as follows:$/m);
+  assert.ok(!/^ {4}Each/m.test(md), "no four-space indent survives to become a code block");
+  assert.match(md, /After\./);
+});
+
+test("rstSourceToMarkdown keeps list continuations as list content, not quotes", () => {
+  const md = rstSourceToMarkdown("- first item\n\n  continued paragraph\n\n  - nested item\n\nAfter.");
+  assert.ok(!md.includes("> "), md);
+  assert.match(md, /^- first item\n\n {2}continued paragraph\n\n {2}- nested item/m);
+});
+
+test("rstSourceToMarkdown accepts every RST underline character and ranks styles by first use", () => {
+  const md = rstSourceToMarkdown([
+    "Specification",
+    "=============",
+    "",
+    "Digests",
+    "-------",
+    "",
+    "T.3.0: transparent_effects_digest",
+    ".................................",
+    "",
+    "Body.",
+    "",
+    "More",
+    "====",
+  ].join("\n"));
+  assert.match(md, /^## Specification$/m);
+  assert.match(md, /^### Digests$/m);
+  assert.match(md, /^#### T\.3\.0: transparent_effects_digest$/m);
+  assert.match(md, /^## More$/m);
+  assert.ok(!md.includes("....."));
+});
+
+test("rstSourceToMarkdown quotes an indented list that follows a paragraph", () => {
+  const md = rstSourceToMarkdown("it will read:\n\n    - In each block $\\mathsf{cb}$ at height\n      $h$, pay.\n\nAfter.");
+  assert.match(md, /^> - In each block \$\\mathsf\{cb\}\$ at height\n>   \$h\$, pay\.$/m);
+});
+
+test("rstSourceToMarkdown keeps a .. math:: formula written on the directive line", () => {
+  assert.equal(rstSourceToMarkdown(".. math:: [\\mathsf{a}] \\,||\\, b\n\nAfter."), "$$\n[\\mathsf{a}] \\,||\\, b\n$$\n\nAfter.");
+});
+
+test("rstSourceToMarkdown turns simple tables into tables and keeps their math", () => {
+  const md = rstSourceToMarkdown([
+    "==================  ============  ==========",
+    "Parameter           Value         Units",
+    "==================  ============  ==========",
+    ":math:`\\mathit{m}`  :math:`5000`  zatoshis per",
+    "                                  action",
+    "grace               2             actions",
+    "==================  ============  ==========",
+    "",
+    "After.",
+  ].join("\n"));
+  assert.match(md, /^\| Parameter \| Value \| Units \|\n\| --- \| --- \| --- \|$/m);
+  assert.match(md, /^\| \$\\mathit\{m\}\$ \| \$5000\$ \| zatoshis per action \|$/m);
+  assert.match(md, /^\| grace \| 2 \| actions \|$/m);
+});
+
+test("rstSourceToMarkdown keeps TeX bars inside table math from splitting cells", () => {
+  const md = rstSourceToMarkdown([
+    "+----+-----------------------------+",
+    "| a  | :math:`x \\| y` and a | pipe |",
+    "+----+-----------------------------+",
+  ].join("\n"));
+  assert.equal(md.split("\n")[2], "| a | $x \\Vert  y$ and a \\| pipe |");
 });
