@@ -138,7 +138,7 @@ test("reader fidelity, navigation, bookmarks, and explorer history are retained"
   expect(hash).toMatch(/^#[^#]+/);
   await expect(page.locator(hash!)).toHaveCount(1);
   await expect(body.locator('a[href^="/zip/"]').first()).toBeVisible();
-  await expect(page.getByRole("link", { name: "GitHub" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "GitHub", exact: true })).toHaveAttribute(
     "href",
     /github\.com\/zcash\/zips\/blob\/[0-9a-f]{40}\//,
   );

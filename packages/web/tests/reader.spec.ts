@@ -414,6 +414,6 @@ test('mobile metadata is a closed disclosure after the title', async ({ page }) 
 
   await metadata.click();
   await expect(page.getByRole('link', { name: 'Official' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'GitHub' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'GitHub', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
