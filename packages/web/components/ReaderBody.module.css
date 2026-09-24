@@ -52,7 +52,7 @@
   font-size: 1.12rem;
 }
 
-.body :is(h2, h3) {
+.body :is(h1, h2, h3) {
   scroll-margin-top: 5.5rem;
 }
 
@@ -81,6 +81,100 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
   padding: 0.85rem 1rem;
+}
+
+/*
+ * Tailwind's preflight zeroes margins and strips list markers. Proposals are prose, so the
+ * reader restores a typographic rhythm for everything the converters can emit.
+ */
+.body :is(p, ul, ol, dl, blockquote, pre, figure, hr) {
+  margin: 0 0 1.1em;
+}
+
+.body > :first-child {
+  margin-top: 0;
+}
+
+.body :is(ul, ol) {
+  padding-left: 1.5em;
+}
+
+.body ul {
+  list-style: disc;
+}
+
+.body ul ul {
+  list-style: circle;
+}
+
+.body ul ul ul {
+  list-style: square;
+}
+
+.body ol {
+  list-style: decimal;
+}
+
+.body ol ol {
+  list-style: lower-alpha;
+}
+
+.body li {
+  margin: 0.35em 0;
+  padding-left: 0.2em;
+}
+
+.body li::marker {
+  color: var(--color-accent);
+}
+
+.body li > :is(ul, ol) {
+  margin: 0.35em 0 0.5em;
+}
+
+.body li > p {
+  margin: 0 0 0.5em;
+}
+
+.body dt {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  margin-top: 0.85em;
+}
+
+.body dd {
+  margin: 0.25em 0 0 1.25em;
+}
+
+.body blockquote {
+  border-left: 3px solid var(--color-accent-line);
+  color: color-mix(in srgb, var(--color-fg) 82%, var(--color-muted));
+  padding: 0.1em 0 0.1em 1em;
+}
+
+.body hr {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  margin: 2em 0;
+}
+
+.body :not(pre) > code {
+  background: var(--color-muted-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 0.05em 0.3em;
+}
+
+.body strong {
+  font-weight: 600;
+}
+
+.body h1 {
+  font-size: 1.55rem;
+}
+
+.body :is(h1, h2, h3, h4) + :is(p, ul, ol) {
+  margin-top: 0;
 }
 
 .conversionNotice {
@@ -120,4 +214,31 @@
   white-space: pre-wrap;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.9rem;
+}
+
+.body :global(.zip-raw-header) {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  font-family: var(--font-sans);
+  margin: 0 0 1.5rem;
+}
+
+.body :global(.zip-raw-header) summary {
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  list-style-position: inside;
+  padding: 0.6rem 0.85rem;
+}
+
+.body :global(.zip-raw-header) summary:hover {
+  color: var(--color-fg);
+}
+
+.body :global(.zip-raw-header) pre {
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-control) var(--radius-control);
+  margin: 0;
 }

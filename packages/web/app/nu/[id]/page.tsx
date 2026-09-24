@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadIndex } from "../../../lib/loadIndex";
 import { nuRows } from "../../../lib/nuBoard";
+import { StatusPills } from "../../../components/StatusPill";
 import styles from "./page.module.css";
 
 export default async function NuPage({
@@ -17,10 +18,10 @@ export default async function NuPage({
 
   return (
     <article className={styles.page}>
-      <h1>{nu.title}</h1>
+      <p className={styles.kind}>{nu.kind === "candidate" ? "Candidate upgrade" : "Live on Mainnet"}</p>
+      <h1 className={styles.title}>{nu.title}</h1>
       <p className={styles.meta}>
-        <span>{nu.id}</span>
-        <span>{nu.kind}</span>
+        {rows.length} ZIP{rows.length === 1 ? "" : "s"}
       </p>
       {nu.notes ? <p className={styles.notes}>{nu.notes}</p> : null}
       <ul className={styles.rows}>
@@ -28,8 +29,11 @@ export default async function NuPage({
           <li key={row.number} className={styles.row}>
             {row.record ? (
               <Link className={styles.link} href={`/zip/${row.record.id}`}>
-                ZIP {row.number} — {row.record.title}
-                <span className={styles.status}>{row.record.statusRaw}</span>
+                <span className={styles.number}>ZIP {row.number}</span>
+                <span className={styles.rowTitle}>{row.record.title}</span>
+                <span className={styles.status}>
+                  <StatusPills labels={row.record.status.map((entry) => entry.label)} />
+                </span>
               </Link>
             ) : (
               <span className={styles.missing}>{`ZIP ${row.number} — not in snapshot`}</span>
