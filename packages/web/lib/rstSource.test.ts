@@ -43,3 +43,80 @@ test("rstSourceToMarkdown turns standard backticked RST references into links", 
 
   assert.equal(md, "- [ZIP 200: Network Upgrade Mechanism](https://zips.z.cash/zip-0200.rst)");
 });
+
+test("rstSourceToMarkdown keeps math: dollar spans, :math: roles and .. math:: blocks", () => {
+  const md = rstSourceToMarkdown([
+    "Let $\\mathsf{a}_b$ and :math:`x^2` hold.",
+    "",
+    ".. math::",
+    "    \\mathsf{f}(x) :=",
+    "      1",
+    "",
+    "After.",
+  ].join("\n"));
+  assert.match(md, /Let \$\\mathsf\{a\}_b\$ and \$x\^2\$ hold\./);
+  assert.match(md, /\$\$\n\\mathsf\{f\}\(x\) :=\n  1\n\$\$/);
+  assert.match(md, /After\./);
+});
+
+test("rstSourceToMarkdown turns admonitions into labelled blockquotes", () => {
+  const md = rstSourceToMarkdown(".. warning::\n   This ZIP has been obsoleted.\n   Read ZIP 2.\n\nNext.");
+  assert.match(md, /^> \*\*Warning\*\*\n> \n> This ZIP has been obsoleted\.\n> Read ZIP 2\./m);
+  assert.match(md, /Next\./);
+});
+
+test("rstSourceToMarkdown fences code directives and :: literal blocks", () => {
+  const md = rstSourceToMarkdown([
+    ".. code-block:: rust",
+    "",
+    "    let x = 1;",
+    "    let y = 2;",
+    "",
+    "For example::",
+    "",
+    "    a  b",
+    "",
+    ".. highlight::c++",
+    "",
+    "Done.",
+  ].join("\n"));
+  assert.match(md, /```rust\nlet x = 1;\nlet y = 2;\n```/);
+  assert.match(md, /For example:\n\n```\na  b\n```/);
+  assert.ok(!md.includes("highlight"));
+  assert.match(md, /Done\./);
+});
+
+test("rstSourceToMarkdown renders figures, raw html and drops role declarations", () => {
+  const md = rstSourceToMarkdown([
+    ".. role:: editor-note",
+    "",
+    ".. figure:: ../rendered/assets/images/diagram.svg",
+    "    :width: 600px",
+    "    :align: center",
+    "",
+    ".. raw:: html",
+    "",
+    "    <details><summary>Click</summary>",
+    "",
+    "Body.",
+  ].join("\n"));
+  assert.ok(!md.includes(".. "));
+  assert.match(md, /!\[\]\(\.\.\/rendered\/assets\/images\/diagram\.svg\)/);
+  assert.match(md, /<details><summary>Click<\/summary>/);
+  assert.match(md, /Body\./);
+});
+
+test("rstSourceToMarkdown converts inline literals, links, citations and substitutions", () => {
+  const md = rstSourceToMarkdown(
+    "Use ``nVersion`` per `ZIP 200 <zip-0200.rst>`_ and [#protocol]_.|br| Next `spec`_ here.",
+  );
+  assert.equal(
+    md,
+    "Use `nVersion` per [ZIP 200](zip-0200.rst) and [protocol].<br> Next spec here.",
+  );
+});
+
+test("rstSourceToMarkdown keeps grid tables readable as preformatted text", () => {
+  const md = rstSourceToMarkdown("+----+----+\n| a  | b  |\n+----+----+\n\nAfter.");
+  assert.match(md, /```\n\+----\+----\+\n\| a  \| b  \|\n\+----\+----\+\n```/);
+});
