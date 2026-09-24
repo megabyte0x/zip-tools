@@ -1,6 +1,6 @@
 import type { ZipRecord } from "./types.ts";
 
-export const GRAPH_HELP = "Left-click: rotate, Mouse-wheel: zoom, Right-click: pan";
+export const GRAPH_HELP = "Drag to rotate, scroll to zoom, right-drag to pan. Click a node to open it.";
 export const GRAPH_UNAVAILABLE = "Citation graph is unavailable in this browser.";
 
 export type GraphRecordNode = {
