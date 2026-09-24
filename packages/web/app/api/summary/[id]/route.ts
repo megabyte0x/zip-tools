@@ -1,6 +1,6 @@
 import { loadIndex } from "../../../../lib/loadIndex";
 import { resolveDraft, resolveZip } from "../../../../lib/resolve";
-import { handleSummaryGet, type SummaryEnv } from "../../../../lib/summary";
+import { handleSummaryRoute, type SummaryEnv } from "../../../../lib/summary";
 import { cloudflareEnv } from "../../../../lib/cloudflareEnv";
 
 async function loadEnv(): Promise<SummaryEnv> {
@@ -27,5 +27,5 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   const { id } = await context.params;
-  return handleSummaryGet(id, await loadEnv(), loadZip);
+  return handleSummaryRoute(id, await loadEnv(), loadZip);
 }

@@ -5,6 +5,8 @@ import {
   summaryCacheKey,
   buildSummaryPrompt,
   handleSummaryGet,
+  handleSummaryRoute,
+  isSummaryEnabled,
   type SummaryZip,
 } from "./summary.ts";
 import { summaryNeedsBodyCopy } from "./summaryCopy.ts";
@@ -214,4 +216,38 @@ test("needs-body accordion copy omits official CTA", () => {
 test("summary route forwards selected body provenance", () => {
   const route = readFileSync(new URL("../app/api/summary/[id]/route.ts", import.meta.url), "utf8");
   assert.match(route, /bodySource:\s*zip\.bodySource/);
+});
+
+test("isSummaryEnabled is off unless a flag is exactly true", () => {
+  assert.equal(isSummaryEnabled({}, {}), false);
+  assert.equal(isSummaryEnabled({ SUMMARY_ENABLED: "1" }, {}), false);
+  assert.equal(isSummaryEnabled({ SUMMARY_ENABLED: "false" }, { ZIP_SUMMARY_ENABLED: "false" }), false);
+  assert.equal(isSummaryEnabled({ SUMMARY_ENABLED: "true" }, {}), true);
+  assert.equal(isSummaryEnabled({}, { ZIP_SUMMARY_ENABLED: "true" }), true);
+});
+
+test("handleSummaryRoute returns 404 without loading or calling AI when disabled", async () => {
+  let loads = 0;
+  let aiCalls = 0;
+  const res = await handleSummaryRoute(
+    "318",
+    { AI: { run: async () => { aiCalls += 1; return { response: "x" }; } } },
+    async () => { loads += 1; return { title: "T", body: "B", snapshotSha: "s" }; },
+    {},
+  );
+  assert.equal(res.status, 404);
+  assert.deepEqual(await res.json(), { error: "disabled" });
+  assert.equal(loads, 0);
+  assert.equal(aiCalls, 0);
+});
+
+test("handleSummaryRoute delegates to handleSummaryGet when enabled", async () => {
+  const res = await handleSummaryRoute(
+    "318",
+    { SUMMARY_ENABLED: "true", AI: { run: async () => ({ response: "Summary." }) } },
+    async () => ({ title: "T", body: "B", snapshotSha: "s" }),
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.equal(((await res.json()) as { text: string }).text, "Summary.");
 });

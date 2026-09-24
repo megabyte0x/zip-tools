@@ -18,11 +18,11 @@ function SearchParamsSync({ onChange }: { onChange: (query: string) => void }) {
 }
 
 export function SiteHeader({
-  zipCount,
+  browseCount,
   draftCount,
   zips,
 }: {
-  zipCount: number;
+  browseCount: number;
   draftCount: number;
   nus: { id: string; href: string }[];
   zips: ZipRecord[];
@@ -77,7 +77,7 @@ export function SiteHeader({
               aria-label="Browse"
               aria-current={current("/zips")}
             >
-              Browse <span className={styles.count}>{zipCount}</span>
+              Browse <span className={styles.count}>{browseCount}</span>
             </Link>
             <Link
               className={styles.navLink}

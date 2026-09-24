@@ -8,6 +8,7 @@ import {
 
 const officialUrl = 'https://zips.z.cash/zip-0312';
 const webRoot = fileURLToPath(new URL('..', import.meta.url));
+const summaryEnabled = process.env.ZIP_TEST_SUMMARY === 'enabled';
 
 const fixtureRenderScript = String.raw`
 import { registerHooks } from 'node:module';
@@ -207,7 +208,25 @@ test('prepared fixture TOC links agree with body targets', () => {
   }
 });
 
+test('generated summary is hidden and never requested by default', async ({ page }) => {
+  test.skip(summaryEnabled, 'default-mode check; server started with ZIP_SUMMARY_ENABLED=true');
+  const summaryRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/summary/')) summaryRequests.push(request.url());
+  });
+  await page.goto('/zip/318');
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Orchard to Ironwood Migration', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText('Generated summary', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Summary is unavailable.', { exact: true })).toHaveCount(0);
+  const api = await page.request.get('/api/summary/318');
+  expect(api.status()).toBe(404);
+  expect(summaryRequests.filter((url) => !url.endsWith('/api/summary/318'))).toEqual([]);
+});
+
 test('closed generated summary does not request optional AI', async ({ page }) => {
+  test.skip(!summaryEnabled, 'requires a server started with ZIP_SUMMARY_ENABLED=true and ZIP_TEST_SUMMARY=enabled');
   const summaryRequests: string[] = [];
   const unavailableResponses: number[] = [];
   const consoleErrors: string[] = [];
@@ -233,6 +252,7 @@ test('closed generated summary does not request optional AI', async ({ page }) =
 });
 
 test('generated summary fetches only after opening and retries without serializing the body', async ({ page }) => {
+  test.skip(!summaryEnabled, 'requires a server started with ZIP_SUMMARY_ENABLED=true and ZIP_TEST_SUMMARY=enabled');
   const summaryRequests: Array<{ method: string; postData: string | null }> = [];
   page.on('request', (request) => {
     if (request.url().includes('/api/summary/')) {
@@ -252,6 +272,7 @@ test('generated summary fetches only after opening and retries without serializi
 });
 
 test('generated summary stays single-flight across a close and reopen, then retries after failure', async ({ page }) => {
+  test.skip(!summaryEnabled, 'requires a server started with ZIP_SUMMARY_ENABLED=true and ZIP_TEST_SUMMARY=enabled');
   let requests = 0;
   let releaseFirstResponse!: () => void;
   const firstResponsePending = new Promise<void>((resolve) => {
@@ -393,6 +414,6 @@ test('mobile metadata is a closed disclosure after the title', async ({ page }) 
 
   await metadata.click();
   await expect(page.getByRole('link', { name: 'Official' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'GitHub' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'GitHub', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

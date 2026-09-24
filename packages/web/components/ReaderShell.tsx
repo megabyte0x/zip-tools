@@ -42,12 +42,14 @@ export function ReaderShell({
   next,
   children,
   document: preparedDocument,
+  summaryEnabled = false,
 }: {
   zip: ZipRecord;
   prev: ZipRecord | null;
   next: ZipRecord | null;
   children: ReactNode;
   document?: PreparedReader;
+  summaryEnabled?: boolean;
 }) {
   const toc = preparedDocument?.toc ?? tocForZip(zip);
   const tocNav = toc.length > 0 ? <TocNav toc={toc} /> : null;
@@ -109,10 +111,12 @@ export function ReaderShell({
             {tocNav}
           </details>
         ) : null}
-        <GeneratedSummary
-          id={zip.id}
-          hasBody={preparedDocument ? preparedDocument.mode !== "missing" : zip.body !== null}
-        />
+        {summaryEnabled ? (
+          <GeneratedSummary
+            id={zip.id}
+            hasBody={preparedDocument ? preparedDocument.mode !== "missing" : zip.body !== null}
+          />
+        ) : null}
         {children}
       </article>
       <aside className={styles.metaColumn}>

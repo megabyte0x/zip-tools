@@ -1,6 +1,7 @@
 import { filterZips } from "./filter";
 import type { ZipRecord } from "./types";
 import { zipHref } from "./zipHref";
+import { zipIdentityLabel } from "./zipIdentity.ts";
 
 export function searchSuggestions(
   zips: ZipRecord[],
@@ -14,6 +15,6 @@ export function searchSuggestions(
     .map((zip) => ({
       id: zip.id,
       href: zipHref(zip),
-      label: zip.number != null ? `${zip.number} — ${zip.title}` : `Draft — ${zip.title}`,
+      label: `${zip.number != null ? zip.number : zipIdentityLabel(zip)} — ${zip.title}`,
     }));
 }
