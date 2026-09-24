@@ -267,3 +267,20 @@ test("prepareReader leaves heading levels alone when the body has no h1", async 
   }));
   assert.deepEqual(doc.toc.map((entry) => entry.level), [2, 3]);
 });
+
+test("prepareReader renders pandoc --mathjax spans with KaTeX", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyKind: "rst",
+    bodyFormat: "html",
+    body: [
+      '<p>Let <span class="math inline">\\(\\mathsf{a}_b\\)</span> hold.</p>',
+      '<p><span class="math display">\\[\\mathsf{f}(x) := 1\\]</span></p>',
+    ].join(""),
+  }));
+
+  assert.match(doc.html, /class="katex"/);
+  assert.match(doc.html, /class="katex-display"/);
+  assert.ok(!doc.html.includes("\\("), "inline delimiters are consumed");
+  assert.ok(!doc.html.includes("\\["), "display delimiters are consumed");
+  assert.match(doc.html, /<annotation encoding="application\/x-tex">\\mathsf\{a\}_b<\/annotation>/);
+});
