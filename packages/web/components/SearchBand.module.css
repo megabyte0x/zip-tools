@@ -1,6 +1,7 @@
 .band {
+  align-items: end;
   display: grid;
-  grid-template-columns: minmax(14rem, 2fr) repeat(5, minmax(7.5rem, 1fr));
+  grid-template-columns: minmax(14rem, 2.4fr) repeat(5, minmax(7rem, 1fr));
   gap: 0.75rem;
   margin-bottom: 1rem;
   min-width: 0;
@@ -32,6 +33,16 @@
   color: var(--color-fg);
   font: inherit;
   padding: 0.5rem 0.65rem;
+}
+
+.search .input {
+  font-size: 1rem;
+  min-height: 3rem;
+  padding-left: 0.9rem;
+}
+
+.search .input::placeholder {
+  color: var(--color-muted);
 }
 
 .input:focus-visible,

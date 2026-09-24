@@ -1,6 +1,7 @@
 import { ZipExplorer } from "../../components/ZipExplorer";
 import { loadIndex } from "../../lib/loadIndex";
 import { parseZipsQuery } from "../../lib/zipsQuery";
+import styles from "./page.module.css";
 
 function searchParamsToQuery(searchParams: Record<string, string | string[] | undefined>): string {
   const p = new URLSearchParams();
@@ -21,9 +22,12 @@ export default async function ZipsPage({
   const { zips } = loadIndex();
   const parsed = parseZipsQuery(searchParamsToQuery(await searchParams));
   return (
-    <ZipExplorer
-      zips={zips.map((zip) => ({ ...zip, body: null }))}
-      initialQuery={parsed}
-    />
+    <div className={styles.page}>
+      <h1 className={styles.heading}>Browse proposals</h1>
+      <ZipExplorer
+        zips={zips.map((zip) => ({ ...zip, body: null }))}
+        initialQuery={parsed}
+      />
+    </div>
   );
 }

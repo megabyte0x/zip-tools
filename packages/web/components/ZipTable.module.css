@@ -53,17 +53,46 @@
   border-bottom: none;
 }
 
-.identityLink,
-.titleLink {
+.row {
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.row:hover,
+.row:focus-within {
+  background: var(--color-muted-surface);
+}
+
+.row:hover .titleLink {
   color: var(--color-accent);
+}
+
+.identityLink {
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.titleLink {
+  color: var(--color-fg);
+  display: inline;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.identityLink:hover,
+.titleLink:hover {
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.16em;
 }
 
-.titleLink {
-  display: inline;
-  font-weight: 600;
+.statusCell {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: start;
 }
 
 .identityLink:focus-visible,
@@ -83,7 +112,9 @@
 }
 
 .statusDetail summary {
+  color: var(--color-muted);
   cursor: pointer;
+  font-size: 0.78rem;
 }
 
 .statusDetail p {
@@ -196,8 +227,13 @@
     text-transform: uppercase;
   }
 
-  .table td:nth-child(2)::before {
+  .table td:nth-child(2)::before,
+  .table td:nth-child(3)::before {
     content: "";
+  }
+
+  .table td:first-child {
+    order: 0;
   }
 
   .titleLink {
@@ -206,8 +242,9 @@
     margin-bottom: 0.25rem;
   }
 
-  .statusDetail {
-    display: inline;
+  .row:hover {
+    background: var(--color-surface);
+    border-color: var(--color-accent-line);
   }
 
   .statusDetail p {

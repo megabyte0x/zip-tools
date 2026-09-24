@@ -1,26 +1,47 @@
 import Link from "next/link";
+import type { MouseEvent } from "react";
+import { shouldNavigateRow } from "../lib/rowNavigation";
 import type { ZipRecord } from "../lib/types";
 import { zipHref } from "../lib/zipHref";
+import { StatusPills } from "./StatusPill";
 import styles from "./ZipTable.module.css";
 
 function zipIdentity(zip: ZipRecord): string {
   return zip.number != null ? `ZIP ${zip.number}` : "Draft";
 }
 
-function statusLabels(zip: ZipRecord): string {
-  return [...new Set(zip.status.map((entry) => entry.label))].join(", ") || zip.statusRaw;
+function statusLabels(zip: ZipRecord): string[] {
+  const labels = [...new Set(zip.status.map((entry) => entry.label))];
+  return labels.length > 0 ? labels : [zip.statusRaw];
 }
 
 function StatusDetail({ zip }: { zip: ZipRecord }) {
   const labels = statusLabels(zip);
-  if (zip.statusRaw.trim() === labels.trim()) return <span>{labels}</span>;
+  const pills = <StatusPills labels={labels} />;
+  if (zip.statusRaw.trim() === labels.join(", ").trim()) return pills;
 
   return (
-    <details className={styles.statusDetail}>
-      <summary>{labels} (revision details)</summary>
-      <p>{zip.statusRaw}</p>
-    </details>
+    <div className={styles.statusCell}>
+      {pills}
+      <details className={styles.statusDetail}>
+        <summary>Revision details</summary>
+        <p>{zip.statusRaw}</p>
+      </details>
+    </div>
   );
+}
+
+const INTERACTIVE = "a, button, input, select, textarea, summary, details";
+
+function rowClick(event: MouseEvent<HTMLTableRowElement>, href: string, go: (href: string) => void) {
+  const target = event.target instanceof Element ? event.target : null;
+  const navigate = shouldNavigateRow({
+    targetInteractive: Boolean(target?.closest(INTERACTIVE)),
+    modifier: event.metaKey || event.ctrlKey || event.shiftKey || event.altKey,
+    button: event.button,
+    selection: window.getSelection()?.toString() ?? "",
+  });
+  if (navigate) go(href);
 }
 
 function matchingOwners(zip: ZipRecord, searchText: string): string[] {
@@ -77,7 +98,11 @@ export function ZipTable({
             const owners = matchingOwners(zip, searchText);
             const href = zipHref(zip);
             return (
-              <tr key={zip.id}>
+              <tr
+                key={zip.id}
+                className={styles.row}
+                onClick={(event) => rowClick(event, href, onResultNavigate)}
+              >
                 <td data-label="Number" headers="zip-column-number">
                   <Link
                     className={styles.identityLink}
