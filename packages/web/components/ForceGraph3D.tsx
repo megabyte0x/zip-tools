@@ -356,7 +356,10 @@ function GraphCanvas({
     if (!element || typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) fgRef.current?.resumeAnimation();
-      else fgRef.current?.pauseAnimation();
+      // Only pause once the graph has actually become ready: a taller "home" widget
+      // (search toolbar + node-details panel) can render below the fold on first
+      // paint, and pausing before the first tick would leave it stuck loading forever.
+      else if (ready) fgRef.current?.pauseAnimation();
     });
     observer.observe(element);
     return () => observer.disconnect();
