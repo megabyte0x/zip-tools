@@ -16,6 +16,7 @@ export type SummaryEnv = {
     run(model: string, input: unknown): Promise<{ response?: string } | string>;
   };
   SUMMARY_MODEL?: string;
+  SUMMARY_ENABLED?: string;
 };
 
 export type LoadZip = (id: string) => Promise<SummaryZip | null>;
@@ -102,4 +103,23 @@ export async function handleSummaryGet(
   }
 
   return jsonResponse(200, { text, generated: true, cached: false });
+}
+
+type SummaryProcessEnv = { ZIP_SUMMARY_ENABLED?: string; [key: string]: string | undefined };
+
+export function isSummaryEnabled(
+  env: Pick<SummaryEnv, "SUMMARY_ENABLED">,
+  processEnv: SummaryProcessEnv = process.env,
+): boolean {
+  return env.SUMMARY_ENABLED === "true" || processEnv.ZIP_SUMMARY_ENABLED === "true";
+}
+
+export async function handleSummaryRoute(
+  id: string,
+  env: SummaryEnv,
+  loadZip: LoadZip,
+  processEnv: SummaryProcessEnv = process.env,
+): Promise<Response> {
+  if (!isSummaryEnabled(env, processEnv)) return jsonResponse(404, { error: "disabled" });
+  return handleSummaryGet(id, env, loadZip);
 }
