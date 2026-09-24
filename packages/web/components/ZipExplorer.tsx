@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { filterZips } from "../lib/filter";
 import type { ZipRecord } from "../lib/types";
 import type { ExplorerQuery } from "../lib/workbenchContracts";
@@ -38,6 +38,20 @@ function hasExplorerUrlKeys(search: string): boolean {
 
 function uniqueSorted(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+// Next's <Link> (e.g. the header's Browse/Drafts links) navigates client-side without
+// remounting this component when only the search string changes on the same route, so the
+// locally-owned `query` state never learns about it on its own. useSearchParams() is reactive
+// to every client-side navigation (unlike our own writes below, which use the raw History API
+// and intentionally bypass the router), so this reports external URL changes back up.
+function ExternalQuerySync({ onExternalChange }: { onExternalChange: (search: string) => void }) {
+  const searchParams = useSearchParams();
+  const serialized = searchParams.toString();
+
+  useEffect(() => onExternalChange(serialized), [serialized, onExternalChange]);
+
+  return null;
 }
 
 function queryFromCompatibility(
@@ -130,6 +144,21 @@ export function ZipExplorer({
     return () => window.clearTimeout(timeout);
   }, [browserReady, query.text]);
 
+  const skippedInitialExternalSync = useRef(false);
+  const handleExternalQueryChange = useCallback((search: string) => {
+    // The mount effect above already owns initial-state derivation (props vs. restored URL);
+    // only react to searchParams changes that happen *after* mount, i.e. a real navigation.
+    if (!skippedInitialExternalSync.current) {
+      skippedInitialExternalSync.current = true;
+      return;
+    }
+    if (resultNavigation.current) return;
+    const parsed = parseZipsQuery(search ? `?${search}` : "");
+    setQuery((current) =>
+      serializeZipsQuery(parsed, "") === serializeZipsQuery(current, "") ? current : parsed,
+    );
+  }, []);
+
   const statuses = useMemo(
     () => uniqueSorted(zips.flatMap((zip) => zip.status.map((entry) => entry.label))),
     [zips],
@@ -187,6 +216,9 @@ export function ZipExplorer({
       aria-label="ZIP explorer"
       aria-busy={navigationPhase !== "idle"}
     >
+      <Suspense fallback={null}>
+        <ExternalQuerySync onExternalChange={handleExternalQueryChange} />
+      </Suspense>
       <SearchBand
         text={query.text}
         kind={query.kind}
