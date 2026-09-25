@@ -203,14 +203,50 @@ test("prepareReader rejects relative issue destinations when issue provenance is
   assert.doesNotMatch(doc.html, /href="\/zip\/32"|src=|raw\.githubusercontent\.com/);
 });
 
-test("prepareReader tucks a markdown ZIP's leading header block into a collapsed details", async () => {
+test("prepareReader formats transferred-issue chrome instead of printing it", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyKind: "md",
+    bodyFormat: "markdown",
+    body: [
+      "> Next steps in the ZIP process:",
+      "> - Start writing a draft.",
+      "",
+      "---",
+      "",
+      '<a href="https://github.com/nathan-at-least"><img src="https://avatars2.githubusercontent.com/u/4369700?v=3" align="left" width="96" height="96"></a> **Issue by [nathan-at-least](https://github.com/nathan-at-least)**',
+      "_Wednesday Jun 08, 2016 at 15:30 UTC_",
+      "_Originally opened as https://github.com/zcash/zips/issues/53_",
+      "",
+      "----",
+      "",
+      "What do protocol upgrades look like?",
+    ].join("\n"),
+  }));
+
+  assert.match(doc.html, /<aside class="zip-process"><p>ZIP process<\/p><ul>\s*<li>Start writing a draft\.<\/li>\s*<\/ul><\/aside>/);
+  assert.match(doc.html, /<aside class="zip-issue-origin">/);
+  assert.match(doc.html, /<a href="https:\/\/github.com\/nathan-at-least">nathan-at-least<\/a>/);
+  assert.match(doc.html, /Wednesday Jun 08, 2016 at 15:30 UTC/);
+  assert.match(doc.html, /<a href="https:\/\/github.com\/zcash\/zips\/issues\/53">zcash\/zips#53<\/a>/);
+  assert.match(doc.html, /<p>What do protocol upgrades look like\?<\/p>/);
+  assert.doesNotMatch(doc.html, /<img|Issue by|Originally opened as|align=/);
+});
+
+test("prepareReader formats a markdown ZIP preamble instead of printing it", async () => {
   const doc = await prepareReader(makeZip({
     bodyFormat: "markdown",
     bodyKind: "md",
     body: [
       "    ZIP: 229",
       "    Title: Version 6 Transaction Format",
+      "    Owners: Daira-Emma Hopwood <daira@jacaranda.org>",
+      "            Kris Nuttycombe <kris@nutty.land>",
+      "    Credits: Sean Bowe",
       "    Status: Draft",
+      "    License: CC BY-SA 4.0 <https://creativecommons.org/licenses/by-sa/4.0/>",
+      "    Discussions-To: <https://github.com/zcash/zips/issues/1326>",
+      "    Pull-Request: <https://github.com/zcash/zips/pull/989>",
+      "                  <https://github.com/zcash/zips/pull/1014>",
       "",
       "# Terminology",
       "",
@@ -218,12 +254,70 @@ test("prepareReader tucks a markdown ZIP's leading header block into a collapsed
     ].join("\n"),
   }));
 
-  assert.match(
-    doc.html,
-    /^<details class="zip-raw-header"><summary>Original header<\/summary><pre><code>ZIP: 229\n/,
-  );
-  assert.match(doc.html, /<\/pre><\/details>/);
+  assert.match(doc.html, /^<details class="zip-preamble"><summary>Preamble<\/summary><dl>/);
+  assert.match(doc.html, /<dt>Owners<\/dt><dd><ul><li><a href="mailto:daira@jacaranda.org">Daira-Emma Hopwood<\/a><\/li><li><a href="mailto:kris@nutty.land">Kris Nuttycombe<\/a><\/li><\/ul><\/dd>/);
+  assert.match(doc.html, /<dt>Credits<\/dt><dd>Sean Bowe<\/dd>/);
+  assert.match(doc.html, /<dt>License<\/dt><dd>CC BY-SA 4.0 <a href="https:\/\/creativecommons.org\/licenses\/by-sa\/4.0\/">https:\/\/creativecommons.org\/licenses\/by-sa\/4.0\/<\/a><\/dd>/);
+  assert.match(doc.html, /<dt>Discussions-To<\/dt><dd><a href="https:\/\/github.com\/zcash\/zips\/issues\/1326">https:\/\/github.com\/zcash\/zips\/issues\/1326<\/a><\/dd>/);
+  assert.match(doc.html, /<a href="https:\/\/github.com\/zcash\/zips\/pull\/1014">/);
+  assert.doesNotMatch(doc.html, /<pre>|<code>ZIP:|Original header|&lt;daira@|&lt;https:/);
   assert.ok(doc.html.includes("Body text."));
+});
+
+test("prepareReader renders an RST definition list as definitions, not a run-on paragraph", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "rst-source",
+    bodyKind: "rst",
+    body: [
+      "Terminology",
+      "===========",
+      "",
+      "The terms below are to be interpreted as follows:",
+      "",
+      "Block chain",
+      "  A sequence of blocks.",
+      "",
+      "  It starts at genesis.",
+      "",
+      "  - nested point",
+      "",
+      "Network upgrade",
+      "  An intentional change.",
+      "",
+      "After.",
+    ].join("\n"),
+  }));
+
+  assert.match(doc.html, /<dl class="zip-definitions">/);
+  assert.match(doc.html, /<dt>Block chain<\/dt>/);
+  assert.match(doc.html, /A sequence of blocks\./);
+  assert.match(doc.html, /It starts at genesis\./);
+  assert.match(doc.html, /<li>nested point<\/li>/);
+  assert.match(doc.html, /<dt>Network upgrade<\/dt>/);
+  assert.match(doc.html, /An intentional change\./);
+  assert.match(doc.html, /<p>After\.<\/p>/);
+  assert.doesNotMatch(doc.html, /Block chain\nA sequence|Block chain A sequence/);
+});
+
+test("prepareReader keeps every term in a compact RST definition list", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "rst-source",
+    bodyKind: "rst",
+    body: [
+      "Block chain",
+      "  A sequence of blocks.",
+      "Network upgrade",
+      "  An intentional change.",
+      "",
+      "After.",
+    ].join("\n"),
+  }));
+
+  assert.match(doc.html, /<dt>Block chain<\/dt>/);
+  assert.match(doc.html, /<dt>Network upgrade<\/dt>/);
+  assert.match(doc.html, /A sequence of blocks\./);
+  assert.match(doc.html, /An intentional change\./);
+  assert.match(doc.html, /<p>After\.<\/p>/);
 });
 
 test("prepareReader leaves ordinary code blocks alone", async () => {
@@ -232,14 +326,14 @@ test("prepareReader leaves ordinary code blocks alone", async () => {
     bodyKind: "md",
     body: "## Intro\n\n    ZIP: not a header, it is prose code\n",
   }));
-  assert.ok(!doc.html.includes("zip-raw-header"));
+  assert.ok(!doc.html.includes("zip-preamble"));
 
   const plain = await prepareReader(makeZip({
     bodyFormat: "markdown",
     bodyKind: "md",
     body: "    let x = 1;\n\n## Intro\n",
   }));
-  assert.ok(!plain.html.includes("zip-raw-header"));
+  assert.ok(!plain.html.includes("zip-preamble"));
 });
 
 test("prepareReader demotes body h1 sections so the page keeps one h1 and the TOC sees them", async () => {

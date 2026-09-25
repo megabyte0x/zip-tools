@@ -342,6 +342,42 @@ export function rstSourceToMarkdown(source: string): string {
       i += 2;
       continue;
     }
+    if (
+      indent === 0 &&
+      line.trim() !== "" &&
+      next !== undefined &&
+      next.trim() !== "" &&
+      indentOf(next) > indent &&
+      !isUnderline(next) &&
+      !LIST_ITEM.test(line) &&
+      !LIST_ITEM.test(next)
+    ) {
+      let end = i + 1;
+      while (end < lines.length) {
+        if (lines[end].trim() === "") {
+          let look = end + 1;
+          while (look < lines.length && lines[look].trim() === "") look += 1;
+          if (look >= lines.length || indentOf(lines[look]) === 0) break;
+          end = look;
+          continue;
+        }
+        if (indentOf(lines[end]) === 0) break;
+        end += 1;
+      }
+      const inner = rstSourceToMarkdown(dedent(lines.slice(i + 1, end)).join("\n"));
+      out.push(
+        `<span class="zip-def-term"></span>**${inline(line.trim())}**`,
+        "",
+        inner,
+        "",
+        `<span class="zip-def-end"></span>`,
+        "",
+      );
+      listContext = false;
+      i = end;
+      continue;
+    }
+
     // An indented block after a blank line, outside a list, is an RST block quote. Markdown
     // would read four spaces as code, so convert its contents and quote them.
     if (indent > 0 && !listContext && (i === 0 || lines[i - 1].trim() === "")) {

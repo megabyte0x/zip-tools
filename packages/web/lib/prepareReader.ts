@@ -42,7 +42,7 @@ const sanitizeSchema = {
     ],
     span: [
       ...(defaultSchema.attributes?.span ?? []),
-      ["className", /^(?:katex|katex-display|katex-html|katex-mathml|base|strut|mord|mop|mbin|mrel|mopen|mclose|mpunct|minner|msupsub|vlist-t|vlist-r|vlist|pstrut|sizing|reset-size\d+|size\d+|mathnormal|mathrm|mathbf|amsrm)$/],
+      ["className", /^(?:katex|katex-display|katex-html|katex-mathml|base|strut|mord|mop|mbin|mrel|mopen|mclose|mpunct|minner|msupsub|vlist-t|vlist-r|vlist|pstrut|sizing|reset-size\d+|size\d+|mathnormal|mathrm|mathbf|amsrm|zip-def-term|zip-def-end)$/],
       "ariaHidden",
     ],
     div: [
@@ -197,9 +197,104 @@ function wrapTables(node: HastNode): void {
   });
 }
 
+const LIST_FIELDS = new Set(["Owners", "Credits", "Original-Authors", "Discussions-To", "Pull-Request"]);
+
+type PreambleField = { name: string; values: string[] };
+
+/** RFC 822 ZIP preamble, as indented or fenced source, not a prose code block. */
+function parseZipPreamble(text: string): PreambleField[] | null {
+  if (!/^\s*ZIP:\s*\S/m.test(text) || !/^\s*Title:/m.test(text)) return null;
+  const raw = text.replace(/\r\n/g, "\n").split("\n");
+  const indents = raw.filter((line) => line.trim() !== "").map((line) => line.length - line.trimStart().length);
+  const cut = indents.length > 0 ? Math.min(...indents) : 0;
+  const lines = raw.map((line) => (line.trim() === "" ? "" : line.slice(Math.min(cut, line.length))));
+  const fields: PreambleField[] = [];
+  for (const line of lines) {
+    if (line.trim() === "") continue;
+    const field = /^([A-Za-z][\w-]*)\s*:\s*(.*)$/.exec(line);
+    if (field && !/^\s/.test(line)) {
+      fields.push({ name: field[1], values: field[2].trim() === "" ? [] : [field[2].trim()] });
+      continue;
+    }
+    if (fields.length === 0) return null;
+    const last = fields[fields.length - 1];
+    const value = line.trim();
+    if (LIST_FIELDS.has(last.name) || last.values.length === 0) last.values.push(value);
+    else last.values[last.values.length - 1] = `${last.values[last.values.length - 1]} ${value}`;
+  }
+  const kept = fields.filter((field) => field.values.some((value) => value.trim() !== ""));
+  return kept.length > 0 ? kept : null;
+}
+
+function textNode(value: string): HastNode {
+  return { type: "text", value };
+}
+
+function linkNode(href: string, label: string): HastNode {
+  return { type: "element", tagName: "a", properties: { href }, children: [textNode(label)] };
+}
+
+function httpHref(value: string): string | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+function preambleValueNodes(value: string): HastNode[] {
+  const person = /^(.*?)\s*<([^>\s]+@[^>\s]+)>\s*$/.exec(value.trim());
+  if (person && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(person[2])) {
+    const name = person[1].trim();
+    return [linkNode(`mailto:${person[2]}`, name || person[2])];
+  }
+  const nodes: HastNode[] = [];
+  const pattern = /<(https?:\/\/[^>\s]+)>|(https?:\/\/[^\s<]+)/g;
+  const source = value.trim();
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    const href = httpHref(match[1] ?? match[2]);
+    if (href === null) continue;
+    if (match.index > last) nodes.push(textNode(source.slice(last, match.index)));
+    nodes.push(linkNode(href, href));
+    last = match.index + match[0].length;
+  }
+  if (last < source.length) nodes.push(textNode(source.slice(last)));
+  return nodes.length > 0 ? nodes : [textNode(source)];
+}
+
+function preambleFieldNodes(field: PreambleField): HastNode {
+  const values = field.values.map(preambleValueNodes);
+  const ddChildren = values.length > 1
+    ? [{
+        type: "element",
+        tagName: "ul",
+        properties: {},
+        children: values.map((nodes) => ({
+          type: "element",
+          tagName: "li",
+          properties: {},
+          children: nodes,
+        })),
+      }]
+    : values[0];
+  return {
+    type: "element",
+    tagName: "div",
+    properties: {},
+    children: [
+      { type: "element", tagName: "dt", properties: {}, children: [textNode(field.name)] },
+      { type: "element", tagName: "dd", properties: {}, children: ddChildren },
+    ],
+  };
+}
+
 /**
- * Markdown ZIPs open with their RFC-style header ("ZIP: 229", "Title: ...") as a code
- * block. The sidebar already shows those fields, so keep the original but fold it away.
+ * Markdown ZIPs open with their RFC 822 preamble ("ZIP: 229", "Owners: ...") as a
+ * code block. That block is the document header, already partly in the sidebar;
+ * show the fields, including credits and pull requests the sidebar omits.
  */
 function collapseRawHeader(tree: HastNode): void {
   const children = tree.children ?? [];
@@ -208,15 +303,20 @@ function collapseRawHeader(tree: HastNode): void {
   );
   const first = children[index];
   if (!first || first.tagName !== "pre") return;
-  const text = textContent(first);
-  if (!/^\s*ZIP:\s*\S/.test(text) || !/^\s*Title:/m.test(text)) return;
+  const fields = parseZipPreamble(textContent(first));
+  if (fields === null) return;
   children[index] = {
     type: "element",
     tagName: "details",
-    properties: { className: ["zip-raw-header"] },
+    properties: { className: ["zip-preamble"] },
     children: [
-      { type: "element", tagName: "summary", properties: {}, children: [{ type: "text", value: "Original header" }] },
-      first,
+      { type: "element", tagName: "summary", properties: {}, children: [textNode("Preamble")] },
+      {
+        type: "element",
+        tagName: "dl",
+        properties: {},
+        children: fields.map(preambleFieldNodes),
+      },
     ],
   };
 }
@@ -235,8 +335,159 @@ function demoteHeadings(all: HastNode[]): void {
   }
 }
 
+function classNames(node: HastNode): string[] {
+  const className = node.properties?.className;
+  return Array.isArray(className) ? className.map(String) : [];
+}
+
+function hasMarker(node: HastNode, name: string): boolean {
+  if (node.tagName === "span" && classNames(node).includes(name)) return true;
+  return (node.children ?? []).some((child) => hasMarker(child, name));
+}
+
+/** RST definition lists are marked in markdown, then folded into a real <dl>. */
+function foldDefinitionLists(node: HastNode): void {
+  if (!node.children) return;
+  for (const child of node.children) foldDefinitionLists(child);
+  const next: HastNode[] = [];
+  let i = 0;
+  while (i < node.children.length) {
+    if (node.children[i].tagName !== "p" || !hasMarker(node.children[i], "zip-def-term")) {
+      next.push(node.children[i]);
+      i += 1;
+      continue;
+    }
+    const items: HastNode[] = [];
+    while (i < node.children.length && node.children[i].tagName === "p" && hasMarker(node.children[i], "zip-def-term")) {
+      const term = textContent(node.children[i]).trim();
+      i += 1;
+      const body: HastNode[] = [];
+      while (
+        i < node.children.length &&
+        !hasMarker(node.children[i], "zip-def-end") &&
+        !(node.children[i].tagName === "p" && hasMarker(node.children[i], "zip-def-term"))
+      ) {
+        body.push(node.children[i]);
+        i += 1;
+      }
+      if (
+        i < node.children.length &&
+        hasMarker(node.children[i], "zip-def-end") &&
+        !(node.children[i].tagName === "p" && hasMarker(node.children[i], "zip-def-term"))
+      ) i += 1;
+      items.push(
+        { type: "element", tagName: "dt", properties: {}, children: [textNode(term)] },
+        { type: "element", tagName: "dd", properties: {}, children: body },
+      );
+    }
+    next.push({
+      type: "element",
+      tagName: "dl",
+      properties: { className: ["zip-definitions"] },
+      children: items,
+    });
+  }
+  node.children = next;
+}
+
+function issueLabel(href: string): string {
+  const match = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)\/?$/.exec(href);
+  return match ? `${match[1]}/${match[2]}#${match[3]}` : href;
+}
+
+function linkedText(node: HastNode): Array<{ href: string; text: string }> {
+  const found: Array<{ href: string; text: string }> = [];
+  if (node.tagName === "a" && typeof node.properties?.href === "string") {
+    const text = textContent(node).trim();
+    if (text !== "") found.push({ href: node.properties.href, text });
+  }
+  for (const child of node.children ?? []) found.push(...linkedText(child));
+  return found;
+}
+
+function nextContent(children: HastNode[], index: number): { node: HastNode; index: number } | null {
+  for (let i = index; i < children.length; i += 1) {
+    const node = children[i];
+    if (node.type === "text" && (node.value ?? "").trim() === "") continue;
+    return { node, index: i };
+  }
+  return null;
+}
+
+/**
+ * GitHub issue snapshots repeat two template sections: the ZIP-process checklist,
+ * and the old issue-transfer byline (avatar, "Issue by", "Originally opened as").
+ * Those are process status and provenance, not proposal text.
+ */
+function formatIssueChrome(node: HastNode): void {
+  if (!node.children) return;
+  for (const child of node.children) formatIssueChrome(child);
+  const next: HastNode[] = [];
+  for (let i = 0; i < node.children.length; i += 1) {
+    const child = node.children[i];
+    const text = textContent(child).replace(/\s+/g, " ").trim();
+    if (child.tagName === "blockquote" && text.startsWith("Next steps in the ZIP process")) {
+      const list = (child.children ?? []).find((item) => item.tagName === "ul");
+      next.push({
+        type: "element",
+        tagName: "aside",
+        properties: { className: ["zip-process"] },
+        children: [
+          { type: "element", tagName: "p", properties: {}, children: [textNode("ZIP process")] },
+          list ?? { type: "element", tagName: "p", properties: {}, children: [textNode(text.replace(/^Next steps in the ZIP process:?\s*/, ""))] },
+        ],
+      });
+      const following = nextContent(node.children, i + 1);
+      if (following?.node.tagName === "hr") i = following.index;
+      continue;
+    }
+    if (child.tagName === "p" && text.includes("Issue by") && text.includes("Originally opened as")) {
+      const links = linkedText(child);
+      const author = links.find((link) => link.href.startsWith("https://github.com/") && !/\/issues\/\d+/.test(link.href));
+      const original = links.find((link) => /\/issues\/\d+/.test(link.href));
+      const date = (child.children ?? [])
+        .filter((item) => item.tagName === "em" && !textContent(item).includes("Originally opened as"))
+        .map((item) => textContent(item).trim())
+        .find(Boolean);
+      const origin: HastNode[] = [];
+      if (author) {
+        origin.push({
+          type: "element",
+          tagName: "p",
+          properties: {},
+          children: [textNode("Transferred issue by "), linkNode(author.href, author.text)],
+        });
+      }
+      if (date) origin.push({ type: "element", tagName: "p", properties: {}, children: [textNode(date)] });
+      if (original) {
+        origin.push({
+          type: "element",
+          tagName: "p",
+          properties: {},
+          children: [textNode("Originally "), linkNode(original.href, issueLabel(original.href))],
+        });
+      }
+      if (origin.length > 0) {
+        next.push({
+          type: "element",
+          tagName: "aside",
+          properties: { className: ["zip-issue-origin"] },
+          children: origin,
+        });
+        const following = nextContent(node.children, i + 1);
+        if (following?.node.tagName === "hr") i = following.index;
+        continue;
+      }
+    }
+    next.push(child);
+  }
+  node.children = next;
+}
+
 function prepareTree(tree: HastNode, zip: ZipRecord): ReaderHeading[] {
   collapseRawHeader(tree);
+  foldDefinitionLists(tree);
+  formatIssueChrome(tree);
   demoteHeadings(elements(tree));
   wrapTables(tree);
   const all = elements(tree);

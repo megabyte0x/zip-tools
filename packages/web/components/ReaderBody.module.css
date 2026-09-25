@@ -216,7 +216,7 @@
   font-size: 0.9rem;
 }
 
-.body :global(.zip-raw-header) {
+.body :global(.zip-preamble) {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
@@ -224,7 +224,7 @@
   margin: 0 0 1.5rem;
 }
 
-.body :global(.zip-raw-header) summary {
+.body :global(.zip-preamble) summary {
   color: var(--color-muted);
   cursor: pointer;
   font-size: 0.8125rem;
@@ -233,14 +233,95 @@
   padding: 0.6rem 0.85rem;
 }
 
-.body :global(.zip-raw-header) summary:hover {
+.body :global(.zip-preamble) summary:hover {
   color: var(--color-fg);
 }
 
-.body :global(.zip-raw-header) pre {
+.body :global(.zip-preamble) dl {
   border-top: 1px solid var(--color-border);
-  border-radius: 0 0 var(--radius-control) var(--radius-control);
+  display: grid;
+  gap: 0.75rem;
   margin: 0;
+  padding: 0.85rem 1rem 1rem;
+}
+
+.body :global(.zip-preamble) dl > div {
+  margin: 0;
+}
+
+.body :global(.zip-preamble) dt {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.2rem;
+  text-transform: uppercase;
+}
+
+.body :global(.zip-preamble) dd {
+  margin: 0;
+}
+
+.body :global(.zip-preamble) ul {
+  display: grid;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.body :global(.zip-preamble) a {
+  color: var(--color-accent);
+}
+
+.body :global(.zip-definitions) {
+  margin: 0 0 1.25rem;
+}
+
+.body :global(.zip-definitions) dt {
+  font-weight: 650;
+  margin: 0.9rem 0 0.2rem;
+}
+
+.body :global(.zip-definitions) dd {
+  margin: 0;
+}
+
+.body :global(.zip-definitions) dd > :first-child {
+  margin-top: 0;
+}
+
+.body :global(.zip-process),
+.body :global(.zip-issue-origin) {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  margin: 0 0 1.25rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.body :global(.zip-process) > p:first-child,
+.body :global(.zip-issue-origin) p {
+  margin: 0 0 0.35rem;
+}
+
+.body :global(.zip-process) > p:first-child {
+  color: var(--color-fg);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.body :global(.zip-process) ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.body :global(.zip-issue-origin) a {
+  color: var(--color-accent);
 }
 
 .body :global(.katex-display) {
