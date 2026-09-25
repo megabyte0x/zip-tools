@@ -7,6 +7,7 @@
     "index": "pnpm --filter @zip-tools/index build-index",
     "issues:refresh": "pnpm --filter @zip-tools/index refresh-issues",
     "dev": "pnpm index && pnpm --filter @zip-tools/web dev",
-    "build": "pnpm index && pnpm --filter @zip-tools/web build"
+    "build": "pnpm index && pnpm --filter @zip-tools/web build",
+    "deploy:worker": "pnpm index && pnpm --filter @zip-tools/web exec opennextjs-cloudflare build && pnpm --filter @zip-tools/web exec opennextjs-cloudflare deploy"
   }
 }

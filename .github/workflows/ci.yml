@@ -1,5 +1,5 @@
 name: ci
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -16,3 +16,32 @@ jobs:
       - run: pnpm --filter @zip-tools/web test
       - run: node -e "const d=require('./packages/web/data/zip-index.json'); const ids=new Set(d.zips.map(z=>z.id)); if(!ids.has('0')||!ids.has('32')||!ids.has('317')) process.exit(1); if(!d.zips.some(z=>String(z.id).startsWith('draft-'))) process.exit(1); for (const nu of d.nus) { if(!nu.id) process.exit(1); } "
       - run: pnpm --filter @zip-tools/web build
+  deploy:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: deploy-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: sudo apt-get update && sudo apt-get install -y pandoc
+      - run: pnpm install
+      - name: Require the Cloudflare API token
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Set the CLOUDFLARE_API_TOKEN repository secret (Workers Scripts Edit) before main can deploy."
+            exit 1
+          fi
+      - name: Deploy the Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: "1378ab230486e0367cbcb49a0f4cec1d"
+        run: pnpm run deploy:worker
