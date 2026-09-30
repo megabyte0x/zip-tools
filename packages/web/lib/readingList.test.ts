@@ -53,3 +53,33 @@ test("shareReadingList joins absolute URLs", () => {
     "https://zip.tools/zip/32",
   );
 });
+
+test("reading list metadata stays compatible", () => {
+  const legacy = { id: "old", title: "Old proposal", href: "/zip/32" };
+  const full = {
+    id: "zip-229",
+    title: "Example proposal",
+    href: "/zip/229",
+    identity: "ZIP 229",
+    statuses: ["Active", "Draft"],
+  };
+  const malformed = {
+    id: "malformed",
+    title: "Malformed metadata",
+    href: "/draft/draft-example",
+    identity: 229,
+    statuses: ["Draft", 3],
+  };
+  const parsed = parseReadingList(JSON.stringify([legacy, full, malformed]));
+
+  assert.deepEqual(parsed, [
+    legacy,
+    full,
+    { id: "malformed", title: "Malformed metadata", href: "/draft/draft-example" },
+  ]);
+  assert.deepEqual(addToReadingList(parsed, full)[0], full);
+  assert.equal(
+    shareReadingList("https://zip.tools", parsed),
+    "https://zip.tools/zip/32\nhttps://zip.tools/zip/229\nhttps://zip.tools/draft/draft-example",
+  );
+});

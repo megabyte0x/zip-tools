@@ -139,6 +139,37 @@ test("unknown route shows useful 404", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Browse ZIPs", exact: true })).toHaveAttribute("href", "/zips");
 });
 
+test("populated reading list explains copy action", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.setItem("zip-tools.reading-list", JSON.stringify([
+    { id: "legacy", title: "Legacy saved proposal", href: "/zip/32" },
+  ])));
+
+  await page.goto("/zip/229");
+  const zipTitle = (await page.getByRole("heading", { level: 1 }).textContent())?.trim();
+  await page.getByRole("button", { name: "Bookmark", exact: true }).click();
+  await page.goto("/draft/draft-arya-jvff-p2p-quic-transport");
+  const draftTitle = (await page.getByRole("heading", { level: 1 }).textContent())?.trim();
+  await page.getByRole("button", { name: "Bookmark", exact: true }).click();
+
+  await page.goto("/list");
+  const zipRow = page.getByRole("listitem").filter({ hasText: "ZIP 229" });
+  const draftRow = page.getByRole("listitem").filter({ hasText: "Draft arya-jvff-p2p-quic-transport" });
+  const legacyRow = page.getByRole("listitem").filter({ hasText: "Legacy saved proposal" });
+  await expect(zipRow).toContainText(zipTitle!);
+  await expect(zipRow.getByText(/^(Active|Draft|Final|Reserved|Withdrawn)$/)).toBeVisible();
+  await expect(draftRow).toContainText(draftTitle!);
+  await expect(draftRow.getByText(/^(Active|Draft|Final|Reserved|Withdrawn)$/)).toBeVisible();
+  await expect(legacyRow).toContainText("ZIP 32");
+
+  await expect(page.getByText("Copy the proposal links as one newline-separated list.", { exact: true })).toBeVisible();
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Copy list links", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: /Copied list links|Could not copy list links/ })).toBeVisible();
+  await zipRow.getByRole("button", { name: "Remove", exact: true }).click();
+  await expect(page.getByRole("listitem").filter({ hasText: "ZIP 229" })).toHaveCount(0);
+});
+
 test("required production routes render without console failures or document overflow", async ({ page }) => {
   const failures = consoleFailures(page);
   for (const route of requiredRoutes) {
