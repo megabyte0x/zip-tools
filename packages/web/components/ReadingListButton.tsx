@@ -8,6 +8,7 @@ import {
   removeFromReadingList,
 } from "../lib/readingList";
 import type { ZipRecord } from "../lib/types";
+import { zipIdentityLabel } from "../lib/zipIdentity";
 import { zipHref } from "../lib/zipHref";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -38,7 +39,7 @@ export function ReadingListBadge() {
 export function ReadingListButton({
   zip,
 }: {
-  zip: Pick<ZipRecord, "id" | "title" | "number" | "slug">;
+  zip: Pick<ZipRecord, "id" | "title" | "number" | "slug" | "status">;
 }) {
   const [saved, setSaved] = useState(false);
 
@@ -53,10 +54,12 @@ export function ReadingListButton({
     if (unavailable) return;
     const next = saved
       ? removeFromReadingList(items, zip.id)
-      : addToReadingList(items, {
+        : addToReadingList(items, {
           id: zip.id,
           title: zip.title,
           href: zipHref(zip),
+          identity: zipIdentityLabel(zip),
+          statuses: [...new Set(zip.status.map((entry) => entry.label))],
         });
     try {
       localStorage.setItem(READING_LIST_KEY, JSON.stringify(next));

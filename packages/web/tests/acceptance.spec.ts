@@ -154,6 +154,75 @@ test("upgrade preview status is visible", async ({ page }) => {
   }
 });
 
+test("network upgrade overview uses source data", async ({ page }) => {
+  await page.goto("/nu/nu6.3");
+
+  const introduction = page.getByText("This page groups proposals for the NU6.3 network upgrade.", { exact: true });
+  await expect(introduction).toBeVisible();
+  await expect(page.getByText("Candidate", { exact: true })).toBeVisible();
+  await expect(page.getByText("9 ZIPs", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Deployment ZIP 258" })).toHaveAttribute("href", "/zip/258");
+  expect(
+    await introduction.evaluate((element) => {
+      const list = element.parentElement?.querySelector("ul");
+      return Boolean(list && element.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }),
+  ).toBe(true);
+
+  await page.goto("/nu/nu6.2");
+  await expect(page.getByText("Activated Mainnet height 3364600 on 2026-06-03.", { exact: true })).toBeVisible();
+
+  await page.goto("/nu/nu7");
+  await expect(page.getByRole("link", { name: /Deployment ZIP/ })).toHaveCount(0);
+});
+
+test("unknown route shows useful 404", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const zipResponse = await page.goto("/zip/999999");
+  expect(zipResponse?.status()).toBe(404);
+  await expect(page.getByRole("heading", { name: "Page not found", exact: true })).toHaveCount(1);
+  await expect(page.getByText("This page does not exist. Browse the ZIP index or visit the official ZIP site.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Browse ZIPs", exact: true })).toHaveAttribute("href", "/zips");
+  await expect(page.getByRole("link", { name: "Official ZIP site", exact: true })).toHaveAttribute("href", "https://zips.z.cash");
+  await expectNoDocumentOverflow(page, "/zip/999999");
+
+  const upgradeResponse = await page.goto("/nu/unknown-upgrade");
+  expect(upgradeResponse?.status()).toBe(404);
+  await expect(page.getByRole("heading", { name: "Page not found", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Browse ZIPs", exact: true })).toHaveAttribute("href", "/zips");
+});
+
+test("populated reading list explains copy action", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.setItem("zip-tools.reading-list", JSON.stringify([
+    { id: "legacy", title: "Legacy saved proposal", href: "/zip/32" },
+  ])));
+
+  await page.goto("/zip/229");
+  const zipTitle = (await page.getByRole("heading", { level: 1 }).textContent())?.trim();
+  await page.getByRole("button", { name: "Bookmark", exact: true }).click();
+  await page.goto("/draft/draft-arya-jvff-p2p-quic-transport");
+  const draftTitle = (await page.getByRole("heading", { level: 1 }).textContent())?.trim();
+  await page.getByRole("button", { name: "Bookmark", exact: true }).click();
+
+  await page.goto("/list");
+  const zipRow = page.getByRole("listitem").filter({ hasText: "ZIP 229" });
+  const draftRow = page.getByRole("listitem").filter({ hasText: "Draft arya-jvff-p2p-quic-transport" });
+  const legacyRow = page.getByRole("listitem").filter({ hasText: "Legacy saved proposal" });
+  await expect(zipRow).toContainText(zipTitle!);
+  await expect(zipRow.getByText(/^(Active|Draft|Final|Reserved|Withdrawn)$/)).toBeVisible();
+  await expect(draftRow).toContainText(draftTitle!);
+  await expect(draftRow.getByText(/^(Active|Draft|Final|Reserved|Withdrawn)$/)).toBeVisible();
+  await expect(legacyRow).toContainText("ZIP 32");
+
+  await expect(page.getByText("Copy the proposal links as one newline-separated list.", { exact: true })).toBeVisible();
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Copy list links", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: /Copied list links|Could not copy list links/ })).toBeVisible();
+  await zipRow.getByRole("button", { name: "Remove", exact: true }).click();
+  await expect(page.getByRole("listitem").filter({ hasText: "ZIP 229" })).toHaveCount(0);
+});
+
 test("required production routes render without console failures or document overflow", async ({ page }) => {
   const failures = consoleFailures(page);
   for (const route of requiredRoutes) {
@@ -175,7 +244,7 @@ test("required production routes render without console failures or document ove
   }
   const missing = await page.goto("/zip/999999");
   expect(missing?.status()).toBe(404);
-  await expect(page.getByText("No ZIP matches", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Page not found", exact: true })).toBeVisible();
   await expectNoDocumentOverflow(page, "/zip/999999");
   expect(failures.filter((failure) => !failure.includes("status of 404"))).toEqual([]);
 });
@@ -217,7 +286,7 @@ test("reader fidelity, navigation, bookmarks, and explorer history are retained"
   await expect(page).toHaveURL(/\/zips\?q=317$/);
   await page.getByLabel("Kind", { exact: true }).selectOption("numbered");
   await expect(page).toHaveURL(/\/zips\?q=317&kind=numbered$/);
-  await page.getByText("Draft (revision details)").click();
+  await page.getByText("Revision details", { exact: true }).click();
   await expect(page.getByText("[Revision 0] Active, [Revision 1: NU6.3] Draft, [Revision 2] Draft")).toBeVisible();
   await page.getByRole("link", { name: "Proportional Transfer Fee Mechanism" }).click();
   await expect(page).toHaveURL(/\/zip\/317$/);

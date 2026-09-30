@@ -72,6 +72,7 @@ export function ReaderShell({
                 title={`ZIP ${prev.number}: ${prev.title}`}
               >
                 <Chevron dir="prev" />
+                <span className={styles.navLabel}>ZIP {prev.number}</span>
               </Link>
             ) : (
               <span className={styles.navBtnPlaceholder} />
@@ -84,6 +85,7 @@ export function ReaderShell({
                 title={`ZIP ${next.number}: ${next.title}`}
               >
                 <Chevron dir="next" />
+                <span className={styles.navLabel}>ZIP {next.number}</span>
               </Link>
             ) : (
               <span className={styles.navBtnPlaceholder} />
