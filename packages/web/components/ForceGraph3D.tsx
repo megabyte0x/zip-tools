@@ -19,6 +19,7 @@ import SpriteText from "three-spritetext";
 import { filterZips } from "../lib/filter";
 import {
   GRAPH_HELP,
+  GRAPH_TOUCH_HELP,
   GRAPH_UNAVAILABLE,
   graphRecords,
   type GraphRecordNode,
@@ -28,7 +29,7 @@ import {
   GRAPH_DETAILS_IDLE, graphNodeFacts, graphNodeHeading, graphNodeLabel, graphTooltipHtml,
 } from "../lib/graphLabels";
 import { findGraphNode } from "../lib/graphSearch";
-import { overviewGraphNodeIds } from "../lib/graphOverview";
+import { featuredGraphLabelIds, overviewGraphNodeIds } from "../lib/graphOverview";
 import { STATUS_LEGEND, statusColor } from "../lib/statusColor";
 import type { ZipRecord } from "../lib/types";
 import styles from "./ForceGraph3D.module.css";
@@ -154,12 +155,14 @@ function GraphCanvas({
   heightClass,
   fill,
   variant,
+  coarsePointer,
   onRuntimeError,
 }: {
   data: GraphRecords;
   heightClass: string;
   fill: boolean;
   variant: "home" | "graph";
+  coarsePointer: boolean;
   onRuntimeError: () => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -173,7 +176,6 @@ function GraphCanvas({
   const [reducedMotion, setReducedMotion] = useState(false);
   const [cameraAction, setCameraAction] = useState("initial");
   const [showLabels, setShowLabels] = useState(true);
-  const [coarsePointer, setCoarsePointer] = useState(false);
   const [hovered, setHovered] = useState<GraphRecordNode | null>(null);
   const hoveredRef = useRef<GraphRecordNode | null>(null);
   const [selected, setSelected] = useState<GraphRecordNode | null>(null);
@@ -194,12 +196,24 @@ function GraphCanvas({
     return typed.unassigned ? "#a3a091" : statusColor(typed.status);
   }, []);
   const linkColor = useCallback(() => "rgba(244, 241, 232, 0.38)", []);
+  const featuredLabelIds = useMemo(() => featuredGraphLabelIds(data), [data]);
+  const visibleLabelIds = useMemo(() => {
+    if (!showLabels) return new Set<number>();
+    const ids = new Set(featuredLabelIds);
+    if (hovered) ids.add(hovered.id);
+    if (selected) ids.add(selected.id);
+    return ids;
+  }, [featuredLabelIds, hovered, selected, showLabels]);
+  const visibleLabelIdsRef = useRef(visibleLabelIds);
+  visibleLabelIdsRef.current = visibleLabelIds;
   const nodeThreeObject = useCallback((node: unknown) => {
     const typed = node as GraphRecordNode;
     const sprite = new SpriteText(graphNodeLabel(typed), 4, "rgba(244, 241, 232, 0.88)");
     sprite.fontFace = "IBM Plex Mono, ui-monospace, monospace";
     sprite.position.set(0, 7, 0);
     sprite.userData.zipGraphLabel = true;
+    sprite.userData.zipGraphLabelId = typed.id;
+    sprite.visible = visibleLabelIdsRef.current.has(typed.id);
     return sprite;
   }, []);
   const onNodeHover = useCallback(
@@ -226,6 +240,15 @@ function GraphCanvas({
     },
     [coarsePointer, router, selected],
   );
+
+  useEffect(() => {
+    const scene = fgRef.current?.scene();
+    if (!scene) return;
+    scene.traverse((object) => {
+      if (object.userData?.zipGraphLabel !== true) return;
+      object.visible = visibleLabelIds.has(Number(object.userData.zipGraphLabelId));
+    });
+  }, [visibleLabelIds]);
   const showPointerCursor = useCallback(
     (object: unknown) => Boolean(object && typeof object === "object" && "unassigned" in object && !(object as GraphRecordNode).unassigned),
     [],
@@ -362,7 +385,6 @@ function GraphCanvas({
     const coarse = window.matchMedia("(pointer: coarse)");
     const sync = () => {
       setReducedMotion(reduced.matches);
-      setCoarsePointer(coarse.matches);
       if (variant === "home" && coarse.matches) setActive(false);
     };
     sync();
@@ -614,6 +636,7 @@ function GraphCanvas({
 export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
   const [nuId, setNuId] = useState("");
   const [retry, setRetry] = useState(0);
+  const [coarsePointer, setCoarsePointer] = useState(false);
   const [failed, setFailed] = useState(false);
   const nuIds = useMemo(
     () => [...new Set(zips.flatMap((zip) => zip.nuIds).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
@@ -630,6 +653,13 @@ export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
     setRetry((value) => value + 1);
   };
   const onRuntimeError = useCallback(() => setFailed(true), []);
+  useEffect(() => {
+    const coarse = window.matchMedia("(pointer: coarse)");
+    const sync = () => setCoarsePointer(coarse.matches);
+    sync();
+    coarse.addEventListener("change", sync);
+    return () => coarse.removeEventListener("change", sync);
+  }, []);
   const fallback = <Fallback variant={variant} onRetry={onRetry} />;
 
   return (
@@ -647,7 +677,7 @@ export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
           </Link>
         ) : null}
       </div>
-      <p className={styles.help}>{GRAPH_HELP}</p>
+      <p className={styles.help}>{coarsePointer ? GRAPH_TOUCH_HELP : GRAPH_HELP}</p>
       <div className={styles.filters}>
         {variant === "graph" ? (
           <label className={styles.filter}>
@@ -682,6 +712,7 @@ export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
             data={data}
             fill={variant === "graph"}
             variant={variant}
+            coarsePointer={coarsePointer}
             heightClass={variant === "home" ? styles.preview : styles.full}
             onRuntimeError={onRuntimeError}
           />

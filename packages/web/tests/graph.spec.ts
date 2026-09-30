@@ -317,15 +317,53 @@ test("node number labels render and the toggle removes them", async ({ page }) =
   expect(classes.nodePixels, "nodes must still render without labels").toBeGreaterThan(100);
 });
 
-test("development observer counts one visible label per node", async ({ page }) => {
-  test.skip(!expectDevelopmentObservers, "development-only scene observer");
+test("featured labels are capped and focused labels are restored", async ({ page }) => {
   const { surface } = await readyGraph(page, "/graph");
-  const nodeCount = Number((await surface.getByText(/\d+ nodes ·/).textContent())!.match(/\d+/)![0]);
   const labels = () => page.evaluate(() =>
     (window as Window & { __ZIP_TEST_GRAPH_LABELS__?: () => number }).__ZIP_TEST_GRAPH_LABELS__!());
-  await expect.poll(labels).toBe(nodeCount);
-  await surface.getByRole("checkbox", { name: "Show labels" }).uncheck();
+  await expect.poll(labels).toBeGreaterThan(0);
+  const featuredCount = await labels();
+  expect(featuredCount).toBeLessThanOrEqual(12);
+  const toggle = surface.getByRole("checkbox", { name: "Show labels" });
+  await toggle.uncheck();
   await expect.poll(labels).toBe(0);
+  await toggle.check();
+  await expect.poll(labels).toBeGreaterThan(0);
+  const beforeFocus = await labels();
+  await surface.getByRole("textbox", { name: "Search" }).fill("ZIP 2008");
+  await surface.getByRole("button", { name: "Focus" }).click();
+  await expect.poll(labels).toBeGreaterThan(beforeFocus);
+  await expect.poll(labels).toBeLessThanOrEqual(13);
+});
+
+test("touch help and status legend stay usable on mobile", async ({ page, browser }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/graph");
+  await readyGraph(page, "/graph");
+  const fineHelp = await page.locator('[class*="help"]').innerText();
+
+  const context = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+  const touchPage = await context.newPage();
+  await touchPage.goto("/graph");
+  const touchSurface = touchPage.getByTestId("graph-surface");
+  await expect(touchSurface).toHaveAttribute("data-state", "ready", { timeout: 15_000 });
+  const touchHelp = await touchPage.locator('[class*="help"]').innerText();
+  expect(touchHelp).not.toEqual(fineHelp);
+  expect(touchHelp).toMatch(/tap|touch|controls/i);
+  expect(touchHelp).not.toMatch(/right-drag/i);
+
+  const legend = touchPage.getByRole("list", { name: "Status colours" });
+  const layout = await legend.evaluate((element) => {
+    const items = [...element.children].map((item) => item.getBoundingClientRect());
+    return {
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+      topRange: Math.max(...items.map((item) => item.top)) - Math.min(...items.map((item) => item.top)),
+    };
+  });
+  expect(layout.scrollWidth).toBeGreaterThan(layout.clientWidth);
+  expect(layout.topRange).toBeLessThanOrEqual(1);
+  await context.close();
 });
 
 test("touch: first tap selects a node, the details panel links to the reader", async ({ browser }) => {
