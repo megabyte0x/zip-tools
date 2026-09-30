@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import ts from "typescript";
+import { STATUS_LEGEND } from "../lib/statusColor";
 
 const require = createRequire(import.meta.url);
 
@@ -485,4 +486,17 @@ test("revision detail is disclosed and mobile layout does not overflow", async (
       () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
     ),
   ).toBe(true);
+});
+
+test("status options exclude raw revisions", async ({ page }) => {
+  await page.goto("/zips?q=317");
+  const status = page.getByLabel("Status", { exact: true });
+  const options = await status.locator("option").allTextContents();
+  expect(options.slice(1).every((label) => STATUS_LEGEND.includes(label as (typeof STATUS_LEGEND)[number]))).toBe(true);
+  expect(options.some((label) => label.includes("["))).toBe(false);
+
+  await page.getByText("Revision details", { exact: true }).first().click();
+  await expect(
+    page.getByText("[Revision 0] Active, [Revision 1: NU6.3] Draft, [Revision 2] Draft"),
+  ).toBeVisible();
 });

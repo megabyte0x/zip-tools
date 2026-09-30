@@ -18,3 +18,15 @@ test("explicit multi-revision from spec example", () => {
   assert.ok(got.some((s) => s.label === "Active" && s.revision === "0"));
   assert.ok(got.some((s) => s.label === "Draft" && s.revision === "2"));
 });
+
+test("bracketed revision statuses normalize", () => {
+  assert.deepEqual(
+    parseStatus("[Revision 0] Active, [Revision 1: NU6.3] Draft, [Revision 2] Draft"),
+    [
+      { label: "Active", revision: "0" },
+      { label: "Draft", revision: "1", nuHint: "NU6.3" },
+      { label: "Draft", revision: "2" },
+    ],
+  );
+  assert.equal(parseStatus("Proposed for NU6.3")[0]?.label, "Proposed");
+});

@@ -7,6 +7,7 @@ import type { ZipRecord } from "../lib/types";
 import type { ExplorerQuery } from "../lib/workbenchContracts";
 import { parseZipsQuery, serializeZipsQuery } from "../lib/zipsQuery";
 import { SearchBand } from "./SearchBand";
+import { STATUS_LEGEND } from "../lib/statusColor";
 import styles from "./ZipExplorer.module.css";
 import { ZipTable } from "./ZipTable";
 
@@ -155,10 +156,10 @@ export function ZipExplorer({
     return () => window.clearTimeout(timeout);
   }, [browserReady, query.text]);
 
-  const statuses = useMemo(
-    () => uniqueSorted(zips.flatMap((zip) => zip.status.map((entry) => entry.label))),
-    [zips],
-  );
+  const statuses = useMemo(() => {
+    const present = new Set(zips.flatMap((zip) => zip.status.map((entry) => entry.label)));
+    return STATUS_LEGEND.filter((label) => present.has(label));
+  }, [zips]);
   const nuIds = useMemo(() => uniqueSorted(zips.flatMap((zip) => zip.nuIds)), [zips]);
   const categories = useMemo(
     () => uniqueSorted(zips.map((zip) => zip.category ?? "")),
