@@ -123,6 +123,22 @@ test("network upgrade overview uses source data", async ({ page }) => {
   await expect(page.getByRole("link", { name: /Deployment ZIP/ })).toHaveCount(0);
 });
 
+test("unknown route shows useful 404", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const zipResponse = await page.goto("/zip/999999");
+  expect(zipResponse?.status()).toBe(404);
+  await expect(page.getByRole("heading", { name: "Page not found", exact: true })).toHaveCount(1);
+  await expect(page.getByText("This page does not exist. Browse the ZIP index or visit the official ZIP site.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Browse ZIPs", exact: true })).toHaveAttribute("href", "/zips");
+  await expect(page.getByRole("link", { name: "Official ZIP site", exact: true })).toHaveAttribute("href", "https://zips.z.cash");
+  await expectNoDocumentOverflow(page, "/zip/999999");
+
+  const upgradeResponse = await page.goto("/nu/unknown-upgrade");
+  expect(upgradeResponse?.status()).toBe(404);
+  await expect(page.getByRole("heading", { name: "Page not found", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Browse ZIPs", exact: true })).toHaveAttribute("href", "/zips");
+});
+
 test("required production routes render without console failures or document overflow", async ({ page }) => {
   const failures = consoleFailures(page);
   for (const route of requiredRoutes) {
@@ -144,7 +160,7 @@ test("required production routes render without console failures or document ove
   }
   const missing = await page.goto("/zip/999999");
   expect(missing?.status()).toBe(404);
-  await expect(page.getByText("No ZIP matches", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Page not found", exact: true })).toBeVisible();
   await expectNoDocumentOverflow(page, "/zip/999999");
   expect(failures.filter((failure) => !failure.includes("status of 404"))).toEqual([]);
 });
