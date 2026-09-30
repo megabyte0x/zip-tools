@@ -418,6 +418,57 @@ test('mobile metadata is a closed disclosure after the title', async ({ page }) 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('mobile reader navigation exposes destinations', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/zip/229');
+
+  const adjacent = page.getByRole('navigation', { name: 'Adjacent ZIPs' });
+  await expect(adjacent.getByText('ZIP 228', { exact: true })).toBeVisible();
+  await expect(adjacent.getByText('ZIP 230', { exact: true })).toBeVisible();
+
+  const status = page.getByRole('list', { name: 'Status' });
+  const metadata = page.getByText('Proposal metadata', { exact: true });
+  const bookmark = page.getByRole('button', { name: 'Bookmark', exact: true });
+  const contents = page.locator('summary').filter({ hasText: 'Contents' });
+  const bodyHeading = page.getByTestId('reader-body').locator('h2').first();
+  await expect(status).toBeVisible();
+  await expect(metadata).toBeVisible();
+  await expect(bookmark).toBeVisible();
+  await expect(contents).toBeVisible();
+  expect(await page.locator('article').evaluate((article) => {
+    const title = article.querySelector('h1');
+    const status = article.querySelector('[aria-label="Status"]');
+    const metadata = Array.from(article.querySelectorAll('summary')).find((node) => node.textContent?.trim() === 'Proposal metadata');
+    const bookmark = article.querySelector('button[aria-pressed]');
+    const contents = Array.from(article.querySelectorAll('summary')).find((node) => node.textContent?.trim() === 'Contents');
+    const bodyHeading = article.querySelector('[data-testid="reader-body"] h2');
+    const ordered = [title, status, metadata, bookmark, contents, bodyHeading];
+    return ordered.every((node, index) => node && (index === 0 || Boolean(ordered[index - 1]!.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)));
+  })).toBe(true);
+  await bodyHeading.scrollIntoViewIfNeeded();
+  await expect(bodyHeading).toBeVisible();
+
+  await metadata.click();
+  const metadataDisclosure = metadata.locator('xpath=..');
+  await expect(metadataDisclosure.getByRole('link', { name: 'Official', exact: true })).toBeVisible();
+  await expect(metadataDisclosure.getByRole('link', { name: 'GitHub', exact: true })).toBeVisible();
+
+  await page.locator('summary').filter({ hasText: 'Contents' }).click();
+  const tocLink = page.locator('details').filter({ has: page.locator('summary', { hasText: 'Contents' }) }).getByRole('link').first();
+  const href = await tocLink.getAttribute('href');
+  expect(href).toMatch(/^#[^#]+/);
+  await expect(page.locator(href!)).toHaveCount(1);
+  await tocLink.click();
+  await expect(page).toHaveURL(new RegExp(`${href!.slice(1)}$`));
+
+  await page.goto('/draft/draft-arya-jvff-p2p-quic-transport');
+  const kicker = page.locator('article > p').first();
+  await expect(kicker).toHaveText('draft-arya-jvff-p2p-quic-transport');
+  await expect(kicker).toBeVisible();
+  expect(await kicker.evaluate((node) => node.getBoundingClientRect().right)).toBeLessThanOrEqual(390);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('reader body restores prose spacing and list markers under the CSS reset', async ({ page }) => {
   await page.goto('/draft/draft-ecc-authenticated-reply-addrs');
 
