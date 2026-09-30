@@ -101,6 +101,28 @@ test("home links to the ZIP directory without mounting its explorer", async ({ p
   await expect(page.getByRole("link", { name: "Browse ZIPs", exact: true })).toHaveAttribute("href", "/zips");
 });
 
+test("network upgrade overview uses source data", async ({ page }) => {
+  await page.goto("/nu/nu6.3");
+
+  const introduction = page.getByText("This page groups proposals for the NU6.3 network upgrade.", { exact: true });
+  await expect(introduction).toBeVisible();
+  await expect(page.getByText("Candidate", { exact: true })).toBeVisible();
+  await expect(page.getByText("9 ZIPs", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Deployment ZIP 258" })).toHaveAttribute("href", "/zip/258");
+  expect(
+    await introduction.evaluate((element) => {
+      const list = element.parentElement?.querySelector("ul");
+      return Boolean(list && element.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }),
+  ).toBe(true);
+
+  await page.goto("/nu/nu6.2");
+  await expect(page.getByText("Activated Mainnet height 3364600 on 2026-06-03.", { exact: true })).toBeVisible();
+
+  await page.goto("/nu/nu7");
+  await expect(page.getByRole("link", { name: /Deployment ZIP/ })).toHaveCount(0);
+});
+
 test("required production routes render without console failures or document overflow", async ({ page }) => {
   const failures = consoleFailures(page);
   for (const route of requiredRoutes) {

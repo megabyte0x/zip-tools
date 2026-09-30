@@ -31,14 +31,36 @@ export default async function NuPage({
   const nu = index.nus.find((entry) => entry.id === id);
   const rows = nuRows(index, id);
   if (!nu || !rows) notFound();
+  const deploymentZip = nu.deploymentZip === null
+    ? null
+    : index.zips.find((zip) => zip.number === nu.deploymentZip) ?? null;
+  const stage = nu.kind === "candidate" ? "Candidate" : "Settled";
 
   return (
     <article className={styles.page}>
       <p className={styles.kind}>{nu.kind === "candidate" ? "Candidate upgrade" : "Live on Mainnet"}</p>
       <h1 className={styles.title}>{nu.title}</h1>
-      <p className={styles.meta}>
-        {rows.length} ZIP{rows.length === 1 ? "" : "s"}
-      </p>
+      <p className={styles.intro}>This page groups proposals for the {nu.title} network upgrade.</p>
+      <dl className={styles.overview} aria-label={`${nu.title} overview`}>
+        <div className={styles.overviewItem}>
+          <dt>Stage</dt>
+          <dd>{stage}</dd>
+        </div>
+        <div className={styles.overviewItem}>
+          <dt>Proposals</dt>
+          <dd>{rows.length} ZIP{rows.length === 1 ? "" : "s"}</dd>
+        </div>
+        {deploymentZip ? (
+          <div className={styles.overviewItem}>
+            <dt>Deployment ZIP</dt>
+            <dd>
+              <Link href={`/zip/${deploymentZip.id}`} aria-label={`Deployment ZIP ${deploymentZip.number}`}>
+                ZIP {deploymentZip.number}
+              </Link>
+            </dd>
+          </div>
+        ) : null}
+      </dl>
       {nu.notes ? <p className={styles.notes}>{nu.notes}</p> : null}
       <ul className={styles.rows}>
         {rows.map((row) => (
