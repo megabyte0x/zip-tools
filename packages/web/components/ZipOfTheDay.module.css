@@ -136,6 +136,17 @@
 }
 
 @media (max-width: 35rem) {
+  .header {
+    align-items: start;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .header > :global(button) {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+  }
+
   .row {
     grid-template-columns: minmax(0, 1fr);
   }

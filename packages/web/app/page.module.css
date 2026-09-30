@@ -243,6 +243,13 @@
   }
 
   .quick {
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .quick a {
+    text-align: center;
   }
 }

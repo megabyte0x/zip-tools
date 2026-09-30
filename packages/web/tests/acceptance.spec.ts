@@ -279,6 +279,42 @@ test("home graph preserves mobile page scroll outside its inactive canvas", asyn
   expect(failures).toEqual([]);
 });
 
+test("mobile home hierarchy has no orphan controls", async ({ page }) => {
+  for (const width of [320, 375, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/");
+    const shortcuts = page.getByRole("navigation", { name: "Shortcuts" }).getByRole("link");
+    await expect(shortcuts).toHaveCount(3);
+    const shortcutRects = await shortcuts.evaluateAll((links) =>
+      links.map((link) => {
+        const rect = link.getBoundingClientRect();
+        return { width: rect.width, top: rect.top, left: rect.left };
+      }),
+    );
+    expect(Math.max(...shortcutRects.map((rect) => rect.width)) - Math.min(...shortcutRects.map((rect) => rect.width))).toBeLessThanOrEqual(1);
+    expect(new Set(shortcutRects.map((rect) => `${Math.round(rect.top)}:${Math.round(rect.left)}`)).size).toBe(3);
+
+    const daily = page.getByRole("region", { name: "ZIP of the day" });
+    const dailyLayout = await daily.evaluate((section) => {
+      const description = section.querySelector("p")!.getBoundingClientRect();
+      const button = section.querySelector("button")!.getBoundingClientRect();
+      return { descriptionBottom: description.bottom, buttonTop: button.top };
+    });
+    expect(dailyLayout.buttonTop).toBeGreaterThanOrEqual(dailyLayout.descriptionBottom);
+
+    await expectReadyGraph(page);
+    const homeCanvas = await page.getByTestId("graph-surface").locator("[class*='preview']").boundingBox();
+    expect(homeCanvas).not.toBeNull();
+    await expect(page.getByRole("link", { name: "Full graph" })).toBeVisible();
+
+    await page.goto("/graph");
+    await expectReadyGraph(page);
+    const fullCanvas = await page.getByTestId("graph-surface").locator("[class*='full']").boundingBox();
+    expect(fullCanvas).not.toBeNull();
+    expect(homeCanvas!.height).toBeLessThan(fullCanvas!.height);
+  }
+});
+
 test("keyboard flow, contrast, effective 200 percent zoom, and contained overflow meet acceptance", async ({ page }) => {
   const failures = consoleFailures(page);
   await page.setViewportSize({ width: 1440, height: 900 });
