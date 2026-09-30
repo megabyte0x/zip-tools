@@ -536,3 +536,36 @@ test("long draft identity stays inside mobile card", async ({ page }) => {
     await expect(card).toBeVisible();
   }
 });
+
+test("responsive filters keep active choices visible", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/zips");
+  await expect(page.getByRole("searchbox", { name: "Search", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Kind", { exact: true })).toBeVisible();
+  const status = page.getByLabel("Status", { exact: true });
+  await expect(status).toBeHidden();
+
+  const moreFilters = page.locator('button[aria-controls="zip-explorer-secondary-filters"]');
+  await moreFilters.click();
+  await expect(status).toBeVisible();
+  await status.selectOption("Final");
+  await moreFilters.click();
+  await expect(status).toBeHidden();
+  await expect(page.getByRole("list", { name: "Active filters" })).toContainText("Status: Final");
+});
+
+test("responsive filters align tablet sort", async ({ page }) => {
+  await page.setViewportSize({ width: 803, height: 900 });
+  await page.goto("/zips");
+  const names = ["Search", "Kind", "Status", "NU", "Category", "Sort"];
+  for (const name of names) {
+    await expect(page.getByLabel(name, { exact: true })).toBeVisible();
+  }
+  const statusTop = await page.getByLabel("Status", { exact: true }).evaluate((el) =>
+    el.closest("label")!.getBoundingClientRect().top,
+  );
+  const sortTop = await page.getByLabel("Sort", { exact: true }).evaluate((el) =>
+    el.closest("label")!.getBoundingClientRect().top,
+  );
+  expect(Math.abs(sortTop - statusTop)).toBeLessThanOrEqual(1);
+});

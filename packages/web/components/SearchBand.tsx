@@ -1,3 +1,4 @@
+import { useState } from "react";
 import styles from "./SearchBand.module.css";
 
 export type SearchBandProps = {
@@ -35,6 +36,8 @@ export function SearchBand({
   onCategoryChange,
   onSortChange,
 }: SearchBandProps) {
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
+
   return (
     <form className={styles.band} onSubmit={(event) => event.preventDefault()}>
       <label className={`${styles.field} ${styles.search}`}>
@@ -63,66 +66,81 @@ export function SearchBand({
           <option value="draft">Drafts</option>
         </select>
       </label>
-      <label className={styles.field}>
-        <span className={styles.label}>Status</span>
-        <select
-          aria-label="Status"
-          className={styles.select}
-          value={status}
-          onChange={(event) => onStatusChange(event.target.value)}
-        >
-          <option value="">All</option>
-          {statuses.map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className={styles.field}>
-        <span className={styles.label}>NU</span>
-        <select
-          aria-label="NU"
-          className={styles.select}
-          value={nuId}
-          onChange={(event) => onNuIdChange(event.target.value)}
-        >
-          <option value="">All</option>
-          {nuIds.map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className={styles.field}>
-        <span className={styles.label}>Category</span>
-        <select
-          aria-label="Category"
-          className={styles.select}
-          value={category}
-          onChange={(event) => onCategoryChange(event.target.value)}
-        >
-          <option value="">All</option>
-          {categories.map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className={styles.field}>
-        <span className={styles.label}>Sort</span>
-        <select
-          aria-label="Sort"
-          className={styles.select}
-          value={sort}
-          onChange={(event) => onSortChange(event.target.value as "number" | "title")}
-        >
-          <option value="number">Number</option>
-          <option value="title">Title</option>
-        </select>
-      </label>
+      <button
+        className={styles.moreFilters}
+        type="button"
+        aria-expanded={moreFiltersOpen}
+        aria-controls="zip-explorer-secondary-filters"
+        onClick={() => setMoreFiltersOpen((open) => !open)}
+      >
+        {moreFiltersOpen ? "Fewer filters" : "More filters"}
+      </button>
+      <div
+        className={styles.secondary}
+        id="zip-explorer-secondary-filters"
+        data-open={moreFiltersOpen}
+      >
+        <label className={styles.field}>
+          <span className={styles.label}>Status</span>
+          <select
+            aria-label="Status"
+            className={styles.select}
+            value={status}
+            onChange={(event) => onStatusChange(event.target.value)}
+          >
+            <option value="">All</option>
+            {statuses.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>NU</span>
+          <select
+            aria-label="NU"
+            className={styles.select}
+            value={nuId}
+            onChange={(event) => onNuIdChange(event.target.value)}
+          >
+            <option value="">All</option>
+            {nuIds.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>Category</span>
+          <select
+            aria-label="Category"
+            className={styles.select}
+            value={category}
+            onChange={(event) => onCategoryChange(event.target.value)}
+          >
+            <option value="">All</option>
+            {categories.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>Sort</span>
+          <select
+            aria-label="Sort"
+            className={styles.select}
+            value={sort}
+            onChange={(event) => onSortChange(event.target.value as "number" | "title")}
+          >
+            <option value="number">Number</option>
+            <option value="title">Title</option>
+          </select>
+        </label>
+      </div>
     </form>
   );
 }
