@@ -76,6 +76,10 @@ const KNOWN_SOURCE_ISSUES = new Map<string, [number, string]>([
   ["231 full tex delimiter", [1, `escaped \\$mathtt, zip-0231.md:399; ${TYPO}`]],
   ["1012 full tex delimiter", [1, "dollar amounts ($700k/month), not math"]],
   ["1012 degraded tex delimiter", [1, "dollar amounts ($700k/month), not math"]],
+  [
+    "draft-mcgee-keyholders-organizations full tex delimiter",
+    [1, "two literal $25 million currency amounts are mistaken for a math delimiter"],
+  ],
   ["draft-ecc-authenticated-reply-addrs full rst citation", [3, `[#BCP14] with a nonstandard definition, line 17; ${TYPO}`]],
   ["draft-str4d-orchard-balance-proof full rst citation", [3, `RST citations in a markdown ZIP; ${TYPO}`]],
   ["225 degraded tex in code", [1, SPANNING_TABLE]],
