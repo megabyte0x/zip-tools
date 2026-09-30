@@ -4,13 +4,9 @@ import type { ZipRecord } from "../lib/types";
 import { zipHref } from "../lib/zipHref";
 import { zipIdentityLabel } from "../lib/zipIdentity";
 import { RailScroller } from "./RailScroller";
-import { Badge } from "./ui/badge";
+import { StatusPills } from "./StatusPill";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import styles from "./ZipRail.module.css";
-
-function statusLabel(zip: ZipRecord): string {
-  return zip.status.map((entry) => entry.label).join(", ") || zip.statusRaw;
-}
 
 export function ZipRail({
   title,
@@ -37,8 +33,8 @@ export function ZipRail({
                 <Link href={zipHref(zip)} className={styles.cardLink}>
                   <Card size="sm" className={styles.card}>
                     <CardHeader className="gap-1">
-                      <CardDescription className="text-primary">
-                        {zipIdentityLabel(zip)}
+                      <CardDescription className={`${styles.meta} text-primary`}>
+                        <span className={styles.identity}>{zipIdentityLabel(zip)}</span>
                         {created ? (
                           <time className={styles.date} dateTime={zip.created ?? undefined}>
                             {created}
@@ -47,10 +43,8 @@ export function ZipRail({
                       </CardDescription>
                       <CardTitle className={styles.title}>{zip.title}</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <Badge className={styles.status} variant="outline">
-                        {statusLabel(zip)}
-                      </Badge>
+                    <CardContent className={styles.status}>
+                      <StatusPills labels={zip.status.map((entry) => entry.label)} />
                     </CardContent>
                   </Card>
                 </Link>

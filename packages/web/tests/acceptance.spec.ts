@@ -101,6 +101,36 @@ test("home links to the ZIP directory without mounting its explorer", async ({ p
   await expect(page.getByRole("link", { name: "Browse ZIPs", exact: true })).toHaveAttribute("href", "/zips");
 });
 
+test("rail metadata separates identity date and status", async ({ page }) => {
+  const draftIdentity = "Draft arya-jvff-p2p-quic-transport";
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+
+    const newest = page.getByRole("region", { name: "Newest proposals" });
+    const draft = newest.getByRole("link", { name: new RegExp(draftIdentity) });
+    await expect(draft).toBeVisible();
+    const identity = draft.locator('[class*="identity"]');
+    const date = draft.locator("time");
+    await expect(identity).toBeVisible();
+    await expect(date).toBeVisible();
+    const [identityBox, dateBox] = await Promise.all([identity.boundingBox(), date.boundingBox()]);
+    expect(identityBox).not.toBeNull();
+    expect(dateBox).not.toBeNull();
+    if (Math.abs(identityBox!.y - dateBox!.y) < 1) {
+      expect(dateBox!.x - (identityBox!.x + identityBox!.width)).toBeGreaterThan(0);
+    } else {
+      expect(dateBox!.y).toBeGreaterThan(identityBox!.y);
+    }
+
+    const status = draft.locator('[class*="StatusPill_pill"]');
+    await expect(status).toContainText(/Active|Draft|Final|Withdrawn|Reserved|Proposed/);
+  }
+
+  const noDateRail = page.getByRole("region", { name: "Most viewed (7 days)" });
+  if (await noDateRail.count()) await expect(noDateRail.locator("time")).toHaveCount(0);
+});
+
 test("required production routes render without console failures or document overflow", async ({ page }) => {
   const failures = consoleFailures(page);
   for (const route of requiredRoutes) {
