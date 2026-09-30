@@ -131,6 +131,29 @@ test("rail metadata separates identity date and status", async ({ page }) => {
   if (await noDateRail.count()) await expect(noDateRail.locator("time")).toHaveCount(0);
 });
 
+test("upgrade preview status is visible", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  const upgrades = page.getByRole("region", { name: "Network upgrades" });
+  const title = upgrades.getByRole("link", { name: /Withdrawn Version 6 Transaction Format/ });
+  const row = title.locator("xpath=ancestor::li[1]");
+  const card = title.locator("xpath=ancestor::li[2]");
+  const number = row.locator('[class*="upgradeNumber"]');
+  const pill = row.locator('[class*="StatusPill_pill"]');
+
+  await expect(title).toBeVisible();
+  await expect(number).toHaveText("230");
+  await expect(pill).toContainText("Withdrawn");
+  for (const element of [number, title, pill]) {
+    const [elementBox, cardBox] = await Promise.all([element.boundingBox(), card.boundingBox()]);
+    expect(elementBox).not.toBeNull();
+    expect(cardBox).not.toBeNull();
+    expect(elementBox!.x).toBeGreaterThanOrEqual(cardBox!.x);
+    expect(elementBox!.x + elementBox!.width).toBeLessThanOrEqual(cardBox!.x + cardBox!.width);
+  }
+});
+
 test("required production routes render without console failures or document overflow", async ({ page }) => {
   const failures = consoleFailures(page);
   for (const route of requiredRoutes) {

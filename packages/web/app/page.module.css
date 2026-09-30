@@ -181,20 +181,29 @@
   padding: 0.35rem 0 0;
 }
 
-.upgradeZips a {
+.upgradeZipRow {
+  align-items: start;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.upgradeZipLink {
   align-items: baseline;
   border-radius: var(--radius-control);
   color: var(--color-fg);
-  display: flex;
+  display: grid;
   font-size: 0.9rem;
   gap: 0.75rem;
+  grid-template-columns: minmax(2.5rem, auto) minmax(0, 1fr);
   line-height: 1.4;
   margin: 0 -0.5rem;
   padding: 0.45rem 0.5rem;
   text-decoration: none;
+  min-width: 0;
 }
 
-.upgradeZips a:hover {
+.upgradeZipLink:hover {
   background: var(--color-muted-surface);
   color: var(--color-accent);
 }
@@ -205,6 +214,11 @@
   font-family: var(--font-mono);
   font-size: 0.8rem;
   min-width: 2.5rem;
+}
+
+.upgradeZipTitle {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .upgradeMore {
