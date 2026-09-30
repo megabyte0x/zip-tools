@@ -143,6 +143,18 @@ test("expanded graph camera controls change pixels and reset", async ({ page }) 
   expect(rotated.equals(reset)).toBe(false);
 });
 
+test("overview camera can fit core and all", async ({ page }) => {
+  const { surface } = await readyGraph(page, "/graph");
+  await expect(surface).toHaveAttribute("data-camera-action", "overview");
+  await surface.getByRole("button", { name: "Zoom in" }).click();
+  await surface.getByRole("button", { name: "Fit graph" }).click();
+  await expect(surface).toHaveAttribute("data-camera-action", "overview");
+  await surface.getByRole("button", { name: "Reset" }).click();
+  await expect(surface).toHaveAttribute("data-camera-action", "reset");
+  await page.getByRole("region", { name: "Citation graph" }).getByRole("combobox").selectOption("nu6.3");
+  await expect(surface).toHaveAttribute("data-camera-action", "overview");
+});
+
 test("development observer tracks the actual camera through zoom and reset", async ({ page }) => {
   test.skip(!expectDevelopmentObservers, "camera observer is intentionally absent from production builds");
   const { surface } = await readyGraph(page, "/graph");
@@ -229,35 +241,18 @@ test("focused assigned node can be clicked on the real canvas", async ({ page })
   const rendered = await canvas.screenshot();
   const classes = await classifyRenderedPixels(page, rendered);
   expect(classes.nodePixels, JSON.stringify(classes)).toBeGreaterThan(100);
-  const [box, point] = await Promise.all([
-    canvas.boundingBox(),
-    page.evaluate(async (png) => {
-      const image = new Image();
-      image.src = `data:image/png;base64,${png}`;
-      await image.decode();
-      const copy = document.createElement("canvas");
-      copy.width = image.naturalWidth;
-      copy.height = image.naturalHeight;
-      const context = copy.getContext("2d", { willReadFrequently: true });
-      context!.drawImage(image, 0, 0);
-      const pixels = context!.getImageData(0, 0, copy.width, copy.height).data;
-      let best = { x: copy.width / 2, y: copy.height / 2, score: -1 };
-      for (let y = Math.floor(copy.height * 0.2); y < copy.height * 0.8; y += 1) {
-        for (let x = Math.floor(copy.width * 0.2); x < copy.width * 0.8; x += 1) {
-          const index = (y * copy.width + x) * 4;
-          const score = pixels[index] + pixels[index + 1] + pixels[index + 2];
-          if (score > best.score) best = { x, y, score };
-        }
-      }
-      return best;
-    }, rendered.toString("base64")),
-  ]);
-  expect(point.score, JSON.stringify(point)).toBeGreaterThan(150);
-  await page.mouse.move(box!.x + point.x, box!.y + point.y);
-  await page.waitForTimeout(250);
-  await page.mouse.down();
-  await page.mouse.up();
-  await expect(page).toHaveURL(/\/zip\/\d+(?:$|[?#])/);
+  const point = await page.evaluate(() => {
+    const observe = (window as Window & {
+      __ZIP_TEST_GRAPH_NODE_POINT__?: (id: number) => { x: number; y: number } | null;
+    }).__ZIP_TEST_GRAPH_NODE_POINT__;
+    if (!observe) throw new Error("Graph node position observer is unavailable");
+    return observe(32);
+  });
+  expect(point).not.toBeNull();
+  await page.mouse.move(point!.x, point!.y);
+  await expect(surface.getByTestId("graph-node-details")).toContainText("ZIP 32:");
+  await page.mouse.click(point!.x, point!.y);
+  await expect(page).toHaveURL(/\/zip\/32(?:$|[?#])/);
 });
 
 test("development scene observer finds actual visible citation-link objects", async ({ page }) => {

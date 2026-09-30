@@ -28,6 +28,7 @@ import {
   GRAPH_DETAILS_IDLE, graphNodeFacts, graphNodeHeading, graphNodeLabel, graphTooltipHtml,
 } from "../lib/graphLabels";
 import { findGraphNode } from "../lib/graphSearch";
+import { overviewGraphNodeIds } from "../lib/graphOverview";
 import { STATUS_LEGEND, statusColor } from "../lib/statusColor";
 import type { ZipRecord } from "../lib/types";
 import styles from "./ForceGraph3D.module.css";
@@ -174,7 +175,13 @@ function GraphCanvas({
   const [showLabels, setShowLabels] = useState(true);
   const [coarsePointer, setCoarsePointer] = useState(false);
   const [hovered, setHovered] = useState<GraphRecordNode | null>(null);
+  const hoveredRef = useRef<GraphRecordNode | null>(null);
   const [selected, setSelected] = useState<GraphRecordNode | null>(null);
+  const cameraTouched = useRef(false);
+  const settledData = useRef<GraphRecords | null>(null);
+  const currentData = useRef(data);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestGraphNodes = useRef<GraphRecordNode[]>([]);
   const detail = hovered ?? selected;
 
   // react-force-graph-3d's default export is generic, but next/dynamic() erases that
@@ -196,12 +203,16 @@ function GraphCanvas({
     return sprite;
   }, []);
   const onNodeHover = useCallback(
-    (node: unknown) => setHovered(node ? (node as GraphRecordNode) : null),
+    (node: unknown) => {
+      const typed = node ? (node as GraphRecordNode) : null;
+      hoveredRef.current = typed;
+      setHovered(typed);
+    },
     [],
   );
   const onNodeClick = useCallback(
     (node: unknown) => {
-      const typed = node as NodeObject<GraphRecordNode>;
+      const typed = (hoveredRef.current ?? node) as NodeObject<GraphRecordNode>;
       if (typed.unassigned || typed.id == null) {
         setSelected(typed);
         return;
@@ -226,6 +237,7 @@ function GraphCanvas({
       __ZIP_TEST_GRAPH_CAMERA__?: () => [number, number, number];
       __ZIP_TEST_GRAPH_VISIBLE_LINKS__?: () => number;
       __ZIP_TEST_GRAPH_LABELS__?: () => number;
+      __ZIP_TEST_GRAPH_NODE_POINT__?: (id: number) => { x: number; y: number } | null;
     };
     const observe = (): [number, number, number] => {
       const position = fgRef.current?.camera().position;
@@ -265,15 +277,28 @@ function GraphCanvas({
       });
       return labels;
     };
+    const observeNodePoint = (id: number) => {
+      const node = latestGraphNodes.current.find((candidate) => candidate.id === id);
+      const canvas = wrapRef.current?.querySelector("canvas");
+      if (!node || node.x == null || node.y == null || node.z == null || !canvas) return null;
+      const point = fgRef.current?.graph2ScreenCoords(node.x, node.y, node.z);
+      if (!point) return null;
+      const bounds = canvas.getBoundingClientRect();
+      return { x: bounds.left + point.x, y: bounds.top + point.y };
+    };
     testWindow.__ZIP_TEST_GRAPH_CAMERA__ = observe;
     testWindow.__ZIP_TEST_GRAPH_VISIBLE_LINKS__ = observeVisibleLinks;
     testWindow.__ZIP_TEST_GRAPH_LABELS__ = observeLabels;
+    testWindow.__ZIP_TEST_GRAPH_NODE_POINT__ = observeNodePoint;
     return () => {
       if (testWindow.__ZIP_TEST_GRAPH_CAMERA__ === observe) delete testWindow.__ZIP_TEST_GRAPH_CAMERA__;
       if (testWindow.__ZIP_TEST_GRAPH_VISIBLE_LINKS__ === observeVisibleLinks) {
         delete testWindow.__ZIP_TEST_GRAPH_VISIBLE_LINKS__;
       }
       if (testWindow.__ZIP_TEST_GRAPH_LABELS__ === observeLabels) delete testWindow.__ZIP_TEST_GRAPH_LABELS__;
+      if (testWindow.__ZIP_TEST_GRAPH_NODE_POINT__ === observeNodePoint) {
+        delete testWindow.__ZIP_TEST_GRAPH_NODE_POINT__;
+      }
     };
   }, []);
 
@@ -284,6 +309,53 @@ function GraphCanvas({
     }),
     [data],
   );
+  latestGraphNodes.current = graphData.nodes;
+  const overviewIds = useMemo(() => overviewGraphNodeIds(data), [data]);
+
+  const fitOverview = useCallback(() => {
+    fgRef.current?.zoomToFit(
+      reducedMotion ? 0 : 500,
+      80,
+      (candidate) => overviewIds.has(Number(candidate.id)),
+    );
+    setCameraAction("overview");
+  }, [overviewIds, reducedMotion]);
+
+  const fitAfterSettle = useCallback(() => {
+    setReady(true);
+    if (settledData.current === data) return;
+    settledData.current = data;
+    if (!cameraTouched.current) fitOverview();
+  }, [data, fitOverview]);
+
+  useEffect(() => {
+    if (currentData.current !== data) {
+      currentData.current = data;
+      settledData.current = null;
+      cameraTouched.current = false;
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+      settleTimer.current = null;
+    }
+  }, [data]);
+
+  const markReady = useCallback(() => {
+    setReady(true);
+    if (settledData.current === data || settleTimer.current) return;
+    settleTimer.current = setTimeout(() => {
+      settleTimer.current = null;
+      fitAfterSettle();
+    }, 900);
+  }, [data, fitAfterSettle]);
+
+  const handleEngineStop = useCallback(() => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = null;
+    fitAfterSettle();
+  }, [fitAfterSettle]);
+
+  useEffect(() => () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+  }, []);
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -383,13 +455,12 @@ function GraphCanvas({
       return;
     }
     const positionedNode = node as NodeObject<GraphRecordNode>;
+    cameraTouched.current = true;
     focusNode(fgRef.current, positionedNode, reducedMotion);
     setSelected(node);
     setCameraAction(`focus-${node.id}`);
     setFeedback(node.unassigned ? `Focused ${node.id}: Unassigned.` : `Focused ZIP ${node.id}: ${node.title}.`);
   }
-
-  const markReady = useCallback(() => setReady(true), []);
 
   return (
     <div
@@ -451,15 +522,32 @@ function GraphCanvas({
         ref={wrapRef}
         className={`${styles.canvas} ${heightClass}${active ? "" : ` ${styles.inactive}`}`}
         aria-label="Interactive 3D citation graph"
+        onPointerDownCapture={() => {
+          cameraTouched.current = true;
+        }}
+        onWheelCapture={() => {
+          cameraTouched.current = true;
+        }}
       >
         {!ready ? <span className={styles.loading}>Loading citation graph…</span> : null}
         <div className={styles.canvasControls}>
+          <button
+            className={styles.button}
+            type="button"
+            onClick={() => {
+              cameraTouched.current = true;
+              fitOverview();
+            }}
+          >
+            Fit graph
+          </button>
           <button
             className={styles.iconButton}
             type="button"
             aria-label="Zoom in"
             title="Zoom in"
             onClick={() => {
+              cameraTouched.current = true;
               zoomBy(fgRef.current, 0.8, reducedMotion);
               setCameraAction("zoom-in");
             }}
@@ -472,6 +560,7 @@ function GraphCanvas({
             aria-label="Zoom out"
             title="Zoom out"
             onClick={() => {
+              cameraTouched.current = true;
               zoomBy(fgRef.current, 1.25, reducedMotion);
               setCameraAction("zoom-out");
             }}
@@ -484,6 +573,7 @@ function GraphCanvas({
             aria-label="Reset"
             title="Reset view"
             onClick={() => {
+              cameraTouched.current = true;
               fgRef.current?.zoomToFit(reducedMotion ? 0 : 400, 40);
               setCameraAction("reset");
             }}
@@ -510,7 +600,7 @@ function GraphCanvas({
             enablePointerInteraction={active}
             cooldownTicks={reducedMotion ? 1 : undefined}
             onEngineTick={markReady}
-            onEngineStop={markReady}
+            onEngineStop={handleEngineStop}
             onNodeHover={onNodeHover}
             onNodeClick={onNodeClick}
             showPointerCursor={showPointerCursor}
