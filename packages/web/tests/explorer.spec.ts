@@ -500,3 +500,39 @@ test("status options exclude raw revisions", async ({ page }) => {
     page.getByText("[Revision 0] Active, [Revision 1: NU6.3] Draft, [Revision 2] Draft"),
   ).toBeVisible();
 });
+
+test("long draft identity stays inside mobile card", async ({ page }) => {
+  const widths = [320, 375, 390];
+  await page.setViewportSize({ width: widths[0]!, height: 844 });
+  await page.goto("/zips?kind=draft");
+  const draftLinks = page.locator("tbody td:first-child a");
+  const longestId = await draftLinks.evaluateAll((links) =>
+    links
+      .map((link) => link.textContent?.replace(/^Draft\s*/, "").trim() ?? "")
+      .sort((a, b) => b.length - a.length)[0],
+  );
+  expect(longestId).toBeTruthy();
+
+  for (const width of widths) {
+    await page.setViewportSize({ width, height: 844 });
+    const link = page.locator("tbody td:first-child a").filter({ hasText: longestId! });
+    const card = link.locator("xpath=ancestor::tr");
+    await expect(link).toBeVisible();
+    expect((await link.textContent())?.replace(/^Draft\s*/, "").trim()).toBe(longestId);
+    const bounds = await link.evaluate((element) => {
+      const linkRect = element.getBoundingClientRect();
+      const cardRect = element.closest("tr")!.getBoundingClientRect();
+      return {
+        documentWidth: document.documentElement.scrollWidth,
+        viewportWidth: document.documentElement.clientWidth,
+        linkRight: linkRect.right,
+        cardRight: cardRect.right,
+        textFits: element.scrollWidth <= element.clientWidth,
+      };
+    });
+    expect(bounds.documentWidth).toBeLessThanOrEqual(bounds.viewportWidth);
+    expect(bounds.linkRight).toBeLessThanOrEqual(bounds.cardRight);
+    expect(bounds.textFits).toBe(true);
+    await expect(card).toBeVisible();
+  }
+});

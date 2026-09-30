@@ -233,6 +233,25 @@
     padding: 0.3rem 0;
   }
 
+  .table td:first-child {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .identityLink {
+    box-sizing: border-box;
+    display: block;
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .draftId {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
   .table td::before {
     color: var(--color-muted);
     content: attr(data-label) ": ";
