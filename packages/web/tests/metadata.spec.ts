@@ -3,7 +3,10 @@ import { expect, test } from "@playwright/test";
 const titles: Array<[string, string]> = [
   ["/", "ZIP.tools"],
   ["/zip/318", "ZIP 318: Orchard to Ironwood Migration · ZIP.tools"],
-  ["/draft/draft-arya-deploy-nu7", "Draft arya-deploy-nu7: Deployment of the NU7 Network Upgrade · ZIP.tools"],
+  [
+    "/draft/draft-arya-dairaemma-disable-addition-of-transparent-chain-value",
+    "Draft arya-dairaemma-disable-addition-of-transparent-chain-value: Disabling Addition of New Value to the Transparent Chain Value Pool · ZIP.tools",
+  ],
   ["/zips", "Browse ZIPs · ZIP.tools"],
   ["/zips?kind=draft", "Draft ZIPs · ZIP.tools"],
   ["/graph", "Citation graph · ZIP.tools"],

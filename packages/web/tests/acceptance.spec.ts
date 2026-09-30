@@ -408,7 +408,7 @@ test("keyboard flow, contrast, effective 200 percent zoom, and contained overflo
     await expectNoDocumentOverflow(page, `${route} at effective 200% zoom`);
   }
 
-  await page.goto("/zip/32");
+  await page.goto("/zip/317");
   const wide = page.getByTestId("reader-body").locator("pre, table");
   expect(await wide.count()).toBeGreaterThan(0);
   for (const element of await wide.all()) {

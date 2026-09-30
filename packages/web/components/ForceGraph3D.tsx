@@ -301,7 +301,9 @@ function GraphCanvas({
       return labels;
     };
     const observeNodePoint = (id: number) => {
-      const node = latestGraphNodes.current.find((candidate) => candidate.id === id);
+      const node = latestGraphNodes.current.find((candidate) => candidate.id === id) as
+        | NodeObject<GraphRecordNode>
+        | undefined;
       const canvas = wrapRef.current?.querySelector("canvas");
       if (!node || node.x == null || node.y == null || node.z == null || !canvas) return null;
       const point = fgRef.current?.graph2ScreenCoords(node.x, node.y, node.z);
