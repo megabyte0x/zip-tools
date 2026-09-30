@@ -67,6 +67,14 @@ async function mountZipExplorer(
       const useRouter = () => ({ push() {} });
       const styles = new Proxy({}, { get: (_, key) => String(key) });
       const filterZips = (zips) => zips;
+      const STATUS_LEGEND = ["Draft", "Proposed", "Active", "Final", "Withdrawn", "Rejected", "Obsolete", "Reserved"];
+      const paginateResults = (items, requestedPage, pageSize = 25) => {
+        const pageCount = Math.ceil(items.length / pageSize);
+        const page = pageCount ? Math.min(Math.max(1, requestedPage), pageCount) : 1;
+        const start = items.length ? (page - 1) * pageSize + 1 : 0;
+        const end = Math.min(page * pageSize, items.length);
+        return { items: items.slice(start ? start - 1 : 0, end), page, pageCount, start, end };
+      };
       const parseZipsQuery = (search) => {
         const params = new URLSearchParams(search);
         const kind = params.get("kind") || "";
@@ -77,6 +85,9 @@ async function mountZipExplorer(
           nuId: params.get("nu") || "",
           category: params.get("category") || "",
           sort: params.get("sort") === "title" ? "title" : "number",
+          page: Number.isSafeInteger(Number(params.get("page"))) && Number(params.get("page")) > 0
+            ? Number(params.get("page"))
+            : 1,
         };
       };
       const serializeZipsQuery = (_query, existing) => existing;
@@ -403,7 +414,7 @@ test("modified result clicks retain browser semantics without staging history", 
 
   await page
     .getByRole("link", { name: "Proportional Transfer Fee Mechanism" })
-    .click({ modifiers: ["Control"] });
+    .click({ modifiers: [process.platform === "darwin" ? "Meta" : "Control"] });
   const popup = await popupPromise;
   await popup.waitForLoadState("domcontentloaded");
 
@@ -568,4 +579,51 @@ test("responsive filters align tablet sort", async ({ page }) => {
     el.closest("label")!.getBoundingClientRect().top,
   );
   expect(Math.abs(sortTop - statusTop)).toBeLessThanOrEqual(1);
+});
+
+test("paged browse keeps URL and range", async ({ page }) => {
+  await page.goto("/zips");
+  await expect(page.locator("tbody tr")).toHaveCount(25);
+  const range = page.getByText(/^1–25 of \d+$/);
+  await expect(range).toBeVisible();
+  const total = Number((await range.textContent())?.match(/of (\d+)/)?.[1]);
+  expect(total).toBeGreaterThan(25);
+
+  await page.getByRole("button", { name: "Next page" }).click();
+  await expect(page).toHaveURL(/page=2/);
+  await expect(page.locator("tbody tr")).toHaveCount(25);
+  await expect(page.getByText("26–50 of " + total, { exact: true })).toBeVisible();
+
+  await page.getByLabel("Sort", { exact: true }).selectOption("title");
+  await expect(page).toHaveURL(/sort=title/);
+  expect(new URL(page.url()).searchParams.has("page")).toBe(false);
+  await page.goBack();
+  await expect(page).toHaveURL(/page=2/);
+  await expect(page.getByText("26–50 of " + total, { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("26–50 of " + total, { exact: true })).toBeVisible();
+
+  await page.getByRole("searchbox", { name: "Search", exact: true }).fill("no-such-proposal-xyz");
+  await expect(page.getByText("No ZIPs match your filters.")).toBeVisible();
+  await expect(page.getByText("0–0 of 0", { exact: true })).toBeVisible();
+});
+
+test("invalid and out-of-range page URLs recover to valid ranges", async ({ page }) => {
+  await page.goto("/zips?page=abc");
+  const firstRange = page.getByText(/^1–25 of \d+$/);
+  await expect(firstRange).toBeVisible();
+  const total = Number((await firstRange.textContent())?.match(/of (\d+)/)?.[1]);
+
+  await page.goto("/zips?page=99");
+  const lastStart = Math.floor((total - 1) / 25) * 25 + 1;
+  await expect(page.getByText(`${lastStart}–${total} of ${total}`, { exact: true })).toBeVisible();
+  const pageCount = Math.ceil(total / 25);
+  await expect(page).toHaveURL(new RegExp(`page=${pageCount}(?:$|&)`));
+
+  await page.goBack();
+  await expect(page).toHaveURL(/page=abc/);
+  await expect(firstRange).toBeVisible();
+  await page.goForward();
+  await expect(page).toHaveURL(new RegExp(`page=${pageCount}(?:$|&)`));
+  await expect(page.getByText(`${lastStart}–${total} of ${total}`, { exact: true })).toBeVisible();
 });

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { filterZips } from "../lib/filter";
+import { paginateResults } from "../lib/pagination";
 import type { ZipRecord } from "../lib/types";
 import type { ExplorerQuery } from "../lib/workbenchContracts";
 import { parseZipsQuery, serializeZipsQuery } from "../lib/zipsQuery";
@@ -18,9 +19,10 @@ const EMPTY_QUERY: ExplorerQuery = {
   nuId: "",
   category: "",
   sort: "number",
+  page: 1,
 };
 
-const EXPLORER_URL_KEYS = ["q", "kind", "status", "nu", "category", "sort"] as const;
+const EXPLORER_URL_KEYS = ["q", "kind", "status", "nu", "category", "sort", "page"] as const;
 
 type ResultNavigation = {
   sourceUrl: string;
@@ -51,6 +53,9 @@ function queryFromCompatibility(
   initialText: string,
   initialKind: "draft" | "numbered" | "",
 ): ExplorerQuery {
+  if (typeof window !== "undefined" && hasExplorerUrlKeys(window.location.search)) {
+    return parseZipsQuery(window.location.search);
+  }
   return initialQuery ?? { ...EMPTY_QUERY, text: initialText, kind: initialKind };
 }
 
@@ -167,16 +172,35 @@ export function ZipExplorer({
   );
 
   const filtered = useMemo(() => filterZips(zips, query), [zips, query]);
+  const paginated = useMemo(
+    () => paginateResults(filtered, query.page),
+    [filtered, query.page],
+  );
+
+  useEffect(() => {
+    if (paginated.page === query.page) return;
+    const next = { ...latestQuery.current, page: paginated.page };
+    latestQuery.current = next;
+    setQuery(next);
+    writeBrowserQuery(next, "replace");
+  }, [paginated.page, query.page]);
 
   const changeDiscrete = (patch: Partial<ExplorerQuery>) => {
-    const next = { ...query, ...patch };
+    const next = { ...query, ...patch, page: 1 };
+    setQuery(next);
+    writeBrowserQuery(next, "push");
+  };
+
+  const changePage = (page: number) => {
+    const next = { ...query, page };
     setQuery(next);
     writeBrowserQuery(next, "push");
   };
 
   const clearFilters = () => {
-    setQuery(EMPTY_QUERY);
-    writeBrowserQuery(EMPTY_QUERY, "push");
+    const next = { ...EMPTY_QUERY };
+    setQuery(next);
+    writeBrowserQuery(next, "push");
   };
 
   const chips: Array<{ key: keyof ExplorerQuery; label: string }> = [
@@ -223,7 +247,7 @@ export function ZipExplorer({
         statuses={statuses}
         nuIds={nuIds}
         categories={categories}
-        onTextChange={(text) => setQuery((current) => ({ ...current, text }))}
+        onTextChange={(text) => setQuery((current) => ({ ...current, text, page: 1 }))}
         onKindChange={(kind) => changeDiscrete({ kind })}
         onStatusChange={(status) => changeDiscrete({ status })}
         onNuIdChange={(nuId) => changeDiscrete({ nuId })}
@@ -234,6 +258,9 @@ export function ZipExplorer({
       <div className={styles.summaryRow}>
         <p className={styles.count} aria-live="polite">
           {filtered.length} {filtered.length === 1 ? "result" : "results"}
+        </p>
+        <p className={styles.range} aria-live="polite">
+          {paginated.start}–{paginated.end} of {filtered.length}
         </p>
         {filtered.length > 0 && chips.length > 0 ? (
           <button className={styles.clear} type="button" onClick={clearFilters}>
@@ -256,11 +283,30 @@ export function ZipExplorer({
       ) : null}
 
       <ZipTable
-        zips={filtered}
+        zips={paginated.items}
         searchText={query.text}
         onClear={clearFilters}
         onResultNavigate={navigateToResult}
       />
+      {paginated.pageCount > 1 ? (
+        <nav className={styles.pagination} aria-label="Browse result pages">
+          <button
+            type="button"
+            onClick={() => changePage(paginated.page - 1)}
+            disabled={paginated.page <= 1}
+          >
+            Previous page
+          </button>
+          <span>Page {paginated.page} of {paginated.pageCount}</span>
+          <button
+            type="button"
+            onClick={() => changePage(paginated.page + 1)}
+            disabled={paginated.page >= paginated.pageCount}
+          >
+            Next page
+          </button>
+        </nav>
+      ) : null}
     </section>
   );
 }

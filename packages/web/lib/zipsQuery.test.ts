@@ -9,6 +9,7 @@ const emptyQuery = {
   nuId: "",
   category: "",
   sort: "number" as const,
+  page: 1,
 };
 
 test("parseZipsQuery reads every supported explorer key", () => {
@@ -23,6 +24,7 @@ test("parseZipsQuery reads every supported explorer key", () => {
       nuId: "nu6.3",
       category: "Standards Track",
       sort: "title",
+      page: 1,
     },
   );
 });
@@ -57,4 +59,14 @@ test("serializeZipsQuery removes stale explorer parameters", () => {
     serializeZipsQuery(emptyQuery, "?q=old&kind=draft&status=Draft&nu=nu6&category=Core&sort=title&keep=1"),
     "?keep=1",
   );
+});
+
+test("page query round-trips and normalizes invalid values", () => {
+  const pageTwo = { ...emptyQuery, page: 2 };
+  assert.deepEqual(parseZipsQuery("?page=2"), pageTwo);
+  assert.equal(serializeZipsQuery(pageTwo), "?page=2");
+  assert.equal(serializeZipsQuery(emptyQuery), "");
+  assert.equal(parseZipsQuery("?page=abc").page, 1);
+  assert.equal(parseZipsQuery("?page=-2").page, 1);
+  assert.equal(parseZipsQuery("?page=0").page, 1);
 });

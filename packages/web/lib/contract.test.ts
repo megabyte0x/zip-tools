@@ -28,6 +28,7 @@ const explorerQuery: ExplorerQuery = {
   nuId: '',
   category: '',
   sort: 'number',
+  page: 1,
 };
 const graphInput: GraphInput = {
   zips: [] as ZipRecord[],

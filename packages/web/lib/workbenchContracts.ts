@@ -22,6 +22,7 @@ export type ExplorerQuery = {
   nuId: string;
   category: string;
   sort: 'number' | 'title';
+  page: number;
 };
 
 export type GraphInput = {

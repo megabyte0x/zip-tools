@@ -1,6 +1,6 @@
 import type { ExplorerQuery } from "./workbenchContracts";
 
-const EXPLORER_KEYS = ["q", "kind", "status", "nu", "category", "sort"] as const;
+const EXPLORER_KEYS = ["q", "kind", "status", "nu", "category", "sort", "page"] as const;
 
 export function parseZipsQuery(search: string): ExplorerQuery {
   const queryStart = search.indexOf("?");
@@ -13,6 +13,8 @@ export function parseZipsQuery(search: string): ExplorerQuery {
   const params = new URLSearchParams(raw);
   const rawKind = params.get("kind") ?? "";
   const rawSort = params.get("sort") ?? "";
+  const rawPage = Number(params.get("page"));
+  const page = Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1;
 
   return {
     text: params.get("q") ?? "",
@@ -21,6 +23,7 @@ export function parseZipsQuery(search: string): ExplorerQuery {
     nuId: params.get("nu") ?? "",
     category: params.get("category") ?? "",
     sort: rawSort === "title" ? "title" : "number",
+    page,
   };
 }
 
@@ -44,6 +47,7 @@ export function serializeZipsQuery(query: ExplorerQuery, existing = ""): string 
   if (query.nuId) params.set("nu", query.nuId);
   if (query.category) params.set("category", query.category);
   if (query.sort !== "number") params.set("sort", query.sort);
+  if (query.page > 1) params.set("page", String(query.page));
 
   const serialized = params.toString();
   return `${serialized ? `?${serialized}` : ""}${fragment}`;
