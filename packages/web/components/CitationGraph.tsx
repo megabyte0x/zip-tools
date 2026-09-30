@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { filterZips } from "../lib/filter";
+import type { GraphRecords } from "../lib/graphFallback";
 import { neighborhood } from "../lib/neighborhood";
 import type { GraphNode, Neighborhood } from "../lib/neighborhood";
 import type { ZipIndexFile } from "../lib/types";
+import { ForceGraph3D } from "./ForceGraph3D";
 import styles from "./CitationGraph.module.css";
 
 export type CitationGraphProps = {
   center?: number;
   depth1: Neighborhood;
-  depth2?: Neighborhood;
 };
 
 function nodeHref(node: GraphNode): string {
@@ -41,131 +42,28 @@ function NodeList({ nodes, empty }: { nodes: GraphNode[]; empty: string }) {
   );
 }
 
-function columnPositions(nums: number[], x: number, cy: number, height: number): Map<number, { x: number; y: number }> {
-  const pos = new Map<number, { x: number; y: number }>();
-  const unique = [...new Set(nums)];
-  unique.forEach((n, i) => {
-    const y =
-      unique.length === 1 ? cy : 36 + (i * (height - 72)) / Math.max(unique.length - 1, 1);
-    pos.set(n, { x, y });
+function graphRecordsFromNeighborhood(graph: Neighborhood): GraphRecords {
+  const nodes = graph.nodes.map((node) => ({
+    id: node.number,
+    title: node.title,
+    unassigned: node.unassigned,
+    status: node.status ?? "",
+    citesCount: 0,
+    citedByCount: 0,
+  }));
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const links = graph.edges.map((edge) => {
+    const from = byId.get(edge.from);
+    const to = byId.get(edge.to);
+    if (from) from.citesCount += 1;
+    if (to) to.citedByCount += 1;
+    return { source: edge.from, target: edge.to };
   });
-  return pos;
+  return { nodes, links };
 }
 
-function layoutNodes(
-  graph: Neighborhood,
-  center: number | undefined,
-): Map<number, { x: number; y: number }> {
-  const width = 640;
-  const height = 360;
-  const cx = width / 2;
-  const cy = height / 2;
-  const pos = new Map<number, { x: number; y: number }>();
-
-  if (center == null) {
-    const radius = Math.min(cx, cy) - 48;
-    const count = Math.max(graph.nodes.length, 1);
-    graph.nodes.forEach((node, i) => {
-      const angle = (2 * Math.PI * i) / count - Math.PI / 2;
-      pos.set(node.number, {
-        x: cx + radius * Math.cos(angle),
-        y: cy + radius * Math.sin(angle),
-      });
-    });
-    return pos;
-  }
-
-  pos.set(center, { x: cx, y: cy });
-  const cites = graph.edges.filter((edge) => edge.from === center).map((edge) => edge.to);
-  const citedBy = graph.edges.filter((edge) => edge.to === center).map((edge) => edge.from);
-  for (const [n, p] of columnPositions(citedBy, 88, cy, height)) pos.set(n, p);
-  for (const [n, p] of columnPositions(cites, 552, cy, height)) pos.set(n, p);
-
-  const extras = graph.nodes
-    .map((node) => node.number)
-    .filter((n) => !pos.has(n));
-  extras.forEach((n, i) => {
-    pos.set(n, {
-      x: 200 + (i % 3) * 120,
-      y: 28 + Math.floor(i / 3) * 36,
-    });
-  });
-  return pos;
-}
-
-function SvgGraph({ graph, center }: { graph: Neighborhood; center?: number }) {
-  const positions = useMemo(() => {
-    try {
-      return layoutNodes(graph, center);
-    } catch {
-      return null;
-    }
-  }, [graph, center]);
-
-  if (!positions) return null;
-
-  return (
-    <svg
-      className={styles.svg}
-      viewBox="0 0 640 360"
-      role="img"
-      aria-label="Citation neighborhood"
-    >
-      {graph.edges.map((edge) => {
-        const from = positions.get(edge.from);
-        const to = positions.get(edge.to);
-        if (!from || !to) return null;
-        return (
-          <line
-            key={`${edge.from}-${edge.to}`}
-            x1={from.x}
-            y1={from.y}
-            x2={to.x}
-            y2={to.y}
-            className={styles.edge}
-          />
-        );
-      })}
-      {graph.nodes.map((node) => {
-        const p = positions.get(node.number);
-        if (!p) return null;
-        const isCenter = node.number === center;
-        const nodeClass = node.unassigned
-          ? styles.danglingNode
-          : isCenter
-            ? styles.centerNode
-            : styles.node;
-        const label = node.unassigned ? `${node.number}` : String(node.number);
-        const content = (
-          <>
-            <circle cx={p.x} cy={p.y} r={isCenter ? 16 : 12} className={nodeClass} />
-            <text
-              x={p.x}
-              y={p.y + 4}
-              textAnchor="middle"
-              className={isCenter ? styles.centerLabel : styles.label}
-            >
-              {label}
-            </text>
-          </>
-        );
-        if (node.unassigned) {
-          return <g key={node.number}>{content}</g>;
-        }
-        return (
-          <a key={node.number} href={nodeHref(node)}>
-            {content}
-            <title>{node.title}</title>
-          </a>
-        );
-      })}
-    </svg>
-  );
-}
-
-export function CitationGraph({ center, depth1, depth2 }: CitationGraphProps) {
-  const [depth, setDepth] = useState<1 | 2>(1);
-  const graph = depth === 2 && depth2 ? depth2 : depth1;
+export function CitationGraph({ center, depth1 }: CitationGraphProps) {
+  const graph = useMemo(() => graphRecordsFromNeighborhood(depth1), [depth1]);
 
   const cites = useMemo(() => {
     if (center == null) return [];
@@ -191,19 +89,6 @@ export function CitationGraph({ center, depth1, depth2 }: CitationGraphProps) {
         <h2 id="citation-graph-heading" className={styles.heading}>
           Citation graph
         </h2>
-        {depth2 ? (
-          <label className={styles.depth}>
-            Depth
-            <select
-              className={styles.select}
-              value={depth}
-              onChange={(event) => setDepth(event.target.value === "2" ? 2 : 1)}
-            >
-              <option value="1">1</option>
-              <option value="2">2</option>
-            </select>
-          </label>
-        ) : null}
       </div>
       {center != null ? (
         <div className={styles.lists}>
@@ -220,11 +105,11 @@ export function CitationGraph({ center, depth1, depth2 }: CitationGraphProps) {
         <div className={styles.lists}>
           <div>
             <h3 className={styles.listHeading}>ZIPs</h3>
-            <NodeList nodes={graph.nodes} empty="None" />
+            <NodeList nodes={depth1.nodes} empty="None" />
           </div>
         </div>
       )}
-      <SvgGraph graph={graph} center={center} />
+      <ForceGraph3D variant="detail" data={graph} />
     </section>
   );
 }

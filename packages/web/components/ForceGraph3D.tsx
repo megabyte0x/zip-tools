@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Component,
-  type FormEvent,
   type ReactNode,
   useCallback,
   useEffect,
@@ -28,19 +27,18 @@ import {
 import {
   GRAPH_DETAILS_IDLE, graphNodeFacts, graphNodeHeading, graphNodeLabel, graphTooltipHtml,
 } from "../lib/graphLabels";
-import { findGraphNode } from "../lib/graphSearch";
 import { featuredGraphLabelIds, overviewGraphNodeIds } from "../lib/graphOverview";
 import { STATUS_LEGEND, statusColor } from "../lib/statusColor";
 import type { ZipRecord } from "../lib/types";
 import styles from "./ForceGraph3D.module.css";
 
 const ForceGraphImpl = dynamic(() => import("react-force-graph-3d"), { ssr: false });
+const EMPTY_ZIPS: ZipRecord[] = [];
+const EMPTY_DANGLING: number[] = [];
 
-export type ForceGraph3DProps = {
-  zips: ZipRecord[];
-  dangling: number[];
-  variant: "home" | "graph";
-};
+export type ForceGraph3DProps =
+  | { zips: ZipRecord[]; dangling: number[]; variant: "home" | "graph"; data?: never }
+  | { data: GraphRecords; variant: "detail"; zips?: never; dangling?: never };
 
 class GraphErrorBoundary extends Component<
   { children: ReactNode; fallback: ReactNode; resetKey: number; onError?: () => void },
@@ -75,26 +73,6 @@ function isGraphRuntimeError(error: unknown): boolean {
   return /webgl|three|force-graph|CONTEXT_LOST|WebGLRenderer/i.test(text);
 }
 
-function focusNode(
-  fg: ForceGraphMethods | undefined,
-  node: NodeObject<GraphRecordNode>,
-  reducedMotion: boolean,
-) {
-  if (!fg) return;
-  if (node.x == null || node.y == null || node.z == null) {
-    fg.zoomToFit(reducedMotion ? 0 : 800, 160, (candidate) => candidate.id === node.id);
-    return;
-  }
-  const distance = 160;
-  const hypotenuse = Math.hypot(node.x, node.y, node.z) || 1;
-  const ratio = 1 + distance / hypotenuse;
-  fg.cameraPosition(
-    { x: node.x * ratio, y: node.y * ratio, z: node.z * ratio },
-    { x: node.x, y: node.y, z: node.z },
-    reducedMotion ? 0 : 800,
-  );
-}
-
 function zoomBy(fg: ForceGraphMethods | undefined, factor: number, reducedMotion: boolean) {
   if (!fg) return;
   const camera = fg.camera();
@@ -109,7 +87,7 @@ function zoomBy(fg: ForceGraphMethods | undefined, factor: number, reducedMotion
   );
 }
 
-function Fallback({ variant, onRetry }: { variant: "home" | "graph"; onRetry: () => void }) {
+function Fallback({ variant, onRetry }: { variant: ForceGraph3DProps["variant"]; onRetry: () => void }) {
   return (
     <div
       className={`${styles.fallback}${variant === "graph" ? ` ${styles.pageFallback}` : ""}`}
@@ -134,7 +112,7 @@ function Fallback({ variant, onRetry }: { variant: "home" | "graph"; onRetry: ()
   );
 }
 
-function EmptyGraph({ variant }: { variant: "home" | "graph" }) {
+function EmptyGraph({ variant }: { variant: ForceGraph3DProps["variant"] }) {
   return (
     <div
       className={`${styles.emptyState}${variant === "graph" ? ` ${styles.pageFallback}` : ""}`}
@@ -154,14 +132,14 @@ function GraphCanvas({
   data,
   heightClass,
   fill,
-  variant,
+  isDetail,
   coarsePointer,
   onRuntimeError,
 }: {
   data: GraphRecords;
   heightClass: string;
   fill: boolean;
-  variant: "home" | "graph";
+  isDetail: boolean;
   coarsePointer: boolean;
   onRuntimeError: () => void;
 }) {
@@ -169,13 +147,9 @@ function GraphCanvas({
   const fgRef = useRef<ForceGraphMethods | undefined>(undefined);
   const router = useRouter();
   const [size, setSize] = useState({ width: 0, height: 0 });
-  const [query, setQuery] = useState("");
-  const [feedback, setFeedback] = useState("");
   const [ready, setReady] = useState(false);
-  const [active, setActive] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [cameraAction, setCameraAction] = useState("initial");
-  const [showLabels, setShowLabels] = useState(true);
   const [hovered, setHovered] = useState<GraphRecordNode | null>(null);
   const hoveredRef = useRef<GraphRecordNode | null>(null);
   const [selected, setSelected] = useState<GraphRecordNode | null>(null);
@@ -188,8 +162,7 @@ function GraphCanvas({
 
   // react-force-graph-3d's default export is generic, but next/dynamic() erases that
   // genericity to its default (untyped) instantiation, so accessor props only see a
-  // loosely-shaped runtime object here; cast it to our real node shape, the same way
-  // `onSearch` already casts findGraphNode's result before handing it to focusNode.
+  // loosely-shaped runtime object here; cast it to our real node shape.
   const nodeLabel = useCallback((node: unknown) => graphTooltipHtml(node as GraphRecordNode), []);
   const nodeColor = useCallback((node: unknown) => {
     const typed = node as GraphRecordNode;
@@ -198,12 +171,11 @@ function GraphCanvas({
   const linkColor = useCallback(() => "rgba(244, 241, 232, 0.38)", []);
   const featuredLabelIds = useMemo(() => featuredGraphLabelIds(data), [data]);
   const visibleLabelIds = useMemo(() => {
-    if (!showLabels) return new Set<number>();
     const ids = new Set(featuredLabelIds);
     if (hovered) ids.add(hovered.id);
     if (selected) ids.add(selected.id);
     return ids;
-  }, [featuredLabelIds, hovered, selected, showLabels]);
+  }, [featuredLabelIds, hovered, selected]);
   const visibleLabelIdsRef = useRef(visibleLabelIds);
   visibleLabelIdsRef.current = visibleLabelIds;
   const nodeThreeObject = useCallback((node: unknown) => {
@@ -338,13 +310,22 @@ function GraphCanvas({
   const overviewIds = useMemo(() => overviewGraphNodeIds(data), [data]);
 
   const fitOverview = useCallback(() => {
-    fgRef.current?.zoomToFit(
-      reducedMotion ? 0 : 500,
-      80,
-      (candidate) => overviewIds.has(Number(candidate.id)),
-    );
+    const graph = fgRef.current;
+    graph?.zoomToFit(isDetail ? 0 : reducedMotion ? 0 : 500, 80, (candidate) => overviewIds.has(Number(candidate.id)));
+    if (isDetail && graph) {
+      const camera = graph.camera().position;
+      const distance = Math.hypot(camera.x, camera.y, camera.z);
+      if (distance < 120) {
+        const scale = 120 / (distance || 1);
+        graph.cameraPosition(
+          { x: camera.x * scale, y: camera.y * scale, z: distance ? camera.z * scale : 120 },
+          { x: 0, y: 0, z: 0 },
+          0,
+        );
+      }
+    }
     setCameraAction("overview");
-  }, [overviewIds, reducedMotion]);
+  }, [isDetail, overviewIds, reducedMotion]);
 
   const fitAfterSettle = useCallback(() => {
     setReady(true);
@@ -384,19 +365,15 @@ function GraphCanvas({
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const coarse = window.matchMedia("(pointer: coarse)");
     const sync = () => {
       setReducedMotion(reduced.matches);
-      if (variant === "home" && coarse.matches) setActive(false);
     };
     sync();
     reduced.addEventListener("change", sync);
-    coarse.addEventListener("change", sync);
     return () => {
       reduced.removeEventListener("change", sync);
-      coarse.removeEventListener("change", sync);
     };
-  }, [variant]);
+  }, []);
 
   useEffect(() => {
     const element = wrapRef.current;
@@ -462,30 +439,6 @@ function GraphCanvas({
     return () => observer.disconnect();
   }, [ready]);
 
-  useEffect(() => {
-    if (variant !== "home" || !active) return;
-    const exit = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setActive(false);
-    };
-    window.addEventListener("keydown", exit);
-    return () => window.removeEventListener("keydown", exit);
-  }, [active, variant]);
-
-  function onSearch(event: FormEvent) {
-    event.preventDefault();
-    const node = findGraphNode(graphData.nodes, query);
-    if (!node) {
-      setFeedback(`No graph node matches "${query.trim()}".`);
-      return;
-    }
-    const positionedNode = node as NodeObject<GraphRecordNode>;
-    cameraTouched.current = true;
-    focusNode(fgRef.current, positionedNode, reducedMotion);
-    setSelected(node);
-    setCameraAction(`focus-${node.id}`);
-    setFeedback(node.unassigned ? `Focused ${node.id}: Unassigned.` : `Focused ZIP ${node.id}: ${node.title}.`);
-  }
-
   return (
     <div
       className={fill ? styles.graphBody : undefined}
@@ -493,40 +446,6 @@ function GraphCanvas({
       data-state={ready ? "ready" : "loading"}
       data-camera-action={cameraAction}
     >
-      <div className={styles.toolbar}>
-        <form className={styles.searchForm} onSubmit={onSearch}>
-          <input
-            aria-label="Search"
-            className={styles.search}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Find a ZIP by number or title"
-          />
-          <button className={styles.button} type="submit">
-            Focus
-          </button>
-        </form>
-        {variant === "home" ? (
-          <button
-            className={`${styles.button} ${active ? "" : styles.primary}`}
-            type="button"
-            aria-pressed={active}
-            onClick={() => setActive((value) => !value)}
-          >
-            {active ? "Done exploring" : "Explore graph"}
-          </button>
-        ) : null}
-        <label className={styles.toggle}>
-          <input type="checkbox" checked={showLabels} onChange={(event) => setShowLabels(event.target.checked)} />
-          Show labels
-        </label>
-      </div>
-      <p className={styles.statusLine}>
-        <span className={styles.graphStatus} aria-live="polite" role="status">
-          {feedback || (ready ? "Graph ready" : "Loading citation graph…")}
-        </span>
-        <span className={styles.counts}>{data.nodes.length} nodes · {data.links.length} citations</span>
-      </p>
       <div className={styles.nodeDetails} data-testid="graph-node-details">
         {detail ? (
           <>
@@ -544,7 +463,7 @@ function GraphCanvas({
       </div>
       <div
         ref={wrapRef}
-        className={`${styles.canvas} ${heightClass}${active ? "" : ` ${styles.inactive}`}`}
+        className={`${styles.canvas} ${heightClass}`}
         aria-label="Interactive 3D citation graph"
         onPointerDownCapture={() => {
           cameraTouched.current = true;
@@ -616,12 +535,12 @@ function GraphCanvas({
             nodeLabel={nodeLabel}
             nodeColor={nodeColor}
             nodeRelSize={5}
-            nodeThreeObject={showLabels ? nodeThreeObject : undefined}
+            nodeThreeObject={nodeThreeObject}
             nodeThreeObjectExtend
             linkColor={linkColor}
             linkWidth={0.8}
-            enableNavigationControls={active}
-            enablePointerInteraction={active}
+            enableNavigationControls
+            enablePointerInteraction
             cooldownTicks={reducedMotion ? 1 : undefined}
             onEngineTick={markReady}
             onEngineStop={handleEngineStop}
@@ -635,7 +554,10 @@ function GraphCanvas({
   );
 }
 
-export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
+export function ForceGraph3D(props: ForceGraph3DProps) {
+  const { variant } = props;
+  const zips = variant === "detail" ? EMPTY_ZIPS : props.zips;
+  const dangling = variant === "detail" ? EMPTY_DANGLING : props.dangling;
   const [nuId, setNuId] = useState("");
   const [retry, setRetry] = useState(0);
   const [coarsePointer, setCoarsePointer] = useState(false);
@@ -648,7 +570,8 @@ export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
     () => (variant === "graph" ? filterZips(zips, { nuId: nuId || undefined }) : zips),
     [variant, zips, nuId],
   );
-  const data = useMemo(() => graphRecords(filtered, dangling), [filtered, dangling]);
+  const providedData = variant === "detail" ? props.data : undefined;
+  const data = useMemo(() => providedData ?? graphRecords(filtered, dangling), [providedData, filtered, dangling]);
   const Heading = variant === "graph" ? "h1" : "h2";
   const onRetry = () => {
     setFailed(false);
@@ -663,6 +586,26 @@ export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
     return () => coarse.removeEventListener("change", sync);
   }, []);
   const fallback = <Fallback variant={variant} onRetry={onRetry} />;
+
+  const content = data.nodes.length === 0 ? (
+    <EmptyGraph variant={variant} />
+  ) : failed ? (
+    fallback
+  ) : (
+    <GraphErrorBoundary resetKey={retry} fallback={fallback} onError={onRuntimeError}>
+      <GraphCanvas
+        key={retry}
+        data={data}
+        fill={variant === "graph"}
+        isDetail={variant === "detail"}
+        coarsePointer={coarsePointer}
+        heightClass={variant === "home" ? styles.preview : variant === "detail" ? styles.detail : styles.full}
+        onRuntimeError={onRuntimeError}
+      />
+    </GraphErrorBoundary>
+  );
+
+  if (variant === "detail") return content;
 
   return (
     <section
@@ -703,23 +646,7 @@ export function ForceGraph3D({ zips, dangling, variant }: ForceGraph3DProps) {
           ))}
         </ul>
       </div>
-      {data.nodes.length === 0 ? (
-        <EmptyGraph variant={variant} />
-      ) : failed ? (
-        fallback
-      ) : (
-        <GraphErrorBoundary resetKey={retry} fallback={fallback} onError={onRuntimeError}>
-          <GraphCanvas
-            key={retry}
-            data={data}
-            fill={variant === "graph"}
-            variant={variant}
-            coarsePointer={coarsePointer}
-            heightClass={variant === "home" ? styles.preview : styles.full}
-            onRuntimeError={onRuntimeError}
-          />
-        </GraphErrorBoundary>
-      )}
+      {content}
     </section>
   );
 }

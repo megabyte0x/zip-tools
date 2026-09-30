@@ -58,7 +58,6 @@ export default async function ZipPage({
         <CitationGraph
           center={zip.number}
           depth1={neighborhood(index, zip.number, 1)}
-          depth2={neighborhood(index, zip.number, 2)}
         />
       ) : null}
     </ReaderShell>

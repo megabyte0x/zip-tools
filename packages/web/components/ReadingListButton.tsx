@@ -1,5 +1,6 @@
 "use client";
 
+import { Bookmark } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   READING_LIST_KEY,
@@ -70,8 +71,17 @@ export function ReadingListButton({
   }
 
   return (
-    <Button type="button" variant={saved ? "default" : "outline"} aria-pressed={saved} onClick={toggle}>
-      {saved ? "Bookmarked" : "Bookmark"}
+    <Button
+      type="button"
+      size="icon-lg"
+      className="size-11"
+      variant={saved ? "default" : "outline"}
+      aria-label={saved ? "Bookmarked" : "Bookmark"}
+      title={saved ? "Bookmarked" : "Bookmark"}
+      aria-pressed={saved}
+      onClick={toggle}
+    >
+      <Bookmark className="size-5" fill={saved ? "currentColor" : "none"} aria-hidden="true" />
     </Button>
   );
 }

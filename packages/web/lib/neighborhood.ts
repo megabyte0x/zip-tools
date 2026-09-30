@@ -1,6 +1,6 @@
 import type { ZipIndexFile, ZipRecord } from "./types";
 
-export type GraphNode = { number: number; title: string; unassigned: boolean };
+export type GraphNode = { number: number; title: string; unassigned: boolean; status?: string };
 export type GraphEdge = { from: number; to: number };
 export type Neighborhood = { nodes: GraphNode[]; edges: GraphEdge[] };
 
@@ -48,7 +48,8 @@ function adjacency(index: ZipIndexFile): {
 function nodeFor(byNumber: Map<number, ZipRecord>, number: number): GraphNode {
   const zip = byNumber.get(number);
   if (zip) {
-    return { number, title: zip.title, unassigned: false };
+    const status = zip.status[0]?.label ?? zip.statusRaw;
+    return { number, title: zip.title, unassigned: false, ...(status ? { status } : {}) };
   }
   return { number, title: "Unassigned", unassigned: true };
 }

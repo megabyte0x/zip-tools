@@ -83,47 +83,6 @@
   color: var(--color-muted);
 }
 
-.svg {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-surface);
-  display: block;
-  max-width: 40rem;
-  width: 100%;
-}
-
-.edge {
-  stroke: var(--color-border);
-  stroke-width: 1.5;
-}
-
-.node {
-  fill: var(--color-muted-surface);
-  stroke: var(--color-accent);
-}
-
-.centerNode {
-  fill: var(--color-accent);
-  stroke: var(--color-accent);
-}
-
-.danglingNode {
-  fill: var(--color-muted-surface);
-  stroke: var(--color-muted);
-  stroke-dasharray: 3 2;
-}
-
-.label {
-  fill: var(--color-fg);
-  font-size: 10px;
-}
-
-.centerLabel {
-  fill: var(--color-bg);
-  font-size: 10px;
-  font-weight: 700;
-}
-
 .filter {
   margin-bottom: 1.25rem;
   max-width: 16rem;

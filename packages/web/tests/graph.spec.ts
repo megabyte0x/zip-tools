@@ -91,22 +91,30 @@ async function readyGraph(page: import("@playwright/test").Page, path: "/" | "/g
   return { surface, box: box! };
 }
 
-test("home renders a ready 3D graph and reports focus search results", async ({ page }) => {
+test("home renders a ready 3D graph without graph toolbar controls", async ({ page }) => {
   const { surface } = await readyGraph(page, "/");
-  await expect(surface.getByText("Graph ready")).toBeVisible();
   await expect(page.getByRole("region", { name: "Accessible citation nodes" })).toHaveCount(0);
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Explore graph", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Explore graph", exact: true }).click();
+  await expect(surface.getByRole("textbox", { name: "Search" })).toHaveCount(0);
+  await expect(surface.getByRole("button", { name: "Focus" })).toHaveCount(0);
+  await expect(surface.getByRole("button", { name: "Done exploring" })).toHaveCount(0);
+  await expect(surface.getByRole("checkbox", { name: "Show labels" })).toHaveCount(0);
+  await expect(surface.getByRole("status")).toHaveCount(0);
+});
 
-  const search = surface.getByRole("textbox", { name: "Search" });
-  await search.fill("ZIP 999999");
-  await surface.getByRole("button", { name: "Focus" }).click();
-  await expect(surface.getByRole("status")).toContainText('No graph node matches "ZIP 999999".');
-
-  await search.fill("ZIP 32");
-  await surface.getByRole("button", { name: "Focus" }).click();
-  await expect(surface.getByRole("status")).toContainText("Focused ZIP 32:");
+test("home graph nodes open their ZIP when clicked", async ({ page }) => {
+  const { surface } = await readyGraph(page, "/");
+  await surface.getByRole("button", { name: "Fit graph" }).click();
+  await page.waitForTimeout(500);
+  const point = await page.evaluate(() => {
+    const observe = (window as Window & {
+      __ZIP_TEST_GRAPH_NODE_POINT__?: (id: number) => { x: number; y: number } | null;
+    }).__ZIP_TEST_GRAPH_NODE_POINT__;
+    if (!observe) throw new Error("Graph node position observer is unavailable");
+    return observe(32);
+  });
+  expect(point).not.toBeNull();
+  await page.mouse.click(point!.x, point!.y);
+  await expect(page).toHaveURL(/\/zip\/32(?:$|[?#])/);
 });
 
 test("graph exposes loading-to-ready state and a live production-observable WebGL canvas", async ({ page }) => {
@@ -233,9 +241,7 @@ test("empty filtered graph has a distinct empty state", async ({ page }) => {
 
 test("focused assigned node can be clicked on the real canvas", async ({ page }) => {
   const { surface } = await readyGraph(page, "/graph");
-  await surface.getByRole("textbox", { name: "Search" }).fill("ZIP 32");
-  await surface.getByRole("button", { name: "Focus" }).click();
-  await expect(surface.getByRole("status")).toContainText("Focused ZIP 32:");
+  await surface.getByRole("button", { name: "Fit graph" }).click();
   await page.waitForTimeout(1_000);
   const canvas = surface.locator("canvas");
   const rendered = await canvas.screenshot();
@@ -265,27 +271,21 @@ test("hovering a node shows a styled tooltip and fills the details panel", async
   const { surface } = await readyGraph(page, "/graph");
   const details = surface.getByTestId("graph-node-details");
   await expect(details).toHaveText("Hover or tap a node to see its title and citations.");
-
-  await surface.getByRole("textbox", { name: "Search" }).fill("ZIP 32");
-  await surface.getByRole("button", { name: "Focus" }).click();
-  await expect(details).toContainText("ZIP 32:");
-  await expect(details).toContainText(/Cites \d+ · Cited by \d+/);
-  await expect(details.getByRole("link", { name: "Open ZIP 32" })).toHaveAttribute("href", "/zip/32");
-  await page.waitForTimeout(1_000);
-
-  // Sweep the canvas until the pointer lands on a node, the same way a user would find one.
-  const canvas = surface.locator("canvas");
-  const box = (await canvas.boundingBox())!;
+  await surface.getByRole("button", { name: "Fit graph" }).click();
+  await page.waitForTimeout(500);
+  const point = await page.evaluate(() => {
+    const observe = (window as Window & {
+      __ZIP_TEST_GRAPH_NODE_POINT__?: (id: number) => { x: number; y: number } | null;
+    }).__ZIP_TEST_GRAPH_NODE_POINT__;
+    if (!observe) throw new Error("Graph node position observer is unavailable");
+    return observe(32);
+  });
+  expect(point).not.toBeNull();
+  await page.mouse.move(point!.x, point!.y);
   const tooltip = surface.locator(".float-tooltip-kap");
-  let hit = false;
-  for (let y = box.y + 20; y < box.y + box.height - 20 && !hit; y += 12) {
-    for (let x = box.x + 20; x < box.x + box.width - 20 && !hit; x += 12) {
-      await page.mouse.move(x, y);
-      hit = (await tooltip.evaluate((el) => getComputedStyle(el).display)) !== "none"
-        && ((await tooltip.textContent()) ?? "").length > 0;
-    }
-  }
-  expect(hit, "pointer sweep must find at least one node").toBe(true);
+  await expect(details).toContainText(/ZIP \d+:/);
+  await expect(details).toContainText(/Cites \d+ · Cited by \d+/);
+  await expect(details.getByRole("link", { name: /Open ZIP \d+/ })).toHaveAttribute("href", /\/zip\/\d+/);
   await expect(tooltip).toContainText(/(ZIP \d+: .+|\d+ — Unassigned)/);
   await expect(tooltip).toContainText(/Cites \d+ · Cited by \d+/);
   await expect(details).toContainText(/Cites \d+ · Cited by \d+/);
@@ -297,42 +297,32 @@ test("hovering a node shows a styled tooltip and fills the details panel", async
   expect(style.radius).not.toBe("3px");
 });
 
-test("node number labels render and the toggle removes them", async ({ page }) => {
+test("node number labels render by default", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  const { surface } = await readyGraph(page, "/graph");
-  const canvas = surface.locator("canvas");
+  await readyGraph(page, "/graph");
   await page.waitForTimeout(1_000);
-  const withLabels = await canvas.screenshot();
-  const toggle = surface.getByRole("checkbox", { name: "Show labels" });
-  await expect(toggle).toBeChecked();
-  await toggle.uncheck();
-  await page.waitForTimeout(500);
-  const withoutLabels = await canvas.screenshot();
-  await toggle.check();
-  await page.waitForTimeout(500);
-  const labelsAgain = await canvas.screenshot();
-  expect(withLabels.equals(withoutLabels), "hiding labels must change rendered pixels").toBe(false);
-  expect(labelsAgain.equals(withoutLabels), "re-showing labels must change rendered pixels").toBe(false);
-  const classes = await classifyRenderedPixels(page, withoutLabels);
-  expect(classes.nodePixels, "nodes must still render without labels").toBeGreaterThan(100);
+  const count = await page.evaluate(() =>
+    (window as Window & { __ZIP_TEST_GRAPH_LABELS__?: () => number }).__ZIP_TEST_GRAPH_LABELS__!());
+  expect(count).toBeGreaterThan(0);
+  expect(count).toBeLessThanOrEqual(12);
 });
 
-test("featured labels are capped and focused labels are restored", async ({ page }) => {
-  const { surface } = await readyGraph(page, "/graph");
+test("featured labels stay capped and hover adds one label", async ({ page }) => {
+  await readyGraph(page, "/graph");
   const labels = () => page.evaluate(() =>
     (window as Window & { __ZIP_TEST_GRAPH_LABELS__?: () => number }).__ZIP_TEST_GRAPH_LABELS__!());
   await expect.poll(labels).toBeGreaterThan(0);
   const featuredCount = await labels();
   expect(featuredCount).toBeLessThanOrEqual(12);
-  const toggle = surface.getByRole("checkbox", { name: "Show labels" });
-  await toggle.uncheck();
-  await expect.poll(labels).toBe(0);
-  await toggle.check();
-  await expect.poll(labels).toBeGreaterThan(0);
-  const beforeFocus = await labels();
-  await surface.getByRole("textbox", { name: "Search" }).fill("ZIP 2008");
-  await surface.getByRole("button", { name: "Focus" }).click();
-  await expect.poll(labels).toBeGreaterThan(beforeFocus);
+  const point = await page.evaluate(() => {
+    const observe = (window as Window & {
+      __ZIP_TEST_GRAPH_NODE_POINT__?: (id: number) => { x: number; y: number } | null;
+    }).__ZIP_TEST_GRAPH_NODE_POINT__;
+    if (!observe) throw new Error("Graph node position observer is unavailable");
+    return observe(32);
+  });
+  expect(point).not.toBeNull();
+  await page.mouse.move(point!.x, point!.y);
   await expect.poll(labels).toBeLessThanOrEqual(13);
 });
 
@@ -363,18 +353,5 @@ test("touch help and status legend stay usable on mobile", async ({ page, browse
   });
   expect(layout.scrollWidth).toBeGreaterThan(layout.clientWidth);
   expect(layout.topRange).toBeLessThanOrEqual(1);
-  await context.close();
-});
-
-test("touch: first tap selects a node, the details panel links to the reader", async ({ browser }) => {
-  const context = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
-  const page = await context.newPage();
-  const { surface } = await readyGraph(page, "/graph");
-  await surface.getByRole("textbox", { name: "Search" }).fill("ZIP 32");
-  await surface.getByRole("button", { name: "Focus" }).click();
-  const details = surface.getByTestId("graph-node-details");
-  await expect(details).toContainText("ZIP 32:");
-  await details.getByRole("link", { name: "Open ZIP 32" }).tap();
-  await expect(page).toHaveURL(/\/zip\/32(?:$|[?#])/);
   await context.close();
 });

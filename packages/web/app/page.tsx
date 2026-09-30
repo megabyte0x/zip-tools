@@ -100,11 +100,6 @@ export default async function HomePage() {
         <div className={styles.heroSearch}>
           <HeaderSearch zips={bodyFreeZips} variant="hero" />
         </div>
-        <nav className={styles.quick} aria-label="Shortcuts">
-          <Link href="/zips">Browse ZIPs</Link>
-          <Link href="/zips?kind=draft">Drafts</Link>
-          <Link href="/graph">Citation graph</Link>
-        </nav>
       </section>
 
       {candidates.length > 0 ? (

@@ -52,7 +52,6 @@ async function expectReadyGraph(page: Page) {
   ).toBe(true);
   const pixels = await canvas.screenshot();
   expect(new Set(pixels).size, "real graph pixels must not be a blank/uniform canvas").toBeGreaterThan(100);
-  await expect(surface.getByText(/\d+ nodes · \d+ citations/)).toBeVisible();
   await expect(surface.getByText("Citation graph is unavailable in this browser.")).toHaveCount(0);
   return surface;
 }
@@ -98,7 +97,8 @@ test("home links to the ZIP directory without mounting its explorer", async ({ p
   await page.goto("/");
 
   await expect(page.getByRole("region", { name: "ZIP explorer" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Browse ZIPs", exact: true })).toHaveAttribute("href", "/zips");
+  await expect(page.getByRole("combobox", { name: "Search ZIPs" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Shortcuts" })).toHaveCount(0);
 });
 
 test("rail metadata separates identity date and status", async ({ page }) => {
@@ -297,7 +297,7 @@ test("reader fidelity, navigation, bookmarks, and explorer history are retained"
   expect(failures).toEqual([]);
 });
 
-test("real 3D graph supports camera, focus, filters, context loss, and retry", async ({ page }) => {
+test("real 3D graph supports camera, filters, context loss, and retry", async ({ page }) => {
   const failures = consoleFailures(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/graph");
@@ -315,15 +315,12 @@ test("real 3D graph supports camera, focus, filters, context loss, and retry", a
   await page.mouse.move(box!.x + box!.width * 0.6, box!.y + box!.height * 0.55, { steps: 8 });
   await page.mouse.up();
 
-  const search = surface.getByRole("textbox", { name: "Search" });
-  await search.fill("no-such-node");
-  await surface.getByRole("button", { name: "Focus" }).click();
-  await expect(surface.getByRole("status")).toContainText("No graph node matches");
-  await search.fill("ZIP 32");
-  await surface.getByRole("button", { name: "Focus" }).click();
-  await expect(surface.getByRole("status")).toContainText("Focused ZIP 32:");
+  await expect(surface.getByRole("textbox", { name: "Search" })).toHaveCount(0);
+  await expect(surface.getByRole("button", { name: "Focus" })).toHaveCount(0);
+  await expect(surface.getByRole("button", { name: "Done exploring" })).toHaveCount(0);
+  await expect(surface.getByRole("checkbox", { name: "Show labels" })).toHaveCount(0);
   await page.getByRole("region", { name: "Citation graph" }).getByRole("combobox").selectOption("nu6.3");
-  await expect(surface.getByText(/\d+ nodes · \d+ citations/)).toBeVisible();
+  await expect(surface).toHaveAttribute("data-state", "ready");
   await surface.locator("canvas").dispatchEvent("webglcontextlost");
   await expect(surface).toHaveAttribute("data-state", "failed");
   await expect(surface).toContainText("Citation graph is unavailable in this browser.");
@@ -332,13 +329,11 @@ test("real 3D graph supports camera, focus, filters, context loss, and retry", a
   expect(failures).toEqual([]);
 });
 
-test("home graph preserves mobile page scroll outside its inactive canvas", async ({ page }) => {
+test("home graph preserves mobile page scroll outside the canvas", async ({ page }) => {
   const failures = consoleFailures(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   const homeSurface = await expectReadyGraph(page);
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Explore graph", exact: true })).toBeVisible();
   await page.evaluate(() => scrollTo(0, 900));
   await page.mouse.move(8, 160);
   const initialY = await page.evaluate(() => scrollY);
@@ -352,16 +347,7 @@ test("mobile home hierarchy has no orphan controls", async ({ page }) => {
   for (const width of [320, 375, 390]) {
     await page.setViewportSize({ width, height: 844 });
     await page.goto("/");
-    const shortcuts = page.getByRole("navigation", { name: "Shortcuts" }).getByRole("link");
-    await expect(shortcuts).toHaveCount(3);
-    const shortcutRects = await shortcuts.evaluateAll((links) =>
-      links.map((link) => {
-        const rect = link.getBoundingClientRect();
-        return { width: rect.width, top: rect.top, left: rect.left };
-      }),
-    );
-    expect(Math.max(...shortcutRects.map((rect) => rect.width)) - Math.min(...shortcutRects.map((rect) => rect.width))).toBeLessThanOrEqual(1);
-    expect(new Set(shortcutRects.map((rect) => `${Math.round(rect.top)}:${Math.round(rect.left)}`)).size).toBe(3);
+    await expect(page.getByRole("navigation", { name: "Shortcuts" })).toHaveCount(0);
 
     const daily = page.getByRole("region", { name: "ZIP of the day" });
     const dailyLayout = await daily.evaluate((section) => {
