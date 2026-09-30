@@ -101,6 +101,59 @@ test("home links to the ZIP directory without mounting its explorer", async ({ p
   await expect(page.getByRole("link", { name: "Browse ZIPs", exact: true })).toHaveAttribute("href", "/zips");
 });
 
+test("rail metadata separates identity date and status", async ({ page }) => {
+  const draftIdentity = "Draft arya-jvff-p2p-quic-transport";
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+
+    const newest = page.getByRole("region", { name: "Newest proposals" });
+    const draft = newest.getByRole("link", { name: new RegExp(draftIdentity) });
+    await expect(draft).toBeVisible();
+    const identity = draft.locator('[class*="identity"]');
+    const date = draft.locator("time");
+    await expect(identity).toBeVisible();
+    await expect(date).toBeVisible();
+    const [identityBox, dateBox] = await Promise.all([identity.boundingBox(), date.boundingBox()]);
+    expect(identityBox).not.toBeNull();
+    expect(dateBox).not.toBeNull();
+    if (Math.abs(identityBox!.y - dateBox!.y) < 1) {
+      expect(dateBox!.x - (identityBox!.x + identityBox!.width)).toBeGreaterThan(0);
+    } else {
+      expect(dateBox!.y).toBeGreaterThan(identityBox!.y);
+    }
+
+    const status = draft.locator('[class*="StatusPill_pill"]');
+    await expect(status).toContainText(/Active|Draft|Final|Withdrawn|Reserved|Proposed/);
+  }
+
+  const noDateRail = page.getByRole("region", { name: "Most viewed (7 days)" });
+  if (await noDateRail.count()) await expect(noDateRail.locator("time")).toHaveCount(0);
+});
+
+test("upgrade preview status is visible", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  const upgrades = page.getByRole("region", { name: "Network upgrades" });
+  const title = upgrades.getByRole("link", { name: /Withdrawn Version 6 Transaction Format/ });
+  const row = title.locator("xpath=ancestor::li[1]");
+  const card = title.locator("xpath=ancestor::li[2]");
+  const number = row.locator('[class*="upgradeNumber"]');
+  const pill = row.locator('[class*="StatusPill_pill"]');
+
+  await expect(title).toBeVisible();
+  await expect(number).toHaveText("230");
+  await expect(pill).toContainText("Withdrawn");
+  for (const element of [number, title, pill]) {
+    const [elementBox, cardBox] = await Promise.all([element.boundingBox(), card.boundingBox()]);
+    expect(elementBox).not.toBeNull();
+    expect(cardBox).not.toBeNull();
+    expect(elementBox!.x).toBeGreaterThanOrEqual(cardBox!.x);
+    expect(elementBox!.x + elementBox!.width).toBeLessThanOrEqual(cardBox!.x + cardBox!.width);
+  }
+});
+
 test("required production routes render without console failures or document overflow", async ({ page }) => {
   const failures = consoleFailures(page);
   for (const route of requiredRoutes) {
@@ -224,6 +277,42 @@ test("home graph preserves mobile page scroll outside its inactive canvas", asyn
   await expect.poll(() => page.evaluate(() => scrollY)).toBeLessThan(initialY);
   await expect(homeSurface).toHaveAttribute("data-state", "ready");
   expect(failures).toEqual([]);
+});
+
+test("mobile home hierarchy has no orphan controls", async ({ page }) => {
+  for (const width of [320, 375, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/");
+    const shortcuts = page.getByRole("navigation", { name: "Shortcuts" }).getByRole("link");
+    await expect(shortcuts).toHaveCount(3);
+    const shortcutRects = await shortcuts.evaluateAll((links) =>
+      links.map((link) => {
+        const rect = link.getBoundingClientRect();
+        return { width: rect.width, top: rect.top, left: rect.left };
+      }),
+    );
+    expect(Math.max(...shortcutRects.map((rect) => rect.width)) - Math.min(...shortcutRects.map((rect) => rect.width))).toBeLessThanOrEqual(1);
+    expect(new Set(shortcutRects.map((rect) => `${Math.round(rect.top)}:${Math.round(rect.left)}`)).size).toBe(3);
+
+    const daily = page.getByRole("region", { name: "ZIP of the day" });
+    const dailyLayout = await daily.evaluate((section) => {
+      const description = section.querySelector("p")!.getBoundingClientRect();
+      const button = section.querySelector("button")!.getBoundingClientRect();
+      return { descriptionBottom: description.bottom, buttonTop: button.top };
+    });
+    expect(dailyLayout.buttonTop).toBeGreaterThanOrEqual(dailyLayout.descriptionBottom);
+
+    await expectReadyGraph(page);
+    const homeCanvas = await page.getByTestId("graph-surface").locator("[class*='preview']").boundingBox();
+    expect(homeCanvas).not.toBeNull();
+    await expect(page.getByRole("link", { name: "Full graph" })).toBeVisible();
+
+    await page.goto("/graph");
+    await expectReadyGraph(page);
+    const fullCanvas = await page.getByTestId("graph-surface").locator("[class*='full']").boundingBox();
+    expect(fullCanvas).not.toBeNull();
+    expect(homeCanvas!.height).toBeLessThan(fullCanvas!.height);
+  }
 });
 
 test("keyboard flow, contrast, effective 200 percent zoom, and contained overflow meet acceptance", async ({ page }) => {

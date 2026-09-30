@@ -143,6 +143,18 @@ test("expanded graph camera controls change pixels and reset", async ({ page }) 
   expect(rotated.equals(reset)).toBe(false);
 });
 
+test("overview camera can fit core and all", async ({ page }) => {
+  const { surface } = await readyGraph(page, "/graph");
+  await expect(surface).toHaveAttribute("data-camera-action", "overview");
+  await surface.getByRole("button", { name: "Zoom in" }).click();
+  await surface.getByRole("button", { name: "Fit graph" }).click();
+  await expect(surface).toHaveAttribute("data-camera-action", "overview");
+  await surface.getByRole("button", { name: "Reset" }).click();
+  await expect(surface).toHaveAttribute("data-camera-action", "reset");
+  await page.getByRole("region", { name: "Citation graph" }).getByRole("combobox").selectOption("nu6.3");
+  await expect(surface).toHaveAttribute("data-camera-action", "overview");
+});
+
 test("development observer tracks the actual camera through zoom and reset", async ({ page }) => {
   test.skip(!expectDevelopmentObservers, "camera observer is intentionally absent from production builds");
   const { surface } = await readyGraph(page, "/graph");
@@ -229,35 +241,18 @@ test("focused assigned node can be clicked on the real canvas", async ({ page })
   const rendered = await canvas.screenshot();
   const classes = await classifyRenderedPixels(page, rendered);
   expect(classes.nodePixels, JSON.stringify(classes)).toBeGreaterThan(100);
-  const [box, point] = await Promise.all([
-    canvas.boundingBox(),
-    page.evaluate(async (png) => {
-      const image = new Image();
-      image.src = `data:image/png;base64,${png}`;
-      await image.decode();
-      const copy = document.createElement("canvas");
-      copy.width = image.naturalWidth;
-      copy.height = image.naturalHeight;
-      const context = copy.getContext("2d", { willReadFrequently: true });
-      context!.drawImage(image, 0, 0);
-      const pixels = context!.getImageData(0, 0, copy.width, copy.height).data;
-      let best = { x: copy.width / 2, y: copy.height / 2, score: -1 };
-      for (let y = Math.floor(copy.height * 0.2); y < copy.height * 0.8; y += 1) {
-        for (let x = Math.floor(copy.width * 0.2); x < copy.width * 0.8; x += 1) {
-          const index = (y * copy.width + x) * 4;
-          const score = pixels[index] + pixels[index + 1] + pixels[index + 2];
-          if (score > best.score) best = { x, y, score };
-        }
-      }
-      return best;
-    }, rendered.toString("base64")),
-  ]);
-  expect(point.score, JSON.stringify(point)).toBeGreaterThan(150);
-  await page.mouse.move(box!.x + point.x, box!.y + point.y);
-  await page.waitForTimeout(250);
-  await page.mouse.down();
-  await page.mouse.up();
-  await expect(page).toHaveURL(/\/zip\/\d+(?:$|[?#])/);
+  const point = await page.evaluate(() => {
+    const observe = (window as Window & {
+      __ZIP_TEST_GRAPH_NODE_POINT__?: (id: number) => { x: number; y: number } | null;
+    }).__ZIP_TEST_GRAPH_NODE_POINT__;
+    if (!observe) throw new Error("Graph node position observer is unavailable");
+    return observe(32);
+  });
+  expect(point).not.toBeNull();
+  await page.mouse.move(point!.x, point!.y);
+  await expect(surface.getByTestId("graph-node-details")).toContainText("ZIP 32:");
+  await page.mouse.click(point!.x, point!.y);
+  await expect(page).toHaveURL(/\/zip\/32(?:$|[?#])/);
 });
 
 test("development scene observer finds actual visible citation-link objects", async ({ page }) => {
@@ -322,15 +317,53 @@ test("node number labels render and the toggle removes them", async ({ page }) =
   expect(classes.nodePixels, "nodes must still render without labels").toBeGreaterThan(100);
 });
 
-test("development observer counts one visible label per node", async ({ page }) => {
-  test.skip(!expectDevelopmentObservers, "development-only scene observer");
+test("featured labels are capped and focused labels are restored", async ({ page }) => {
   const { surface } = await readyGraph(page, "/graph");
-  const nodeCount = Number((await surface.getByText(/\d+ nodes ·/).textContent())!.match(/\d+/)![0]);
   const labels = () => page.evaluate(() =>
     (window as Window & { __ZIP_TEST_GRAPH_LABELS__?: () => number }).__ZIP_TEST_GRAPH_LABELS__!());
-  await expect.poll(labels).toBe(nodeCount);
-  await surface.getByRole("checkbox", { name: "Show labels" }).uncheck();
+  await expect.poll(labels).toBeGreaterThan(0);
+  const featuredCount = await labels();
+  expect(featuredCount).toBeLessThanOrEqual(12);
+  const toggle = surface.getByRole("checkbox", { name: "Show labels" });
+  await toggle.uncheck();
   await expect.poll(labels).toBe(0);
+  await toggle.check();
+  await expect.poll(labels).toBeGreaterThan(0);
+  const beforeFocus = await labels();
+  await surface.getByRole("textbox", { name: "Search" }).fill("ZIP 2008");
+  await surface.getByRole("button", { name: "Focus" }).click();
+  await expect.poll(labels).toBeGreaterThan(beforeFocus);
+  await expect.poll(labels).toBeLessThanOrEqual(13);
+});
+
+test("touch help and status legend stay usable on mobile", async ({ page, browser }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/graph");
+  await readyGraph(page, "/graph");
+  const fineHelp = await page.locator('[class*="help"]').innerText();
+
+  const context = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+  const touchPage = await context.newPage();
+  await touchPage.goto("/graph");
+  const touchSurface = touchPage.getByTestId("graph-surface");
+  await expect(touchSurface).toHaveAttribute("data-state", "ready", { timeout: 15_000 });
+  const touchHelp = await touchPage.locator('[class*="help"]').innerText();
+  expect(touchHelp).not.toEqual(fineHelp);
+  expect(touchHelp).toMatch(/tap|touch|controls/i);
+  expect(touchHelp).not.toMatch(/right-drag/i);
+
+  const legend = touchPage.getByRole("list", { name: "Status colours" });
+  const layout = await legend.evaluate((element) => {
+    const items = [...element.children].map((item) => item.getBoundingClientRect());
+    return {
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+      topRange: Math.max(...items.map((item) => item.top)) - Math.min(...items.map((item) => item.top)),
+    };
+  });
+  expect(layout.scrollWidth).toBeGreaterThan(layout.clientWidth);
+  expect(layout.topRange).toBeLessThanOrEqual(1);
+  await context.close();
 });
 
 test("touch: first tap selects a node, the details panel links to the reader", async ({ browser }) => {

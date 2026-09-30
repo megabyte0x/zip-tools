@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { GRAPH_HELP, GRAPH_UNAVAILABLE, graphRecords } from "./graphFallback.ts";
+import { GRAPH_HELP, GRAPH_TOUCH_HELP, GRAPH_UNAVAILABLE, graphRecords } from "./graphFallback.ts";
 import { makeZip } from "./test-zip.ts";
 
 test("graphRecords builds assigned and true dangling citation edges", () => {
@@ -41,6 +41,12 @@ test("graphRecords returns an empty graph for empty filtered membership", () => 
 test("graph copy constants match spec", () => {
   assert.equal(GRAPH_HELP, "Drag to rotate, scroll to zoom, right-drag to pan. Click a node to open it.");
   assert.equal(GRAPH_UNAVAILABLE, "Citation graph is unavailable in this browser.");
+});
+
+test("touch graph help uses supported controls", () => {
+  assert.notEqual(GRAPH_TOUCH_HELP, GRAPH_HELP);
+  assert.match(GRAPH_TOUCH_HELP, /tap|touch|controls/i);
+  assert.doesNotMatch(GRAPH_TOUCH_HELP, /right-drag/i);
 });
 
 test("graphRecords counts cites and cited-by from emitted links only", () => {

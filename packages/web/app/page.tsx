@@ -11,6 +11,7 @@ import { handleTrendingGet, type ViewsEnv } from "../lib/views";
 import { zipHref } from "../lib/zipHref";
 import { zipOfTheDay, slimZipOfTheDay } from "../lib/zipOfTheDay";
 import styles from "./page.module.css";
+import { StatusPills } from "../components/StatusPill";
 
 export const dynamic = "force-dynamic";
 
@@ -53,10 +54,13 @@ function UpgradeCard({ nu, byNumber }: { nu: NuEntry; byNumber: Map<number, ZipR
       <ul className={styles.upgradeZips}>
         {preview.map((zip) => (
           <li key={zip.id}>
-            <Link href={zipHref(zip)}>
-              <span className={styles.upgradeNumber}>{zip.number}</span>
-              {zip.title}
-            </Link>
+            <div className={styles.upgradeZipRow}>
+              <Link className={styles.upgradeZipLink} href={zipHref(zip)}>
+                <span className={styles.upgradeNumber}>{zip.number}</span>
+                <span className={styles.upgradeZipTitle}>{zip.title}</span>
+              </Link>
+              <StatusPills labels={zip.status.map((entry) => entry.label)} />
+            </div>
           </li>
         ))}
       </ul>
