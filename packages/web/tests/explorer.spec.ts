@@ -516,16 +516,28 @@ test("long draft identity stays inside mobile card", async ({ page }) => {
   const widths = [320, 375, 390];
   await page.setViewportSize({ width: widths[0]!, height: 844 });
   await page.goto("/zips?kind=draft");
-  const draftLinks = page.locator("tbody td:first-child a");
-  const longestId = await draftLinks.evaluateAll((links) =>
-    links
-      .map((link) => link.textContent?.replace(/^Draft\s*/, "").trim() ?? "")
-      .sort((a, b) => b.length - a.length)[0],
-  );
+  const range = await page.getByText(/^\d+–\d+ of \d+$/).textContent();
+  const total = Number(range?.match(/of (\d+)/)?.[1]);
+  const pageCount = Math.ceil(total / 25);
+  let longestId = "";
+  let longestPage = 1;
+  for (let currentPage = 1; currentPage <= pageCount; currentPage += 1) {
+    if (currentPage > 1) await page.goto(`/zips?kind=draft&page=${currentPage}`);
+    const candidate = await page.locator("tbody td:first-child a").evaluateAll((links) =>
+      links
+        .map((link) => link.textContent?.replace(/^Draft\s*/, "").trim() ?? "")
+        .sort((a, b) => b.length - a.length)[0] ?? "",
+    );
+    if (candidate.length > longestId.length) {
+      longestId = candidate;
+      longestPage = currentPage;
+    }
+  }
   expect(longestId).toBeTruthy();
 
   for (const width of widths) {
     await page.setViewportSize({ width, height: 844 });
+    await page.goto(`/zips?kind=draft${longestPage > 1 ? `&page=${longestPage}` : ""}`);
     const link = page.locator("tbody td:first-child a").filter({ hasText: longestId! });
     const card = link.locator("xpath=ancestor::tr");
     await expect(link).toBeVisible();
