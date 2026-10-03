@@ -30,3 +30,44 @@ test("bracketed revision statuses normalize", () => {
   );
   assert.equal(parseStatus("Proposed for NU6.3")[0]?.label, "Proposed");
 });
+
+const KNOWN_LABELS = new Set([
+  "Draft",
+  "Proposed",
+  "Active",
+  "Final",
+  "Withdrawn",
+  "Rejected",
+  "Obsolete",
+  "Reserved",
+]);
+
+test("commas inside revision brackets do not split ZIP 207 and ZIP 214 statuses", () => {
+  const zip207 = parseStatus(
+    "[Revision 0: Canopy, Revision 1: NU6] Final, [Revision 2: NU7] Draft",
+  );
+  const zip214 = parseStatus(
+    "[Revision 0: Canopy, Revision 1: NU6] Final, [Revision 2: NU6.1] Proposed, [Revision 3: NU7] Draft",
+  );
+
+  assert.deepEqual(zip207, [
+    { label: "Final", revision: "0" },
+    { label: "Final", revision: "1", nuHint: "NU6" },
+    { label: "Draft", revision: "2", nuHint: "NU7" },
+  ]);
+  assert.deepEqual(zip214, [
+    { label: "Final", revision: "0" },
+    { label: "Final", revision: "1", nuHint: "NU6" },
+    { label: "Proposed", revision: "2", nuHint: "NU6.1" },
+    { label: "Draft", revision: "3", nuHint: "NU7" },
+  ]);
+
+  for (const entries of [zip207, zip214]) {
+    for (const entry of entries) {
+      assert.ok(KNOWN_LABELS.has(entry.label), entry.label);
+      assert.match(entry.revision ?? "", /^\d+$/);
+      assert.equal(entry.nuHint?.includes("[") ?? false, false);
+      assert.equal(entry.nuHint?.includes("]") ?? false, false);
+    }
+  }
+});

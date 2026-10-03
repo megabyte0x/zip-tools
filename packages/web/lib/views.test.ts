@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import {
   handleScheduledRollup,
   handleTrendingGet,
@@ -106,7 +107,11 @@ function fakeEnv(nowMs: number) {
                   if (/INSERT INTO view_daily/i.test(sql)) {
                     const [zip_id, day, count] = args as [string, string, number];
                     const key = `${zip_id}|${day}`;
-                    if (/count\s*=\s*(?:view_daily\.)?count\s*\+\s*1/i.test(sql)) {
+                    if (/count\s*=\s*(?:view_daily\.)?count\s*\+\s*excluded\.count/i.test(sql)) {
+                      const existing = daily.get(key);
+                      const add = typeof count === "number" ? count : 0;
+                      daily.set(key, { zip_id, day, count: (existing?.count ?? 0) + add });
+                    } else if (/count\s*=\s*(?:view_daily\.)?count\s*\+\s*1/i.test(sql)) {
                       const existing = daily.get(key);
                       daily.set(key, { zip_id, day, count: (existing?.count ?? 0) + 1 });
                     } else {
@@ -204,6 +209,105 @@ test("handleViewsPost increments daily count when Analytics Engine is absent", a
   assert.equal(res.status, 204);
   assert.equal(fake.daily.get("32|2026-09-18")?.count, 1);
   assert.equal(fake.writes.length, 0);
+});
+
+test("handleViewsPost does not store an id that is not in the corpus", async () => {
+  const nowMs = Date.parse("2026-09-18T12:00:00Z");
+  const fake = fakeEnv(nowMs);
+  const unknown = await handleViewsPost(viewsRequest({ id: "not-a-zip" }), fake.env, nowMs);
+  assert.equal(unknown.status, 400);
+  assert.equal(fake.writes.length, 0);
+  assert.equal(fake.daily.size, 0);
+  assert.equal(fake.statements.length, 0);
+
+  const known = await handleViewsPost(viewsRequest({ id: "32" }), fake.env, nowMs);
+  assert.equal(known.status, 204);
+  assert.equal(fake.daily.get("32|2026-09-18")?.count, 1);
+
+  const repeat = await handleViewsPost(viewsRequest({ id: "32" }), fake.env, nowMs + 1000);
+  assert.equal(repeat.status, 204);
+  assert.equal(fake.daily.get("32|2026-09-18")?.count, 1);
+});
+
+function sqliteViewsDb() {
+  const database = new DatabaseSync(":memory:");
+  database.exec(`
+    CREATE TABLE view_daily (
+      zip_id TEXT NOT NULL,
+      day TEXT NOT NULL,
+      count INTEGER NOT NULL,
+      PRIMARY KEY (zip_id, day)
+    )
+  `);
+  const DB = {
+    prepare(sql: string) {
+      const statement = database.prepare(sql);
+      return {
+        bind(...args: unknown[]) {
+          return {
+            async run() {
+              statement.run(...(args as Array<string | number | null>));
+              return { success: true };
+            },
+            async all() {
+              return { results: statement.all(...(args as Array<string | number>)) };
+            },
+          };
+        },
+        async all() {
+          return { results: statement.all() };
+        },
+      };
+    },
+  };
+  return { database, DB };
+}
+
+test("handleViewsPost records a known id through sqlite, which rejects an extra bind", async () => {
+  const nowMs = Date.parse("2026-09-18T12:00:00Z");
+  const { database, DB } = sqliteViewsDb();
+  const env = { KV: fakeKv(nowMs), DB };
+  const countOf = (id: string, day: string) => {
+    const row = database
+      .prepare("SELECT count FROM view_daily WHERE zip_id = ? AND day = ?")
+      .get(id, day) as { count: number } | undefined;
+    return row?.count ?? 0;
+  };
+  assert.throws(
+    () => database.prepare(
+      "INSERT INTO view_daily (zip_id, day, count) VALUES (?, ?, 1)",
+    ).run("32", "2026-09-18", 1),
+    /column index out of range/,
+  );
+
+  try {
+    const unknown = await handleViewsPost(viewsRequest({ id: "not-a-zip" }), env, nowMs);
+    assert.equal(unknown.status, 400);
+    assert.equal(countOf("not-a-zip", "2026-09-18"), 0);
+
+    const known = await handleViewsPost(viewsRequest({ id: "32" }), env, nowMs);
+    assert.equal(known.status, 204);
+    assert.equal(countOf("32", "2026-09-18"), 1);
+
+    const repeat = await handleViewsPost(viewsRequest({ id: "32" }), env, nowMs + 1000);
+    assert.equal(repeat.status, 204);
+    assert.equal(countOf("32", "2026-09-18"), 1);
+  } finally {
+    database.close();
+  }
+});
+
+test("handleScheduledRollup adds to a stored daily count and ignores an empty batch", async () => {
+  const fake = fakeEnv(0);
+  fake.daily.set("32|2026-09-18", { zip_id: "32", day: "2026-09-18", count: 5 });
+  await handleScheduledRollup(fake.env, []);
+  assert.equal(fake.daily.get("32|2026-09-18")?.count, 5);
+
+  await handleScheduledRollup(fake.env, [
+    { zipId: "32", day: "2026-09-18" },
+    { zipId: "32", day: "2026-09-18" },
+  ]);
+  assert.equal(fake.daily.get("32|2026-09-18")?.count, 7);
 });
 
 test("handleScheduledRollup upserts grouped counts into D1", async () => {

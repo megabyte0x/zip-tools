@@ -32,9 +32,11 @@ const MATHML_TAGS = [
 const sanitizeSchema = {
   ...defaultSchema,
   clobberPrefix: "",
-  tagNames: [...(defaultSchema.tagNames ?? []), ...MATHML_TAGS],
+  strip: [...(defaultSchema.strip ?? []), "style"],
+  tagNames: [...(defaultSchema.tagNames ?? []), "nav", ...MATHML_TAGS],
   attributes: {
     ...defaultSchema.attributes,
+    "*": [...(defaultSchema.attributes?.["*"] ?? []), ["role", "navigation"]],
     code: [
       ...(defaultSchema.attributes?.code ?? []),
       ["className", /^language-[\w-]+$/],
@@ -140,6 +142,17 @@ async function htmlTree(html: string): Promise<HastNode> {
 
 async function sanitize(tree: HastNode): Promise<HastNode> {
   return await unified().use(rehypeSanitize, sanitizeSchema as never).run(tree as never) as HastNode;
+}
+
+/** Same schema as prepareReader, for the synchronous HTML branch that has no prepared document. */
+export function sanitizeReaderHtml(html: string): string {
+  return String(
+    unified()
+      .use(rehypeParse, { fragment: true })
+      .use(rehypeSanitize, sanitizeSchema as never)
+      .use(rehypeStringify)
+      .processSync(html),
+  );
 }
 
 function textContent(node: HastNode): string {

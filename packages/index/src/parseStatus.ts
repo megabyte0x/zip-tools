@@ -10,8 +10,38 @@ const PLAIN_REVISION_RE =
 const STATUS_RE = new RegExp(`\\b(${KNOWN_LABEL})\\b`, "i");
 
 export function parseStatus(raw: string): StatusEntry[] {
-  const chunks = raw.split(/,\s*(?=\[?Revision\b)/i);
-  return chunks.map(parseChunk);
+  return splitOutsideBrackets(raw).flatMap(expandBracketGroup);
+}
+
+/** Commas inside `[...]` belong to one revision group, not to the next status. */
+function splitOutsideBrackets(raw: string): string[] {
+  const chunks: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    if (ch === "[") depth++;
+    else if (ch === "]" && depth > 0) depth--;
+    else if (ch === "," && depth === 0 && /^\s*\[?Revision\b/i.test(raw.slice(i + 1))) {
+      chunks.push(raw.slice(start, i));
+      start = i + 1;
+    }
+  }
+  chunks.push(raw.slice(start));
+  return chunks;
+}
+
+function expandBracketGroup(chunk: string): StatusEntry[] {
+  const trimmed = chunk.trim();
+  const group = trimmed.match(/^\[(?<inside>[^\]]+)\]\s*(?<status>.*)$/);
+  const inside = group?.groups?.inside;
+  if (!inside || !/,\s*Revision\b/i.test(inside)) return [parseChunk(trimmed)];
+
+  const status = group?.groups?.status?.trim() ?? "";
+  return inside.split(/,\s*(?=Revision\b)/i).map((part) => {
+    const wrapped = `[${part.trim()}]${status ? ` ${status}` : ""}`;
+    return parseChunk(wrapped);
+  });
 }
 
 function parseChunk(chunk: string): StatusEntry {
@@ -41,8 +71,8 @@ function parseChunk(chunk: string): StatusEntry {
     (plainRevisionMatch?.groups?.details && labelIndex >= 0
       ? statusText.slice(0, labelIndex).replace(/:$/, "").trim()
       : undefined);
-  const proposedNu = statusText.match(/^Proposed\s+for\s+(NU\S+)/i)?.[1];
-  const nuHint = metadata?.match(/\b(NU\S+)/i)?.[1] ?? proposedNu;
+  const proposedNu = statusText.match(/^Proposed\s+for\s+(NU[^\s\]]+)/i)?.[1];
+  const nuHint = metadata?.match(/\b(NU[^\s\]]+)/i)?.[1] ?? proposedNu;
   if (nuHint) entry.nuHint = nuHint;
 
   return entry;

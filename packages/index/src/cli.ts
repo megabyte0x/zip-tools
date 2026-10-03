@@ -15,17 +15,18 @@ function argValue(argv: string[], flag: string): string | undefined {
 }
 
 function buildUsage(): string {
-  return "usage: zip-index build --source <dir> --out <dir> [--snapshots <path>]";
+  return "usage: zip-index build --source <dir> --out <dir> [--snapshots <path>] [--overlay <path>]";
 }
 
 function refreshUsage(): string {
   return "usage: zip-index refresh-issues --source <dir> --snapshots <path>";
 }
 
-function buildInputs(sourceDir: string) {
-  const overlayPath = join(dirname(fileURLToPath(import.meta.url)), "..", "nu.json");
+function buildInputs(sourceDir: string, overlayPath?: string) {
+  const resolvedOverlay =
+    overlayPath ?? join(dirname(fileURLToPath(import.meta.url)), "..", "nu.json");
   return {
-    overlay: JSON.parse(readFileSync(overlayPath, "utf8")) as NuOverlay,
+    overlay: JSON.parse(readFileSync(resolvedOverlay, "utf8")) as NuOverlay,
     meta: readSnapshotMeta(sourceDir),
   };
 }
@@ -51,8 +52,12 @@ async function main(): Promise<void> {
       if (argv.includes("--snapshots") && !snapshotsPath) {
         throw new Error("--snapshots requires a path");
       }
+      const overlayPath = argValue(argv, "--overlay");
+      if (argv.includes("--overlay") && !overlayPath) {
+        throw new Error("--overlay requires a path");
+      }
 
-      const { overlay, meta } = buildInputs(sourceDir);
+      const { overlay, meta } = buildInputs(sourceDir, overlayPath);
       const issueSnapshots = snapshotsPath
         ? readIssueSnapshots(snapshotsPath)
         : { version: 1 as const, issues: {} };
