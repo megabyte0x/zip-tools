@@ -1,3 +1,5 @@
+import { loadIndex } from "./loadIndex";
+
 export type ViewEvent = { zipId: string; day: string };
 
 export type ViewDailyRow = { zip_id: string; day: string; count: number };
@@ -114,6 +116,7 @@ export async function handleViewsPost(
   }
   const id = requestId(body);
   if (id === null) return jsonResponse(400);
+  if (!loadIndex().zips.some((zip) => zip.id === id)) return jsonResponse(400);
   if (!env.KV && !env.VIEWS && !env.DB) return jsonResponse(204);
 
   const ipHash = await hashIp(clientIp(request));
@@ -130,7 +133,7 @@ export async function handleViewsPost(
       await env.DB.prepare(
         "INSERT INTO view_daily (zip_id, day, count) VALUES (?, ?, 1) ON CONFLICT(zip_id, day) DO UPDATE SET count = count + 1",
       )
-        .bind(id, day, 1)
+        .bind(id, day)
         .run();
     }
     if (env.KV) {
@@ -158,7 +161,7 @@ export async function handleScheduledRollup(env: ViewsEnv, events: ViewEvent[]):
   const rows = rollupEvents(events);
   for (const row of rows) {
     await env.DB.prepare(
-      "INSERT INTO view_daily (zip_id, day, count) VALUES (?, ?, ?) ON CONFLICT(zip_id, day) DO UPDATE SET count = excluded.count",
+      "INSERT INTO view_daily (zip_id, day, count) VALUES (?, ?, ?) ON CONFLICT(zip_id, day) DO UPDATE SET count = count + excluded.count",
     )
       .bind(row.zip_id, row.day, row.count)
       .run();

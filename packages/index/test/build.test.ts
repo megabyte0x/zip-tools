@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,7 +17,7 @@ const overlay: NuOverlay = {
       title: "NU6.3",
       kind: "candidate",
       deploymentZip: 229,
-      zips: [229, 9999],
+      zips: [229],
     },
   ],
 };
@@ -76,15 +76,49 @@ test("buildIndex over the fixture tree", () => {
   );
 });
 
+test("buildIndex fails when the overlay names a ZIP that is not in the source", () => {
+  assert.throws(
+    () =>
+      buildIndex({
+        sourceDir: fixturesDir,
+        overlay: {
+          nus: [
+            {
+              id: "nu6.3",
+              title: "NU6.3",
+              kind: "candidate",
+              deploymentZip: 229,
+              zips: [229, 9999],
+            },
+          ],
+        },
+        sha: "abc123",
+        date: "2026-09-18T00:00:00Z",
+      }),
+    /9999/,
+  );
+});
+
 // Catches CLI fixture tests sharing a global output directory or requiring a snapshot cache to exist.
 test("cli build writes parseable zip-index.json", () => {
   const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
   const tempDir = mkdtempSync(join(tmpdir(), "zip-index-out-"));
   const outDir = join(tempDir, "out");
   try {
+    const overlayPath = join(tempDir, "overlay.json");
+    writeFileSync(overlayPath, `${JSON.stringify({ nus: [] })}\n`, "utf8");
     const result = spawnSync(
       "tsx",
-      ["src/cli.ts", "build", "--source", "test/fixtures/zips", "--out", outDir],
+      [
+        "src/cli.ts",
+        "build",
+        "--source",
+        "test/fixtures/zips",
+        "--out",
+        outDir,
+        "--overlay",
+        overlayPath,
+      ],
       { cwd: pkgRoot, encoding: "utf8" },
     );
     assert.equal(result.status, 0, `${result.stderr}${result.stdout}`);

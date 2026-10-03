@@ -4,6 +4,7 @@ import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
+import { sanitizeReaderHtml } from "../lib/prepareReader";
 import { FALLBACK_CTA, readerMode } from "../lib/readerMode";
 import { supportedIssueUrl } from "../lib/readerSource";
 import { rstSourceToMarkdown } from "../lib/rstSource";
@@ -115,7 +116,10 @@ export function ReaderBody({
     const { html } = tocFromHtml(body ?? "");
     return (
       <ReaderContent>
-        <div className={styles.body} dangerouslySetInnerHTML={{ __html: html }} />
+        <div
+          className={styles.body}
+          dangerouslySetInnerHTML={{ __html: sanitizeReaderHtml(html) }}
+        />
       </ReaderContent>
     );
   }

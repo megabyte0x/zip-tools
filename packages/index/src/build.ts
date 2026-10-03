@@ -75,14 +75,15 @@ function recordFromFile(
   const slug = slugFor(header.number, path);
   const id = header.number !== null ? String(header.number) : slug;
   const rendered = renderBody(sourcePath, text);
-  const parseWarnings = [...header.warnings];
-  if (rendered.warning) parseWarnings.push(rendered.warning);
   const ref = parseIssueRef(header.discussionsTo);
   const issue =
     ref && Object.hasOwn(snapshots.issues, ref.url)
       ? snapshots.issues[ref.url]
       : undefined;
-  const selection = hasSubstantiveBody(text)
+  const keepRepositoryBody = hasSubstantiveBody(text);
+  const parseWarnings = [...header.warnings];
+  if (keepRepositoryBody && rendered.warning) parseWarnings.push(rendered.warning);
+  const selection = keepRepositoryBody
     ? { ...rendered, bodySource: { kind: "repository" as const } }
     : issue
       ? {
@@ -163,7 +164,11 @@ export function buildIndex(opts: BuildIndexOpts): ZipIndexFile {
   const raw = files.map((f) =>
     recordFromFile(f, opts.sourceDir, opts.sha, snapshots),
   );
-  const { zips } = applyOverlay(raw, opts.overlay);
+  const { zips, missing } = applyOverlay(raw, opts.overlay);
+  if (missing.length > 0) {
+    const numbers = missing.map((item) => item.number).join(", ");
+    throw new Error(`overlay names ZIP numbers that are not in the source: ${numbers}`);
+  }
   const dangling = invertCitations(zips);
 
   zips.sort((a, b) => {

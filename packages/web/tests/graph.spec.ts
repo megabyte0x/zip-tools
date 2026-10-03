@@ -343,15 +343,24 @@ test("touch help and status legend stay usable on mobile", async ({ page, browse
   expect(touchHelp).not.toMatch(/right-drag/i);
 
   const legend = touchPage.getByRole("list", { name: "Status colours" });
-  const layout = await legend.evaluate((element) => {
-    const items = [...element.children].map((item) => item.getBoundingClientRect());
-    return {
-      clientWidth: element.clientWidth,
-      scrollWidth: element.scrollWidth,
-      topRange: Math.max(...items.map((item) => item.top)) - Math.min(...items.map((item) => item.top)),
-    };
-  });
-  expect(layout.scrollWidth).toBeGreaterThan(layout.clientWidth);
-  expect(layout.topRange).toBeLessThanOrEqual(1);
+  const labels = ["Draft", "Proposed", "Active", "Final", "Withdrawn", "Rejected", "Obsolete", "Reserved"];
+  const visible = await legend.evaluate((element, expected) => {
+    const box = element.getBoundingClientRect();
+    return expected.map((label) => {
+      const item = [...element.querySelectorAll("li")].find((node) => node.textContent?.trim() === label);
+      if (!item) return { label, inside: false };
+      const rect = item.getBoundingClientRect();
+      const inside = rect.width > 0
+        && rect.height > 0
+        && rect.top >= box.top - 1
+        && rect.bottom <= box.bottom + 1
+        && rect.left >= box.left - 1
+        && rect.right <= box.right + 1;
+      return { label, inside };
+    });
+  }, labels);
+  for (const item of visible) {
+    expect(item.inside, item.label).toBe(true);
+  }
   await context.close();
 });

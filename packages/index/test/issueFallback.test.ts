@@ -75,21 +75,30 @@ function withCopiedFixture<T>(run: (sourceDir: string) => T): T {
   }
 }
 
-function runCli(sourceDir: string, outDir: string, snapshotsPath: string) {
-  return spawnSync(
-    "tsx",
-    [
-      "src/cli.ts",
-      "build",
-      "--source",
-      sourceDir,
-      "--out",
-      outDir,
-      "--snapshots",
-      snapshotsPath,
-    ],
-    { cwd: packageRoot, encoding: "utf8" },
-  );
+function runCli(
+  sourceDir: string,
+  outDir: string,
+  snapshotsPath: string,
+  overlayPath?: string,
+) {
+  const args = [
+    "src/cli.ts",
+    "build",
+    "--source",
+    sourceDir,
+    "--out",
+    outDir,
+    "--snapshots",
+    snapshotsPath,
+  ];
+  if (overlayPath) args.push("--overlay", overlayPath);
+  return spawnSync("tsx", args, { cwd: packageRoot, encoding: "utf8" });
+}
+
+function writeEmptyOverlay(dir: string): string {
+  const overlayPath = join(dir, "overlay.json");
+  writeFileSync(overlayPath, `${JSON.stringify({ nus: [] })}\n`, "utf8");
+  return overlayPath;
 }
 
 type ImportedBinding = {
@@ -507,6 +516,36 @@ test("RST source with a converter failure remains source-backed", () => {
   });
 });
 
+// Catches a failed RST conversion warning sticking to a body that was replaced by a saved issue.
+test("issue-backed body does not keep an unused pandoc warning", () => {
+  const sourceDir = mkdtempSync(join(tmpdir(), "zip-index-issue-warning-"));
+  const fakeBin = join(sourceDir, "fake-bin");
+  mkdirSync(fakeBin);
+  const fakePandoc = join(fakeBin, "pandoc");
+  writeFileSync(fakePandoc, "#!/bin/sh\ncat >/dev/null\nexit 12\n", "utf8");
+  chmodSync(fakePandoc, 0o755);
+  writeFileSync(
+    join(sourceDir, "zip-0240.rst"),
+    `::\n\n  ZIP: 240\n  Title: Header only\n  Status: Reserved\n  Category: Consensus\n  Discussions-To: <${issueUrl}>\n`,
+    "utf8",
+  );
+  const originalPath = process.env.PATH;
+  try {
+    process.env.PATH = `${fakeBin}${delimiter}${originalPath ?? ""}`;
+    const zip = record(
+      buildIndex({ ...fixtureOpts(sourceDir), issueSnapshots: snapshots() }),
+      "240",
+    );
+    assert.equal(zip.body, syntheticIssue().body);
+    assert.equal(zip.bodySource?.kind, "github-issue");
+    assert.equal(zip.parseWarnings.some((warning) => /pandoc/i.test(warning)), false);
+  } finally {
+    if (originalPath === undefined) delete process.env.PATH;
+    else process.env.PATH = originalPath;
+    rmSync(sourceDir, { recursive: true, force: true });
+  }
+});
+
 // Catches the build boundary skipping validation or validating only after attempting to scan source files.
 test("buildIndex validates supplied snapshots at entry", () => {
   assert.throws(
@@ -527,7 +566,7 @@ test("CLI build selects a saved snapshot body", () => {
     const outDir = join(tempDir, "out");
     writeFileSync(snapshotPath, `${JSON.stringify(snapshots(), null, 2)}\n`, "utf8");
 
-    const result = runCli(fixtureDir, outDir, snapshotPath);
+    const result = runCli(fixtureDir, outDir, snapshotPath, writeEmptyOverlay(tempDir));
     assert.equal(result.status, 0, `${result.stderr}${result.stdout}`);
     const output = JSON.parse(readFileSync(join(outDir, "zip-index.json"), "utf8"));
     assert.equal(output.zips[0].body, syntheticIssue().body);
@@ -542,7 +581,12 @@ test("CLI build succeeds when the optional snapshot file is missing", () => {
   const tempDir = mkdtempSync(join(tmpdir(), "zip-index-cli-missing-snapshot-"));
   try {
     const outDir = join(tempDir, "out");
-    const result = runCli(fixtureDir, outDir, join(tempDir, "missing.json"));
+    const result = runCli(
+      fixtureDir,
+      outDir,
+      join(tempDir, "missing.json"),
+      writeEmptyOverlay(tempDir),
+    );
     assert.equal(result.status, 0, `${result.stderr}${result.stdout}`);
     assert.equal(existsSync(join(outDir, "zip-index.json")), true);
     const output = JSON.parse(readFileSync(join(outDir, "zip-index.json"), "utf8"));
