@@ -7,7 +7,7 @@
       "title": "[ZIP 270]: Key Rotation for Tracked Signing Keys",
       "body": "As required in the Community & Coinholder ZIP, we need a mechanism to rotate the Key-Holder Organizations'  disbursement authorization key for the Coinholder-Controlled Fund. This key will initially be hard-coded into the consensus rules, and there needs to be some transaction-based mechanism to rotate it.\n\nIt would also be beneficial for this mechanism to support future rotation of ZSA Issuer keys (which are also \"hard-coded\" into consensus by the first transaction containing an issuance bundle authorized by an `ik`).",
       "updatedAt": "2026-04-01T00:48:08Z",
-      "fetchedAt": "2026-10-03T15:19:24.916Z",
+      "fetchedAt": "2026-10-03T20:19:00.385Z",
       "contentHash": "3da2351127bc6a70f364a766cced833c71aa09eeab4a7b81b8e967aea6d4045a"
     },
     "https://github.com/zcash/zips/issues/1060": {
@@ -16,7 +16,7 @@
       "title": "[ZIP TBD] - Zcash Secure Multisig Setup",
       "body": "This will define a slightly modified version of https://github.com/bitcoin/bips/blob/master/bip-0129.mediawiki for use within Zcash, in order to permit the use of Zcash address encodings in the modified BSMS format.",
       "updatedAt": "2025-08-05T20:03:57Z",
-      "fetchedAt": "2026-10-03T15:19:23.961Z",
+      "fetchedAt": "2026-10-03T20:18:59.195Z",
       "contentHash": "ecbc2e62c3c4998ae2ebc83c5b807e2deb0d8667c0a17b538371f0f3d7ee8ead"
     },
     "https://github.com/zcash/zips/issues/1137": {
@@ -25,7 +25,7 @@
       "title": "[ZIP 217] Use aggregate multisignatures within a transaction",
       "body": "The signatures used in a transaction can be combined into an aggregate multisignature, along the lines of https://eprint.iacr.org/2018/068 . This works for Sapling spend authorization and binding signatures.",
       "updatedAt": "2026-03-24T12:32:10Z",
-      "fetchedAt": "2026-10-03T15:19:24.168Z",
+      "fetchedAt": "2026-10-03T20:18:59.439Z",
       "contentHash": "ed90d3fe46481e55770099d4ad45d45956a8526e8e3ca55e63fe9185c3e13c06"
     },
     "https://github.com/zcash/zips/issues/1138": {
@@ -34,7 +34,7 @@
       "title": "[ZIP 309] BOLT Support",
       "body": "[Edit by @daira on 2025-11-19: BOLT is on the back burner. This has a recent issue number because it has been transferred from https://github.com/zcash/zcash .]\n\nTo integrate BOLT,  we need to add a new unshielded transaction type  with a special script/payload/functionality where  \n1) Funds can be escrowed under the control of the payload\n2) The script can validate  the opening and signature of a  signed commitment to a given value \n3) The script can use  that value to control how the escrowed funds are split between two fixed output addresses provided at setup.\n\nI imagine the basic approach will be similar to adding the TX type for zerocash transactions, but instead of having one vpub out, it has two to those two addresses. Effectively BOLT then becomes a way to privately and securely generated updated values to that commitment.\n\nMost of this is completely independent of the cryptography used in BOLT payments. In the straight forward model, we would need to validate a proof of possession of a bilinear signature and use a pairing friendly curve for signatures as part of the tx type. However, I believe we can simply use  ECDSA and Pedersen commitments in the same curve at the cost of one additional round trip in the BOLT payment protocol.\n\nCrucially, this makes the choice of primitives used to implement the actual payments in BOLT completely separate from the mechanism supporting BOLT in zcash.\n\nIn case it is not explicitly, clear, this proposal requires no changes to the circuit, nor does it require fixing transaction malleability.\n\n\n",
       "updatedAt": "2026-03-24T07:16:35Z",
-      "fetchedAt": "2026-10-03T15:19:25.544Z",
+      "fetchedAt": "2026-10-03T20:19:01.044Z",
       "contentHash": "7ba0a0554898b98c7e8ebf4a23087138899839e0fa5e801b1e0e1f8b428db9a5"
     },
     "https://github.com/zcash/zips/issues/1175": {
@@ -43,7 +43,7 @@
       "title": "[ZIP TBD]: Document all historic and present Zcash key generation and/or derivation schemes.",
       "body": "Over Zcash's history, different wallets have used many different approaches to generating keys. Today, we have standardized around HD derivation based on BIP 39 seed phrases, but many older wallets used different strategies, including creating keys from system randomness. In particular, the zcashd wallet initially generated keys from system randomness, then for Sapling implemented HD derivation according to ZIP 32 but used a seed directly generated from system randomness, not BIP 39 seed phrases. \n\nOther derivation schemes that need to be documented:\n\n* Zecwallet Lite incorrectly used derivation of fresh accounts to get new Sapling addresses when it should have been generating diversified addresses.",
       "updatedAt": "2026-05-19T23:42:16Z",
-      "fetchedAt": "2026-10-03T15:19:27.554Z",
+      "fetchedAt": "2026-10-03T20:19:03.613Z",
       "contentHash": "b068414d5481abf23448f4d97fcdbbfac1b1bb133d1999b493549241365c9261"
     },
     "https://github.com/zcash/zips/issues/130": {
@@ -52,7 +52,7 @@
       "title": "[ZIP 76] Transaction Signature Verification before Overwinter",
       "body": "> Next steps in the ZIP process:\n> - Start writing a draft.\n\n---\n\n",
       "updatedAt": "2025-11-19T22:23:02Z",
-      "fetchedAt": "2026-10-03T15:19:23.784Z",
+      "fetchedAt": "2026-10-03T20:18:58.928Z",
       "contentHash": "e725b2fdcc2511d160fc4f10cc5505d11f4a64f8afc74de6cec79be3d1c77626"
     },
     "https://github.com/zcash/zips/issues/1302": {
@@ -61,7 +61,7 @@
       "title": "[ZIP 2007] Quantum recoverability of a subset of the transparent protocol",
       "body": "## Motivation\n\n[ZIP 2005](https://zips.z.cash/zip-2005) makes new Orchard-protocol (Ironwood) notes *quantum-recoverable*: if the discrete-log assumption on the curves Zcash uses is broken, funds committed in the recoverable format can be moved into a future post-quantum protocol by proving —in zero knowledge— that you know the secret a recovery is entitled to, without revealing anything a discrete-log break would let an attacker exploit.\n\nThis issue asks a similar question for the **transparent** protocol: which transparent UTXOs could be recovered the same way? The point is to scope what a transparent recovery statement would have to cover, and to identify what is recoverable *in principle* versus what is fundamentally exposed.\n\n## Scope\n\nRestrict attention to UTXOs that are:\n\n- sent to a **representable t-address** (i.e. a `t1...` P2PKH address or a `t3...` P2SH address — these are the only transparent address forms Zcash defines); and\n- **spendable by `zcashd` or `librustzcash`**; and\n- have not had their ECDSA public keys revealed to a potential adversary.\n\nNote that as long as we can still only spend these UTXOs via the existing transparent protocol, the form of quantum recoverability obtained is weaker than for Ironwood: once the public key(s) are exposed, any funds subsequently sent to that address are vulnerable. For Ironwood, spending using the *existing* protocol does not expose keys to attack.\n\nNote that this analysis also does not consider attacks against $\\mathsf{Hash160}$ via Grover's algorithm, although there is reason to believe these are not likely to be practical on the same timescale as attacks using Shor's algorithm.\n\nScript-type numbering below refers to the standard types in `qa/rpc-tests/decodescript.py`.\n\n## Standard output (`scriptPubKey`) types\n\n`1.` **P2PK** and `3.` **bare multisig** — out of scope: neither has a t-address, and neither is spendable at the top level in a way reachable via an address. `zcashd`'s `IsMine` will spend a top-level P2PK output if it holds the key, but there is no way to *send* to one via an address. Bare multisig is explicitly never spendable at the top level — `IsMineInner` breaks when `sigversion == TOP`.\n\n`5.` **OP_RETURN** (`TX_NULL_DATA`) — out of scope: provably unspendable, no funds at risk.\n\n`2.` **P2PKH** — `OP_DUP OP_HASH160` $\\langle\\mathsf{PubKeyHash}\\rangle$ `OP_EQUALVERIFY OP_CHECKSIG`. **Recoverable.** Prove\n\n$$\\mathsf{ZKPoK} \\{ (\\mathsf{privkey}) : \\mathsf{PubKeyHash} = \\mathsf{Hash160}(\\mathsf{PubKeyOf}(\\mathsf{privkey})) \\}$$\n\ni.e. knowledge of a private key whose public key hashes to the committed $\\mathsf{PubKeyHash}$. Note that $\\mathsf{Hash160}(\\bullet) = \\mathsf{RIPEMD160}(\\mathsf{SHA256}(\\bullet))$ commits to a *specific* public-key encoding (compressed vs. uncompressed), so the recovery statement must account for that encoding.\n\n`4.` **P2SH** — `OP_HASH160` $\\langle\\mathsf{Hash160}(\\mathsf{redeemScript})\\rangle$ `OP_EQUAL`. The on-chain output commits only to $\\mathsf{Hash160}(\\mathsf{redeemScript})$; the $\\mathsf{redeemScript}$ itself is revealed only when spending. The $\\mathsf{redeemScript}$ forms that `zcashd` or `librustzcash` will spend (one level deep; nested P2SH is not standard) are:\n\n- **P2SH-wrapped P2PKH** ($\\mathsf{redeemScript}$ = a P2PKH script): **recoverable**, for the same reason as (2).\n- **P2SH-wrapped P2PK** ($\\mathsf{redeemScript} = \\langle\\mathsf{pubkey}\\rangle$ `OP_CHECKSIG`): **recoverable**. Unlike a *top-level* P2PK (case 1), the P2SH wrapper keeps the public key hidden until spend, so it is recoverable in the same way as P2SH-multisig below. The circuit must compute the $\\mathsf{redeemScript}$ hash so that the public key is never exposed, plus a ZKPoK of the private key for that public key.\n- **P2SH-wrapped threshold multisig** ($\\mathsf{redeemScript} = \\langle m\\rangle \\langle\\mathsf{pubkey}_1\\rangle \\ldots \\langle\\mathsf{pubkey}_n\\rangle \\langle n\\rangle$ `OP_CHECKMULTISIG`): **recoverable in principle.** Because the $\\mathsf{redeemScript}$ carries the public keys in the clear, recovery cannot reveal it; the $\\mathsf{Hash160}$ of the $\\mathsf{redeemScript}$ must be computed *in zero knowledge* to protect the keys.\n\nThis makes the statement sensitive to the $\\mathsf{redeemScript}$ being *exactly* this form (the circuit reconstructs the precise script bytes and hashes them). It is feasible but needs either recursive proofs or a large circuit (SHA-256 + RIPEMD-160 over the script, plus $m$ secp256k1 scalar multiplications).\n\n## Recoverable vs. exposed — summary\n\n| Output type | t-address | Spendable by | Recoverable? |\n| ----------- | --------- | ------------ | ------------ |\n| P2PK (top-level) | — | zcashd (no send path) | n/a (out of scope) |\n| bare multisig (top-level) | — | never (top level) | n/a (out of scope) |\n| OP_RETURN | — | unspendable | n/a (no funds) |\n| P2PKH | `t1...` | zcashd, librustzcash | **yes** — ZKPoK of privkey for the committed hash |\n| P2SH -> P2PKH | `t3...` | zcashd | **yes** — as P2PKH |\n| P2SH -> P2PK | `t3...` | zcashd | **yes** — in-circuit redeemScript hashing + ZKPoK |\n| P2SH -> multisig | `t3...` | zcashd, librustzcash | **yes, in principle** — in-circuit redeemScript hashing + ZKPoK of $m$ of $n$ |\n\n## Implementation notes\n\n- **`zcashd` vs. `librustzcash` divergence for P2SH.** The `librustzcash` transaction *builder* currently constructs only **P2SH-multisig** spends (`p2sh_input_serialized_len`: *\"currently only P2MS-in-P2SH is supported\"*). P2SH-wrapped P2PKH and P2PK are spendable via `zcashd`'s wallet, not the `librustzcash` builder — so they are in scope under \"spendable by `zcashd` *or* `librustzcash`\", but only `zcashd` actually builds those spends today. (The `librustzcash` PCZT *signer* does recognize `PubKey`, `PubKeyHash`, and `MultiSig` redeemScript kinds via `zcash_script`'s `solver::ScriptKind`.)\n\n## Open questions\n\n- For P2SH-multisig, is the cost (recursive proofs or a large circuit to take into account the in-circuit $\\mathsf{Hash160}(\\mathsf{redeemScript})$ and $m$ secp256k1 scalar multiplications) justified, given how transparent multisig funds are actually used? It could also be reasonable to just classify these funds as not recoverable, and require transparent multisig holders to spend them into P2PKH or a FROST-based multisig in the Ironwood (or Tachyon) pool.\n- Are P2SH-wrapped P2PKH or P2SH-wrapped P2PK actually used at all?\n\n## Next steps\n\n- Survey the chain to see what proportion of funds are currently recoverable and in each category. This includes Ironwood funds if Ironwood has already activated. Note that funds held in P2SH addresses can't be definitively classified as recoverable based on public information. (They can be classified as *non*-recoverable if the corresponding script has been seen.)\n- Estimate the cost of the circuit to spend P2PKH and P2SH-wrapped-P2PKH funds.\n- Deploy that circuit.\n\nDrafted with the assistance of Claude Opus 4.8 (1M context).",
       "updatedAt": "2026-07-05T21:00:43Z",
-      "fetchedAt": "2026-10-03T15:19:27.949Z",
+      "fetchedAt": "2026-10-03T20:19:04.098Z",
       "contentHash": "9ea2ea64db5e51301ca9198b9b78e67147524ee5e1c48189810580b531d3c729"
     },
     "https://github.com/zcash/zips/issues/343": {
@@ -70,7 +70,7 @@
       "title": "[ZIP 1] Network Upgrade Policy and Scheduling",
       "body": "> Next steps in the ZIP process:\n> - Finish draft in #1075.\n\n---\n\nDocument the upgrade schedule and related policy, including how consensus change proposals (from Zcash company or otherwise) are triaged for inclusion.\n\nSee also https://github.com/zcash/zcash/issues/2308 .",
       "updatedAt": "2025-11-19T22:22:06Z",
-      "fetchedAt": "2026-10-03T15:19:23.348Z",
+      "fetchedAt": "2026-10-03T20:18:58.448Z",
       "contentHash": "626a5243bad718a36949ed4464dd771c0ce6eed7a77d9b9151f09044d9c17549"
     },
     "https://github.com/zcash/zips/issues/346": {
@@ -79,7 +79,7 @@
       "title": "[ZIP 305] Best practices for hardware wallets",
       "body": "Document how a hardware wallet (that has a trusted path to the user) should construct or verify transactions in order to protect its user, as far as possible, against attacks from the untrusted computer.\r\n\r\nIn the general case we have a hardware wallet, an untrusted computer, a delegated prover, a user, and a network connection, something like this:\r\n\r\n                 network\r\n                    ↕\r\n    h/w wallet ↔ computer ↔ prover\r\n          ⤡       ⤢\r\n             user\r\n\r\nThe h/w wallet should not trust the computer or the prover with spend authority, and should not allow a transaction confirmed by the user on the wallet's UI to be malleated while remaining valid. Similarly the computer should not trust the prover with spend authority (this is automatic when the computer is not trusted with that authority), or ability to malleate the intended transaction.\r\n\r\nWe believe that the Sapling design supports this without requiring the h/w wallet to be able to either prove or verify Spend or Output proofs. A h/w wallet should only need to implement:\r\n\r\n- Pedersen commitments using Jubjub arithmetic (for note and value commitments)\r\n- BLAKE2b and BLAKE2s (and the various PRFs / CRHs they are used in)\r\n- Nullifier check (using Jubjub arithmetic)\r\n- KDF plus either encryption or decryption (AEAD_CHACHA20_POLY1305)\r\n- SignatureHash algorithm\r\n- Signatures (RedJubjub, i.e. randomized EdDSA on the Jubjub curve)\r\n- A source of randomness.",
       "updatedAt": "2026-06-30T18:11:57Z",
-      "fetchedAt": "2026-10-03T15:19:25.145Z",
+      "fetchedAt": "2026-10-03T20:19:00.593Z",
       "contentHash": "ddd221e47b776d8b3bd1e2c408fa1b83af88536ac7f010ce7d13aaee4551ba45"
     },
     "https://github.com/zcash/zips/issues/351": {
@@ -88,7 +88,7 @@
       "title": "[ZIP 306] Describe security considerations for anchor selection",
       "body": "<a href=\"https://github.com/daira\"><img src=\"https://avatars1.githubusercontent.com/u/643204?v=3\" align=\"left\" width=\"96\" height=\"96\" hspace=\"10\"></img></a> **Issue by [daira](https://github.com/daira)**\n_Sunday Sep 04, 2016 at 12:42 UTC_\n_Originally opened as https://github.com/zcash/zips/issues/66_\n\n----\n\nThis should include cautions about:\n- reduced note traceability set if the anchor is too early;\n- reduced indistinguishability if the anchor selection strategy is too different from everyone else;\n- risk of invalidation due to rollback if the anchor is too recent.\n\nIt should point out that these also apply (well, except the last) to the case where both input notes are dummies.\n\n",
       "updatedAt": "2022-04-11T22:40:35Z",
-      "fetchedAt": "2026-10-03T15:19:25.371Z",
+      "fetchedAt": "2026-10-03T20:19:00.829Z",
       "contentHash": "36618d99f07b260e9f6d1945c8ff28573669cb717169a8c9ee4bb49b8074e439"
     },
     "https://github.com/zcash/zips/issues/362": {
@@ -97,7 +97,7 @@
       "title": "[ZIP 2] Design considerations for Network Upgrades",
       "body": "> Next steps in the ZIP process:\n> - Start writing a draft.\n\n---\n\n<a href=\"https://github.com/nathan-at-least\"><img src=\"https://avatars2.githubusercontent.com/u/4369700?v=3\" align=\"left\" width=\"96\" height=\"96\" hspace=\"10\"></img></a> **Issue by [nathan-at-least](https://github.com/nathan-at-least)**\n_Wednesday Jun 08, 2016 at 15:30 UTC_\n_Originally opened as https://github.com/zcash/zips/issues/53_\n\n----\n\nWhat do protocol upgrades look like? Are there forwards compatibility features such as in the block header?\n\n",
       "updatedAt": "2025-11-19T22:22:41Z",
-      "fetchedAt": "2026-10-03T15:19:23.542Z",
+      "fetchedAt": "2026-10-03T20:18:58.680Z",
       "contentHash": "0a4cd20731542c320947a6b07969081aa34c9706a9c5bb099dad82febe47bf14"
     },
     "https://github.com/zcash/zips/issues/364": {
@@ -106,7 +106,7 @@
       "title": "[ZIP 339] Wallet Recovery Words (a la BIP 39)",
       "body": "[BIP39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) specifies a standardized mnemonic code for displaying or inputting entropy.\r\n\r\nAdvantages:\r\n\r\n- anecdotally, data entry from mnemonic codes is much easier than base58, hex, or digits. This is true for many reasons: eye tracking of the current position, subvocalization, locally detecting typos.\r\n- the redundancy can prevent information loss or simple transcription errors like transposition. (eg: handwritten digits are more likely to be smudged or lost in creases, etc…\r\n- if we declare a standard soon in the ecosystem's lifetime, it provides better interoperability across software.\r\n- if we use similar encoding standards as Bitcoin we can leverage Bitcoin key management tools, eg https://iancoleman.github.io/bip39/\r\n\r\nDisadvantages:\r\n\r\n- the word-lists are language specific.\r\n- users may be tempted to try to memorize word lists more than 'opaque encodings' and then forget them and lose funds.\r\n- users may be tempted to pick their own words from the list, thus having low entropy, thus having their funds stolen.\r\n\r\n(Nathan just wrote the last two disadvantages to be even-handed, but is skeptical of both claims.)\r\n\r\nNote: This is an attempt to break out multiple overlapping features from zcash/zcash#18.",
       "updatedAt": "2022-02-17T15:40:23Z",
-      "fetchedAt": "2026-10-03T15:19:26.707Z",
+      "fetchedAt": "2026-10-03T20:19:02.593Z",
       "contentHash": "07787b8be36bfca05aea8b7f46060af8ba9bd199ca1b7a02c3712df10744adb1"
     },
     "https://github.com/zcash/zips/issues/365": {
@@ -115,7 +115,7 @@
       "title": "[ZIP 402] Specify database formats with witness-related data in a separate file, no longer storing it in wallet.dat",
       "body": "Consider saving witness related data to a file, e.g. witness.dat instead of storing it in wallet.dat.\r\n\r\n- Separation of data, to isolate and only store keys in wallet.dat.\r\n- Performance by avoiding contention between different subsystems trying to write to wallet.dat\r\n- Avoid frequent writing of data to wallet.dat on block rescan and reindex.\r\n- Reduce risk that when a system crash occurs, wallet.dat is being written to\r\n\r\nRelated, see zcash/zcash#1749",
       "updatedAt": "2024-10-29T23:04:08Z",
-      "fetchedAt": "2026-10-03T15:19:27.093Z",
+      "fetchedAt": "2026-10-03T20:19:03.093Z",
       "contentHash": "a24beac03816b29441c145a49e5ef8978e33426df309870542802b2125a53fe2"
     },
     "https://github.com/zcash/zips/issues/404": {
@@ -124,7 +124,7 @@
       "title": "[ZIP 403] Describe what is verified (for each combination of options) in zcashd",
       "body": "https://zips.z.cash/zip-0403",
       "updatedAt": "2021-04-07T08:59:21Z",
-      "fetchedAt": "2026-10-03T15:19:27.344Z",
+      "fetchedAt": "2026-10-03T20:19:03.364Z",
       "contentHash": "7af3505ccf0e7ae68eca60e123339e150cf7e2d6926e4851ffc7248de5e89b22"
     },
     "https://github.com/zcash/zips/issues/405": {
@@ -133,7 +133,7 @@
       "title": "[ZIP 323] getblocktemplate",
       "body": "This would cover both [BIP 22](https://github.com/bitcoin/bips/blob/master/bip-0022.mediawiki) and [BIP 23](https://github.com/bitcoin/bips/blob/master/bip-0023.mediawiki).",
       "updatedAt": "2021-04-07T08:59:21Z",
-      "fetchedAt": "2026-10-03T15:19:26.304Z",
+      "fetchedAt": "2026-10-03T20:19:02.058Z",
       "contentHash": "fa35315c61769e34522c41bd857f2ae6b5486a095b717feefa1490359c849adb"
     },
     "https://github.com/zcash/zips/issues/428": {
@@ -142,7 +142,7 @@
       "title": "[ZIP 219] Disabling Addition of New Value to the Sapling Chain Value Pool",
       "body": "> Next steps in the ZIP process:\n> - Start writing a draft.\n\n---\n\nThis would be similar to [ZIP 211](https://zips.z.cash/zip-0211.rst). Don't panic, there are no plans to do this until Orchard is very well established, but @steven-ecc asked me to assign the ZIP number anyway.\n\n[Orchard is provisionally the new name for the protocol we were calling Pollard.]",
       "updatedAt": "2025-11-19T22:23:24Z",
-      "fetchedAt": "2026-10-03T15:19:24.341Z",
+      "fetchedAt": "2026-10-03T20:18:59.707Z",
       "contentHash": "a1d0ef94e555393aa645e74877386e0659b0b41c0bda1c731a9e49ce71201bba"
     },
     "https://github.com/zcash/zips/issues/429": {
@@ -151,7 +151,7 @@
       "title": "[ZIP 322] Generic Signed Message Format",
       "body": "Equivalent to [BIP 322](https://github.com/bitcoin/bips/blob/master/bip-0322.mediawiki), which is an extension to `signmessage` support.",
       "updatedAt": "2025-07-09T09:36:07Z",
-      "fetchedAt": "2026-10-03T15:19:26.133Z",
+      "fetchedAt": "2026-10-03T20:19:01.809Z",
       "contentHash": "bddf5b45b7cbca38279c97d7bbc2b8b128fe7037784e9bd3e3fa722572c19fd0"
     },
     "https://github.com/zcash/zips/issues/434": {
@@ -160,7 +160,7 @@
       "title": "[ZIP 314] Privacy upgrades to the Zcash light client protocol",
       "body": "TODO:\r\n\r\n- [x] First pass at collecting requirements.\r\n- [ ] Find the other discussions that were on the forum.\r\n- [ ] List all of the features in the current protocol (including ZecWallet's changes).\r\n- [ ] Finish reading some research on these kinds of protocols.\r\n- [x] Sketch of a constant-bandwidth container protocol.\r\n- [ ] Look at how gRPC is used within the wallets and estimate the effort to switch to a container protocol.\r\n- [ ] Sketch how wallets will either download-all or download-some memos.\r\n- [ ] Write up informal but complete protocol.\r\n- [ ] Collect early feedback from all stakeholders.\r\n- [ ] Write detailed ZIP.",
       "updatedAt": "2021-04-07T08:59:22Z",
-      "fetchedAt": "2026-10-03T15:19:25.716Z",
+      "fetchedAt": "2026-10-03T20:19:01.296Z",
       "contentHash": "0e0d812928ca2dc7b718bcb9136b15f41e5afb262e89ae8f9c2c920bba3d7797"
     },
     "https://github.com/zcash/zips/issues/484": {
@@ -169,7 +169,7 @@
       "title": "[ZIP 350] Bech32m",
       "body": "Reserving this number to correspond to [BIP 350](https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki).",
       "updatedAt": "2021-04-08T22:56:37Z",
-      "fetchedAt": "2026-10-03T15:19:26.875Z",
+      "fetchedAt": "2026-10-03T20:19:02.830Z",
       "contentHash": "a0f85cb360fd99cc5f288cce9b1572523977f7cab9a2b00b19be68052cc89879"
     },
     "https://github.com/zcash/zips/issues/522": {
@@ -178,7 +178,7 @@
       "title": "[ZIP 260] Extending Block Messages with Additional Authentication Data",
       "body": "See https://github.com/ZcashFoundation/zebra/issues/2336.",
       "updatedAt": "2023-04-26T21:26:07Z",
-      "fetchedAt": "2026-10-03T15:19:24.714Z",
+      "fetchedAt": "2026-10-03T20:19:00.172Z",
       "contentHash": "f5d80519ea866550bfbfbf0a45dd37badf9735c0725de1d8afd8ed1ad163796c"
     },
     "https://github.com/zcash/zips/issues/635": {
@@ -187,7 +187,7 @@
       "title": "[ZIP 319] Options for Shielded Pool Retirement",
       "body": "This ZIP would lay out the options for how to retire a shielded pool (see also #452). I am imagining that it would go into some detail about the specification of the most promising options, and one of these would then become the basis for a specification ZIP.",
       "updatedAt": "2022-09-20T09:33:44Z",
-      "fetchedAt": "2026-10-03T15:19:25.911Z",
+      "fetchedAt": "2026-10-03T20:19:01.556Z",
       "contentHash": "250fe39b4d842d958c8fa23ddaa14173501ab20477cc1e97e630b7fae88d9b51"
     },
     "https://github.com/zcash/zips/issues/675": {
@@ -196,7 +196,7 @@
       "title": "[ZIP 332] Wallet Recovery from zcashd HD Seeds",
       "body": "When Sapling was released, `zcashd` implemented HD derivation of Sapling addresses in a fashion that was inconsistent with HD derivation according to BIP 44. In version 4.7.0 `zcashd` introduced HD derivation from a mnemonic seed according to BIP 32 and BIP 44, with a nonstandard accommodation in the generation of the mnemonic seed to make it possible to also reproduce previously derived Sapling keys. This accommodation needs to be documented, along with the process for correct discovery of such previously-derived Sapling keys.\r\n\r\nIn addition, in order to continue allow `zcashd`'s legacy transparent APIs such as `getnewaddress` and `z_getnewaddress` to continue to function, `zcashd` introduced the idea of the `ZCASH_LEGACY_ACCOUNT` constant for use in address derivation consistent with the previous semantics of those methods. Derivation of keys under `ZCASH_LEGACY_ACCOUNT` is also nonstandard with respect to BIP 32 and BIP 44, and so needs to be properly documented here in order to make it possible for other wallet implementations to correctly rediscover funds controlled by keys derived using this mechanism.",
       "updatedAt": "2026-05-19T23:53:55Z",
-      "fetchedAt": "2026-10-03T15:19:26.492Z",
+      "fetchedAt": "2026-10-03T20:19:02.325Z",
       "contentHash": "52196ded2566dde14756d9be5b28d60d0019c228984f60bab384a566fe02f65e"
     }
   }
