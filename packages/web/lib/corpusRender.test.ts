@@ -66,6 +66,7 @@ const KNOWN_SOURCE_ISSUES = new Map<string, [number, string]>([
   ["208 degraded rst citation", [1, `citation missing its _, zip-0208.rst:68; ${TYPO}`]],
   ["208 full katex error", [1, `unbalanced brace, zip-0208.rst:184; ${TYPO}`]],
   ["208 degraded katex error", [1, `unbalanced brace, zip-0208.rst:184; ${TYPO}`]],
+  ["2008 full rst citation", [3, "RST source intentionally quoted as proposed edits to ZIPs 207 and 214"]],
   ["218 full rst citation", [1, `RST citation in a markdown ZIP, zip-0218.md:85; ${TYPO}`]],
   ["228 full tex command", [1, `malformed ($i = 0$; ...; $i++$) math, zip-0228.rst:134; ${TYPO}`]],
   ["228 full rst role", [1, `same malformed math, zip-0228.rst:134; ${TYPO}`]],

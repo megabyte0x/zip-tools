@@ -3,6 +3,7 @@
   "name": "zip-tools-web",
   "account_id": "1378ab230486e0367cbcb49a0f4cec1d",
   "main": "./worker.ts",
+  "cache": { "enabled": true },
   "compatibility_date": "2024-12-30",
   "compatibility_flags": [
     // Enable Node.js API

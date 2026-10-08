@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { renderBody } from "../src/renderBody.ts";
 
 test("markdown numbered zip returns source with markdown format", () => {
@@ -76,4 +77,13 @@ test("thrown rst converter error retains source and warning", () => {
   assert.equal(r.body, source);
   assert.equal(r.bodyFormat, "rst-source");
   assert.equal(r.warning, "converter crashed");
+});
+
+test("RST citation titles containing inline code still produce links", { skip: spawnSync("pandoc", ["--version"]).status !== 0 }, () => {
+  const source = "References\n==========\n\nSee [#zip-2008]_.\n\n.. [#zip-2008] `ZIP 2008: Update to `FS_FPF_ZCG_H3` address list <zip-2008.md>`_\n";
+  const r = renderBody("zips/zip-0207.rst", source);
+  assert.equal(r.bodyFormat, "html");
+  assert.match(r.body ?? "", /href="zip-2008.md"/);
+  assert.match(r.body ?? "", /ZIP 2008: Update to FS_FPF_ZCG_H3 address list/);
+  assert.doesNotMatch(r.body ?? "", /&lt;zip-2008\.md&gt;/);
 });
