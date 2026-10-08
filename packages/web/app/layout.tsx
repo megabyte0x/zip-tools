@@ -5,6 +5,7 @@ import { SiteHeader } from "../components/SiteHeader";
 import { headerModel } from "../lib/headerModel";
 import { loadIndex } from "../lib/loadIndex";
 import { rootMetadata } from "../lib/pageMetadata";
+import { siteIdentity } from "../lib/siteIdentity";
 import "./globals.css";
 import styles from "./layout.module.css";
 
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="dark">
       <body className={styles.body}>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteIdentity).replace(/</g, "\\u003c") }} />
         <SiteHeader
           browseCount={model.browseCount}
           draftCount={model.draftCount}

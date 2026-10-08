@@ -25,7 +25,8 @@ test("RSC navigation and HTML are separate cache variants", async () => {
 });
 
 test("cookies, authorization, actions, writes and errors are never made public", () => {
-  for (const headers of [{ Cookie: "preview=1" }, { Authorization: "Bearer private" }, { "Next-Action": "action" }]) {
+  const privateHeaders: HeadersInit[] = [{ Cookie: "preview=1" }, { Authorization: "Bearer private" }, { "Next-Action": "action" }];
+  for (const headers of privateHeaders) {
     const res = check("/zip/303", { headers });
     assert.equal(res.headers.get("Cache-Control"), "private, no-store");
     assert.match(res.headers.get("Vary")!, /cookie/);

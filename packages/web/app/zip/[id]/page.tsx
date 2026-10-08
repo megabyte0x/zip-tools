@@ -1,3 +1,6 @@
+import { paginateReader, partHref } from "../../../lib/agentDocuments";
+import { ReaderParts } from "../../../components/ReaderParts";
+import { zipHref } from "../../../lib/zipHref";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CitationGraph } from "../../../components/CitationGraph";
@@ -15,19 +18,24 @@ import { isSummaryEnabled, type SummaryEnv } from "../../../lib/summary";
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ part?: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
   const zip = resolveZip(loadIndex(), id);
   if (!zip) return { title: "ZIP not found" };
-  return pageMetadata({ title: zipPageTitle(zip), description: zipPageDescription(zip) });
+  const query = await searchParams;
+  return pageMetadata({ title: zipPageTitle(zip), description: zipPageDescription(zip), path: partHref(zipHref(zip), Number(query.part) || 1) });
 }
 
 export default async function ZipPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ part?: string }>;
 }) {
   const { id } = await params;
   const index = loadIndex();
@@ -35,7 +43,10 @@ export default async function ZipPage({
   if (!zip) notFound();
   const neighbors =
     zip.number != null ? prevNext(index.zips, zip.number) : { prev: null, next: null };
-  const document = await prepareReader(zip);
+  const parts = paginateReader(await prepareReader(zip), zipHref(zip));
+  const selected = Number((await searchParams).part ?? 1);
+  if (!Number.isInteger(selected) || selected < 1 || selected > parts.length) notFound();
+  const document = parts[selected - 1];
   const summaryEnabled = isSummaryEnabled(await cloudflareEnv<SummaryEnv>());
   return (
     <ReaderShell
@@ -45,6 +56,7 @@ export default async function ZipPage({
       document={document}
       summaryEnabled={summaryEnabled}
     >
+      <ReaderParts href={zipHref(zip)} count={parts.length} selected={selected} />
       <ViewBeacon id={zip.id} />
       <ReaderBody
         body={zip.body}

@@ -29,6 +29,12 @@ export function Footer({ snapshot }: { snapshot: ZipIndexFile["snapshot"] }) {
           label
         )}
       </p>
+      <nav aria-label="Site information" style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+        <a className={styles.link} href="/about">About</a>
+        <a className={styles.link} href="/contact">Contact</a>
+        <a className={styles.link} href="/privacy">Privacy</a>
+        <a className={styles.link} href="/docs">Agent guide</a>
+      </nav>
       <a
         className={styles.repositoryLink}
         href={REPOSITORY_URL}

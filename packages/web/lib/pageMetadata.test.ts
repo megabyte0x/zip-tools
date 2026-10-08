@@ -7,7 +7,7 @@ import { makeZip } from "./test-zip.ts";
 
 test("root metadata uses a title template so child routes are distinct", () => {
   const meta = rootMetadata();
-  assert.deepEqual(meta.title, { default: "ZIP.tools", template: "%s · ZIP.tools" });
+  assert.deepEqual(meta.title, { default: "ZIP.tools — Zcash Improvement Proposals", template: "%s · ZIP.tools" });
   assert.equal(meta.description, SITE_DESCRIPTION);
   assert.equal((meta.openGraph as { siteName?: string }).siteName, SITE_NAME);
 });
@@ -47,8 +47,8 @@ test("zipPageDescription tolerates missing category and owners", () => {
 test("pageMetadata mirrors title and description into Open Graph and Twitter", () => {
   const meta = pageMetadata({ title: "ZIP 318: Orchard to Ironwood Migration", description: "D" });
   assert.equal(meta.title, "ZIP 318: Orchard to Ironwood Migration");
-  assert.deepEqual(meta.openGraph, {
-    siteName: "ZIP.tools", type: "article", title: "ZIP 318: Orchard to Ironwood Migration", description: "D",
+  assert.deepEqual({ ...(meta.openGraph as object), url: undefined, images: undefined }, {
+    url: undefined, images: undefined, siteName: "ZIP.tools", type: "article", title: "ZIP 318: Orchard to Ironwood Migration", description: "D",
   });
   assert.deepEqual(meta.twitter, { card: "summary", title: "ZIP 318: Orchard to Ironwood Migration", description: "D" });
 });

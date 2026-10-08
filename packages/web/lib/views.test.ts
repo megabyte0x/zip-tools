@@ -250,12 +250,12 @@ function sqliteViewsDb() {
               return { success: true };
             },
             async all() {
-              return { results: statement.all(...(args as Array<string | number>)) };
+              return { results: statement.all(...(args as Array<string | number>)) as unknown as import("./views").ViewDailyRow[] };
             },
           };
         },
         async all() {
-          return { results: statement.all() };
+          return { results: statement.all() as unknown as import("./views").ViewDailyRow[] };
         },
       };
     },

@@ -9,6 +9,27 @@ pnpm index
 pnpm --filter @zip-tools/web dev
 ```
 
+## Public agent access
+
+The Cloudflare Worker serves public reference pages as Markdown when requested with
+`Accept: text/markdown`. Appending `.md` works without a special header, for example
+`/zip/32.md` or `/zips.md`; the home page is `/index.md`. Normal HTML and Next.js
+navigation keep their existing representations. Long proposals link every document
+part through `?part=N`; follow all parts for the complete source text. Citation links
+between parts preserve their target anchors. Reading lists remain browser-local.
+
+`/llms.txt`, `/sitemap.xml`, `/robots.txt`, and `/docs` describe discovery, retrieval,
+and the pinned snapshot's limitations. `/openapi.json` documents the existing
+supporting APIs, with discovery at `/.well-known/api-catalog`. API version 1 is the
+default, and can be selected explicitly with `X-API-Version: 1`. Unsupported versions
+return 400. API failures use RFC 9457 problem details while retaining existing error
+codes; successful response bodies remain unchanged. No account or payment is needed
+for reference access. Generated summaries are currently disabled.
+
+The Worker implements Markdown negotiation and API response handling. Deploying only
+the Next.js server does not provide these Worker endpoints. Build the index before
+running the corpus tests, and package the Next.js build with OpenNext for Cloudflare.
+
 ## GitHub issue-body snapshots
 
 Some ZIP source files contain only metadata and an explicit `Discussions-To` link to a
