@@ -1,4 +1,4 @@
-import type { ZipRecord } from "./types.ts";
+import type { BrowserZip } from "./browserZip.ts";
 
 export const GRAPH_HELP = "Drag to rotate, scroll to zoom, right-drag to pan. Click a node to open it.";
 export const GRAPH_TOUCH_HELP = "Tap a node to select it, then open its ZIP from the details panel. Use the on-screen controls to zoom and reset.";
@@ -20,11 +20,7 @@ export type GraphRecords = {
   links: GraphRecordLink[];
 };
 
-function primaryStatus(zip: ZipRecord): string {
-  return zip.status[0]?.label ?? zip.statusRaw;
-}
-
-export function graphRecords(zips: ZipRecord[], dangling: number[]): GraphRecords {
+export function graphRecords(zips: BrowserZip[], dangling: number[]): GraphRecords {
   const nodes = new Map<number, GraphRecordNode>();
   const links: GraphRecordLink[] = [];
   const seen = new Set<string>();
@@ -36,7 +32,7 @@ export function graphRecords(zips: ZipRecord[], dangling: number[]): GraphRecord
       id: zip.number,
       title: zip.title,
       unassigned: false,
-      status: primaryStatus(zip),
+      status: zip.status[0]?.label ?? zip.statusRaw,
       citesCount: 0,
       citedByCount: 0,
     });

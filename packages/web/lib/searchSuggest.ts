@@ -1,10 +1,10 @@
 import { filterZips } from "./filter";
-import type { ZipRecord } from "./types";
+import type { BrowserZip } from "./browserZip";
 import { zipHref } from "./zipHref";
 import { zipIdentityLabel } from "./zipIdentity.ts";
 
 export function searchSuggestions(
-  zips: ZipRecord[],
+  zips: BrowserZip[],
   text: string,
   limit = 8,
 ): { id: string; href: string; label: string }[] {

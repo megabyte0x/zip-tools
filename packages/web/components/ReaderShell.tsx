@@ -54,6 +54,8 @@ export function ReaderShell({
 }) {
   const toc = preparedDocument?.toc ?? tocForZip(zip);
   const tocNav = toc.length > 0 ? <TocNav toc={toc} /> : null;
+  const { id, title, number, slug, status } = zip;
+  const bookmarkZip = { id, title, number, slug, status };
 
   return (
     <div className={styles.shell}>
@@ -108,7 +110,7 @@ export function ReaderShell({
             <summary>Proposal metadata</summary>
             <ZipMeta zip={zip} />
           </details>
-          <ReadingListButton zip={zip} />
+          <ReadingListButton zip={bookmarkZip} />
         </div>
         {tocNav ? (
           <details className={styles.tocMobile}>
@@ -126,7 +128,7 @@ export function ReaderShell({
       </article>
       <aside className={styles.metaColumn}>
         <ZipMeta zip={zip} />
-        <ReadingListButton zip={zip} />
+        <ReadingListButton zip={bookmarkZip} />
       </aside>
     </div>
   );

@@ -1,5 +1,6 @@
 import { ForceGraph3D } from "../../components/ForceGraph3D";
 import { loadIndex } from "../../lib/loadIndex";
+import { browserZip } from "../../lib/browserZip";
 import { pageMetadata } from "../../lib/pageMetadata";
 
 export const metadata = pageMetadata({
@@ -10,7 +11,7 @@ export const metadata = pageMetadata({
 
 export default function GraphPage() {
   const index = loadIndex();
-  const zips = index.zips.map((zip) => ({ ...zip, body: null }));
+  const zips = index.zips.map(browserZip);
   return <>
     <ForceGraph3D zips={zips} dangling={index.dangling} variant="graph" />
     <details style={{ padding: "1.5rem", lineHeight: 1.8 }}>

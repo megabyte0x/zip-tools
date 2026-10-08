@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { showHeaderSearch } from "../lib/headerModel";
-import type { ZipRecord } from "../lib/types";
+import type { BrowserZip } from "../lib/browserZip";
 import { HeaderSearch } from "./HeaderSearch";
 import { ReadingListBadge } from "./ReadingListButton";
 import styles from "./SiteHeader.module.css";
@@ -25,8 +25,7 @@ export function SiteHeader({
 }: {
   browseCount: number;
   draftCount: number;
-  nus: { id: string; href: string }[];
-  zips: ZipRecord[];
+  zips: BrowserZip[];
 }) {
   const pathname = usePathname();
   const [query, setQuery] = useState("");

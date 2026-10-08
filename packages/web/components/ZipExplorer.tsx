@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { filterZips } from "../lib/filter";
 import { paginateResults } from "../lib/pagination";
-import type { ZipRecord } from "../lib/types";
+import type { BrowserZip } from "../lib/browserZip";
 import type { ExplorerQuery } from "../lib/workbenchContracts";
 import { parseZipsQuery, serializeZipsQuery } from "../lib/zipsQuery";
 import { SearchBand } from "./SearchBand";
@@ -74,7 +74,7 @@ export function ZipExplorer({
   initialText = "",
   initialKind = "",
 }: {
-  zips: ZipRecord[];
+  zips: BrowserZip[];
   initialQuery?: ExplorerQuery;
   initialText?: string;
   initialKind?: "draft" | "numbered" | "";

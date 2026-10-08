@@ -12,7 +12,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { searchSuggestions } from "../lib/searchSuggest";
-import type { ZipRecord } from "../lib/types";
+import type { BrowserZip } from "../lib/browserZip";
 import { Input } from "./ui/input";
 import styles from "./HeaderSearch.module.css";
 
@@ -25,7 +25,7 @@ export function HeaderSearch({
   zips,
   variant = "header",
 }: {
-  zips: ZipRecord[];
+  zips: BrowserZip[];
   variant?: "header" | "hero";
 }) {
   const router = useRouter();

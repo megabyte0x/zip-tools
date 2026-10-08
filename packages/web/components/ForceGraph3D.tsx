@@ -29,15 +29,15 @@ import {
 } from "../lib/graphLabels";
 import { featuredGraphLabelIds, overviewGraphNodeIds } from "../lib/graphOverview";
 import { STATUS_LEGEND, statusColor } from "../lib/statusColor";
-import type { ZipRecord } from "../lib/types";
+import type { BrowserZip } from "../lib/browserZip";
 import styles from "./ForceGraph3D.module.css";
 
 const ForceGraphImpl = dynamic(() => import("react-force-graph-3d"), { ssr: false });
-const EMPTY_ZIPS: ZipRecord[] = [];
+const EMPTY_ZIPS: BrowserZip[] = [];
 const EMPTY_DANGLING: number[] = [];
 
 export type ForceGraph3DProps =
-  | { zips: ZipRecord[]; dangling: number[]; variant: "home" | "graph"; data?: never }
+  | { zips: BrowserZip[]; dangling: number[]; variant: "home" | "graph"; data?: never }
   | { data: GraphRecords; variant: "detail"; zips?: never; dangling?: never };
 
 class GraphErrorBoundary extends Component<

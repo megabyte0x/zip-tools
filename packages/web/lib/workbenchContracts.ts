@@ -1,6 +1,6 @@
-import type { ZipRecord } from './types';
+import type { BrowserZip } from './browserZip';
 
-export type BodyFormat = 'html' | 'markdown' | 'rst-source' | 'none';
+export type { BodyFormat } from './types';
 
 export type ReaderHeading = {
   id: string;
@@ -26,7 +26,7 @@ export type ExplorerQuery = {
 };
 
 export type GraphInput = {
-  zips: ZipRecord[]; // Caller supplies body: null; never serialize article bodies.
+  zips: BrowserZip[];
   dangling: number[];
   variant: 'home' | 'graph';
 };

@@ -1,18 +1,18 @@
 import Link from "next/link";
 import type { MouseEvent } from "react";
 import { shouldNavigateRow } from "../lib/rowNavigation";
-import type { ZipRecord } from "../lib/types";
+import type { BrowserZip } from "../lib/browserZip";
 import { zipHref } from "../lib/zipHref";
 import { StatusPills } from "./StatusPill";
 import { zipIdentityParts } from "../lib/zipIdentity";
 import styles from "./ZipTable.module.css";
 
-function statusLabels(zip: ZipRecord): string[] {
+function statusLabels(zip: BrowserZip): string[] {
   const labels = [...new Set(zip.status.map((entry) => entry.label))];
   return labels.length > 0 ? labels : [zip.statusRaw];
 }
 
-function StatusDetail({ zip }: { zip: ZipRecord }) {
+function StatusDetail({ zip }: { zip: BrowserZip }) {
   const labels = statusLabels(zip);
   const pills = <StatusPills labels={labels} />;
   if (zip.statusRaw.trim() === labels.join(", ").trim()) return pills;
@@ -41,7 +41,7 @@ function rowClick(event: MouseEvent<HTMLTableRowElement>, href: string, go: (hre
   if (navigate) go(href);
 }
 
-function matchingOwners(zip: ZipRecord, searchText: string): string[] {
+function matchingOwners(zip: BrowserZip, searchText: string): string[] {
   const needle = searchText.trim().toLocaleLowerCase();
   if (!needle) return [];
   return zip.owners
@@ -55,7 +55,7 @@ export function ZipTable({
   onClear,
   onResultNavigate,
 }: {
-  zips: ZipRecord[];
+  zips: BrowserZip[];
   searchText?: string;
   onClear: () => void;
   onResultNavigate: (href: string) => void;

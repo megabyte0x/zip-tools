@@ -3,6 +3,7 @@ import { AppShell } from "../components/AppShell";
 import { Footer } from "../components/Footer";
 import { SiteHeader } from "../components/SiteHeader";
 import { headerModel } from "../lib/headerModel";
+import { browserZip } from "../lib/browserZip";
 import { loadIndex } from "../lib/loadIndex";
 import { rootMetadata } from "../lib/pageMetadata";
 import { siteIdentity } from "../lib/siteIdentity";
@@ -14,7 +15,7 @@ export const metadata = rootMetadata();
 export default function RootLayout({ children }: { children: ReactNode }) {
   const index = loadIndex();
   const model = headerModel(index);
-  const zips = index.zips.map((zip) => ({ ...zip, body: null }));
+  const zips = index.zips.map(browserZip);
   return (
     <html lang="en" className="dark">
       <body className={styles.body}>
@@ -22,7 +23,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <SiteHeader
           browseCount={model.browseCount}
           draftCount={model.draftCount}
-          nus={model.nus}
           zips={zips}
         />
         <AppShell footer={<Footer snapshot={index.snapshot} />}>{children}</AppShell>

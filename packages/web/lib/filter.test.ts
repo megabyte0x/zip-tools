@@ -158,3 +158,10 @@ test("filterZips sorts titles case-insensitively and preserves equal-title order
     ["zip-0010", "draft-z", "draft-a", "zip-0002"],
   );
 });
+
+test("filterZips sorts a copy without mutating the corpus", () => {
+  const original = [...revisionZips];
+  filterZips(revisionZips, { text: " BETA ", sort: "title" });
+  filterZips(revisionZips, { sort: "number" });
+  assert.deepEqual(revisionZips, original);
+});

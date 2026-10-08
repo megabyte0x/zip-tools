@@ -9,16 +9,14 @@ export type ZipFilterQuery = {
   sort?: "number" | "title";
 };
 
-function includesInsensitive(haystack: string, needle: string): boolean {
-  return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
-}
-
 function equalsInsensitive(left: string, right: string): boolean {
   return left.trim().localeCompare(right.trim(), undefined, { sensitivity: "accent" }) === 0;
 }
 
-export function filterZips(zips: ZipRecord[], q: ZipFilterQuery): ZipRecord[] {
-  const text = q.text?.trim() ?? "";
+export function filterZips<
+  T extends Pick<ZipRecord, "number" | "title" | "owners" | "status" | "nuIds" | "category">,
+>(zips: T[], q: ZipFilterQuery): T[] {
+  const text = q.text?.trim().toLocaleLowerCase() ?? "";
   const status = q.status?.trim() ?? "";
   const nuId = q.nuId?.trim() ?? "";
   const category = q.category?.trim() ?? "";
@@ -28,9 +26,9 @@ export function filterZips(zips: ZipRecord[], q: ZipFilterQuery): ZipRecord[] {
       const numberText = zip.number == null ? "" : String(zip.number);
       const ownerText = zip.owners.map((owner) => owner.name).join("\0");
       const matched =
-        includesInsensitive(numberText, text) ||
-        includesInsensitive(zip.title, text) ||
-        includesInsensitive(ownerText, text);
+        numberText.includes(text) ||
+        zip.title.toLocaleLowerCase().includes(text) ||
+        ownerText.toLocaleLowerCase().includes(text);
       if (!matched) return false;
     }
 
@@ -52,21 +50,7 @@ export function filterZips(zips: ZipRecord[], q: ZipFilterQuery): ZipRecord[] {
     return true;
   });
 
-  return filtered
-    .map((zip, index) => ({ zip, index }))
-    .sort((left, right) => {
-      let order = 0;
-      if (q.sort === "title") {
-        order = left.zip.title.localeCompare(right.zip.title, undefined, {
-          sensitivity: "base",
-        });
-      } else if (left.zip.number == null || right.zip.number == null) {
-        if (left.zip.number == null && right.zip.number != null) order = 1;
-        if (left.zip.number != null && right.zip.number == null) order = -1;
-      } else {
-        order = left.zip.number - right.zip.number;
-      }
-      return order || left.index - right.index;
-    })
-    .map(({ zip }) => zip);
+  return filtered.sort((left, right) => q.sort === "title"
+    ? left.title.localeCompare(right.title, undefined, { sensitivity: "base" })
+    : (left.number ?? Infinity) - (right.number ?? Infinity));
 }

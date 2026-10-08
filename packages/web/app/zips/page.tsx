@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ZipExplorer } from "../../components/ZipExplorer";
 import { loadIndex } from "../../lib/loadIndex";
+import { browserZip } from "../../lib/browserZip";
 import { pageMetadata } from "../../lib/pageMetadata";
 import { parseZipsQuery } from "../../lib/zipsQuery";
 import styles from "./page.module.css";
@@ -42,7 +43,7 @@ export default async function ZipsPage({
       {/* A link that changes the query (header Drafts, Back) remounts the explorer from the URL. */}
       <ZipExplorer
         key={JSON.stringify(parsed)}
-        zips={zips.map((zip) => ({ ...zip, body: null }))}
+        zips={zips.map(browserZip)}
         initialQuery={parsed}
       />
     </div>

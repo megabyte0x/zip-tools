@@ -4,6 +4,7 @@ import { HeaderSearch } from "../components/HeaderSearch";
 import { ZipOfTheDay } from "../components/ZipOfTheDay";
 import { ZipRail } from "../components/ZipRail";
 import { cloudflareEnv } from "../lib/cloudflareEnv";
+import { browserZip } from "../lib/browserZip";
 import { loadIndex } from "../lib/loadIndex";
 import { newestZips } from "../lib/recent";
 import type { NuEntry, ZipRecord } from "../lib/types";
@@ -15,10 +16,6 @@ import { StatusPills } from "../components/StatusPill";
 
 export const dynamic = "force-dynamic";
 
-async function loadEnv(): Promise<ViewsEnv> {
-  return cloudflareEnv<ViewsEnv>();
-}
-
 function zipForViewId(zips: ZipRecord[], id: string): ZipRecord | undefined {
   return zips.find(
     (zip) => zip.id === id || zip.slug === id || (zip.number != null && String(zip.number) === id),
@@ -26,7 +23,7 @@ function zipForViewId(zips: ZipRecord[], id: string): ZipRecord | undefined {
 }
 
 async function mostViewedZips(zips: ZipRecord[], todayUtc: string): Promise<ZipRecord[]> {
-  const res = await handleTrendingGet(await loadEnv(), todayUtc);
+  const res = await handleTrendingGet(await cloudflareEnv<ViewsEnv>(), todayUtc);
   const data = (await res.json()) as { items?: { id: string; count: number }[] };
   const items = data.items ?? [];
   return items
@@ -87,7 +84,7 @@ export default async function HomePage() {
     .filter((zip) => zip.number != null)
     .map((zip) => ({ number: zip.number, slug: zip.slug }));
   const mostViewed = await mostViewedZips(zips, utcDate);
-  const bodyFreeZips = zips.map((zip) => ({ ...zip, body: null }));
+  const browserZips = zips.map(browserZip);
 
   return (
     <div className={styles.home}>
@@ -98,7 +95,7 @@ export default async function HomePage() {
         </h1>
         <p className={styles.lede}>Search ZIPs by number, title, or owner.</p>
         <div className={styles.heroSearch}>
-          <HeaderSearch zips={bodyFreeZips} variant="hero" />
+          <HeaderSearch zips={browserZips} variant="hero" />
         </div>
       </section>
 
@@ -133,7 +130,7 @@ export default async function HomePage() {
       <ZipRail title="Newest proposals" zips={newest} showCreated />
       {mostViewed.length > 0 ? <ZipRail title="Most viewed (7 days)" zips={mostViewed} /> : null}
       <ZipOfTheDay zip={daily ? slimZipOfTheDay(daily) : null} numbered={numbered} />
-      <ForceGraph3D zips={bodyFreeZips} dangling={index.dangling} variant="home" />
+      <ForceGraph3D zips={browserZips} dangling={index.dangling} variant="home" />
     </div>
   );
 }
