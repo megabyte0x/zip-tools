@@ -13,8 +13,8 @@ export async function generateMetadata({
   const drafts = (await searchParams).kind === "draft";
   return pageMetadata(
     drafts
-      ? { title: "Draft ZIPs", description: "Unnumbered draft Zcash Improvement Proposals in the pinned snapshot." }
-      : { title: "Browse ZIPs", description: "Search and filter every Zcash Improvement Proposal by status, category, and network upgrade." },
+      ? { path: "/zips?kind=draft", title: "Draft ZIPs", description: "Unnumbered draft Zcash Improvement Proposals in the pinned snapshot." }
+      : { path: "/zips", title: "Browse ZIPs", description: "Search and filter every Zcash Improvement Proposal by status, category, and network upgrade." },
   );
 }
 

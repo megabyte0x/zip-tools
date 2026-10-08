@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ZipRecord } from "./types.ts";
 import { zipIdentityLabel } from "./zipIdentity.ts";
+import { SITE_URL } from "./siteInfo";
 
 export const SITE_NAME = "ZIP.tools";
 export const SITE_DESCRIPTION =
@@ -10,9 +11,12 @@ const READ_MORE = "Read the full text and citation graph on ZIP.tools.";
 
 export function rootMetadata(): Metadata {
   return {
-    title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
+    metadataBase: new URL(SITE_URL),
+    title: { default: `${SITE_NAME} — Zcash Improvement Proposals`, template: `%s · ${SITE_NAME}` },
     description: SITE_DESCRIPTION,
-    openGraph: { siteName: SITE_NAME, type: "website", title: SITE_NAME, description: SITE_DESCRIPTION },
+    alternates: { canonical: "/", types: { "text/markdown": "/index.md" } },
+    other: { "is-agentic-site-type": "content" },
+    openGraph: { siteName: SITE_NAME, type: "website", title: SITE_NAME, description: SITE_DESCRIPTION, url: SITE_URL, images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: "ZIP.tools — Zcash Improvement Proposals" }] },
   };
 }
 
@@ -30,11 +34,14 @@ export function zipPageDescription(
   return text.length <= DESCRIPTION_LIMIT ? text : `${text.slice(0, DESCRIPTION_LIMIT - 1).trimEnd()}…`;
 }
 
-export function pageMetadata({ title, description }: { title: string; description: string }): Metadata {
+export function pageMetadata({ title, description, path = "/" }: { title: string; description: string; path?: string }): Metadata {
+  const url = new URL(path, SITE_URL);
+  const markdown = `${url.pathname === "/" ? "/index" : url.pathname}.md${url.search}`;
   return {
     title,
     description,
-    openGraph: { siteName: SITE_NAME, type: "article", title, description },
+    alternates: { canonical: path, types: { "text/markdown": markdown } },
+    openGraph: { siteName: SITE_NAME, type: "article", title, description, url: path, images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: "ZIP.tools — Zcash Improvement Proposals" }] },
     twitter: { card: "summary", title, description },
   };
 }

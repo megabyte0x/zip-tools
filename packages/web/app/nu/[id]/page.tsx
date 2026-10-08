@@ -16,6 +16,7 @@ export async function generateMetadata({
   const nu = loadIndex().nus.find((entry) => entry.id === id);
   if (!nu) return { title: "Network upgrade not found" };
   return pageMetadata({
+    path: `/nu/${nu.id}`,
     title: `${nu.title} network upgrade`,
     description: `ZIPs in the ${nu.title} ${nu.kind} network upgrade (${nu.zips.length} ZIP${nu.zips.length === 1 ? "" : "s"}).`,
   });

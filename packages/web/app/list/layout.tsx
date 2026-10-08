@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { pageMetadata } from "../../lib/pageMetadata";
 
 export const metadata = pageMetadata({
+  path: "/list",
   title: "Reading list",
   description: "ZIPs bookmarked in this browser.",
 });
