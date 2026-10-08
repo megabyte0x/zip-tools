@@ -16,7 +16,11 @@ function rstToHtml(text: string): ReturnType<RstConverter> {
   try {
     // --mathjax keeps TeX in \( \) and \[ \] spans; the reader renders them with KaTeX.
     const result = spawnSync("pandoc", ["-f", "rst", "-t", "html", "--mathjax", "--wrap=none"], {
-      input: protectRstMath(text),
+      // RST cannot nest code backticks in a citation link title; retain the label as plain text.
+      input: protectRstMath(text.replace(
+        /^(\.\. \[[^\]\n]+\][ \t]+)`(.*?) <([^>\n]+)>`_/gm,
+        (_, prefix: string, label: string, target: string) => `${prefix}\`${label.replaceAll("`", "")} <${target}>\`_`,
+      )),
       encoding: "utf8",
       timeout: 15_000,
       maxBuffer: 16 * 1024 * 1024,
