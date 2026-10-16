@@ -24,9 +24,9 @@
   --font-size-prose: 1.125rem;
   --line-height-prose: 1.7;
   --control-height: 44px;
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "IBM Plex Serif", "Iowan Old Style", Palatino, serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: var(--font-plex-sans, "IBM Plex Sans"), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-plex-serif, "IBM Plex Serif"), "Iowan Old Style", Palatino, serif;
+  --font-mono: var(--font-plex-mono, "IBM Plex Mono"), ui-monospace, SFMono-Regular, Menlo, monospace;
   /* One display face for the hero, proposal titles and page headings. */
   --font-display: var(--font-serif);
   --color-accent-soft: rgba(196, 163, 90, 0.12);

@@ -6,6 +6,7 @@ import { headerModel } from "../lib/headerModel";
 import { browserZip } from "../lib/browserZip";
 import { loadIndex } from "../lib/loadIndex";
 import { rootMetadata } from "../lib/pageMetadata";
+import { plexMono, plexSans, plexSerif } from "./fonts";
 import { siteIdentity } from "../lib/siteIdentity";
 import "./globals.css";
 import styles from "./layout.module.css";
@@ -17,7 +18,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   const model = headerModel(index);
   const zips = index.zips.map(browserZip);
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className={`dark ${plexSans.variable} ${plexSerif.variable} ${plexMono.variable}`}>
       <body className={styles.body}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteIdentity).replace(/</g, "\\u003c") }} />
         <SiteHeader

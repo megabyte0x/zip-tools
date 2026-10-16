@@ -366,8 +366,9 @@ for (const width of [390, 1280]) {
         metadataLeft: metadata?.getBoundingClientRect().left ?? null,
       };
     });
-    const inlineMathOverflow = await inlineMath.evaluate(
-      (node) => getComputedStyle(node).overflowX,
+    // Inline-math paragraphs may scroll a formula too wide for the column, but one that fits must not scroll.
+    const inlineMathScrolls = await inlineMath.evaluate(
+      (node) => node.scrollWidth > node.clientWidth,
     );
 
     expect(layout.documentContained).toBe(true);
@@ -375,7 +376,7 @@ for (const width of [390, 1280]) {
     expect(layout.overflowX).toMatch(/^(auto|scroll)$/);
     expect(layout.formulaRight).toBeLessThanOrEqual(layout.articleRight);
     if (width >= 768) expect(layout.formulaRight).toBeLessThan(layout.metadataLeft!);
-    expect(inlineMathOverflow).toBe('visible');
+    expect(inlineMathScrolls).toBe(false);
   });
 }
 

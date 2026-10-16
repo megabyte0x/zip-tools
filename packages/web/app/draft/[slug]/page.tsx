@@ -10,7 +10,7 @@ import { ViewBeacon } from "../../../components/ViewBeacon";
 import { cloudflareEnv } from "../../../lib/cloudflareEnv";
 import { loadIndex } from "../../../lib/loadIndex";
 import { neighborhood } from "../../../lib/neighborhood";
-import { pageMetadata, zipPageDescription, zipPageTitle } from "../../../lib/pageMetadata";
+import { ogImagePath, pageMetadata, zipPageDescription, zipPageTitle } from "../../../lib/pageMetadata";
 import { prepareReader } from "../../../lib/prepareReader";
 import { resolveDraft } from "../../../lib/resolve";
 import { isSummaryEnabled, type SummaryEnv } from "../../../lib/summary";
@@ -26,7 +26,7 @@ export async function generateMetadata({
   const zip = resolveDraft(loadIndex(), slug);
   if (!zip) return { title: "Draft not found" };
   const query = await searchParams;
-  return pageMetadata({ title: zipPageTitle(zip), description: zipPageDescription(zip), path: partHref(zipHref(zip), Number(query.part) || 1) });
+  return pageMetadata({ title: zipPageTitle(zip), description: zipPageDescription(zip), path: partHref(zipHref(zip), Number(query.part) || 1), image: ogImagePath(zip) });
 }
 
 export default async function DraftPage({

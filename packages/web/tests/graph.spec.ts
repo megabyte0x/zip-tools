@@ -74,6 +74,8 @@ async function observeGraphStateTransitions(page: import("@playwright/test").Pag
 async function readyGraph(page: import("@playwright/test").Page, path: "/" | "/graph") {
   await page.goto(path);
   const surface = page.getByTestId("graph-surface");
+  // The graph loads its WebGL bundle only once it nears the viewport.
+  await surface.scrollIntoViewIfNeeded();
   await expect(surface).toHaveAttribute("data-state", "ready", { timeout: 15_000 });
   const canvas = surface.locator("canvas");
   await expect(canvas).toBeVisible();
