@@ -62,6 +62,11 @@ test("zipPageDescription leads with the proposal's abstract when it has one", ()
   assert.match(long, /word…$/);
 });
 
+test("zipPageDescription keeps out-of-range numeric entities as text", () => {
+  const zip = makeZip({ status: [], statusRaw: "Draft", category: null, bodyFormat: "html", body: '<h1 id="abstract">Abstract</h1><p>Bad &#x110000; and &#99999999; codes.</p>' });
+  assert.equal(zipPageDescription(zip), "Draft ZIP: Bad &#x110000; and &#99999999; codes.");
+});
+
 test("zipPageDescription ignores an Abstract heading with no paragraph after it", () => {
   const zip = makeZip({ status: [], statusRaw: "Reserved", category: null, owners: [], bodyFormat: "markdown", body: "# Abstract\n\n## Details\n\nText." });
   assert.equal(zipPageDescription(zip), "Reserved ZIP. Read the full text and citation graph on ZIP.tools.");
