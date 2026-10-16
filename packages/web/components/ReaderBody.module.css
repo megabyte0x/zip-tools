@@ -17,6 +17,15 @@
   overflow-x: auto;
 }
 
+/* Inline formulas cannot wrap; let their paragraph scroll instead of the whole page. */
+.body :is(p, li):has(> :global(.katex)) {
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* A scroll container clips glyph overhangs such as italic math; keep a gutter outside the text edge. */
+  margin-inline: -0.25em;
+  padding: 0.15em 0.25em;
+}
+
 .body table {
   border-collapse: collapse;
   min-width: 44rem;

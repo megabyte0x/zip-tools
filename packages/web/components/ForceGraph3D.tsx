@@ -14,7 +14,6 @@ import {
   useState,
 } from "react";
 import type { ForceGraphMethods, NodeObject } from "react-force-graph-3d";
-import SpriteText from "three-spritetext";
 import { filterZips } from "../lib/filter";
 import {
   GRAPH_HELP,
@@ -32,7 +31,7 @@ import { STATUS_LEGEND, statusColor } from "../lib/statusColor";
 import type { BrowserZip } from "../lib/browserZip";
 import styles from "./ForceGraph3D.module.css";
 
-const ForceGraphImpl = dynamic(() => import("react-force-graph-3d"), { ssr: false });
+const ForceGraphImpl = dynamic(() => import("./ForceGraphView"), { ssr: false });
 const EMPTY_ZIPS: BrowserZip[] = [];
 const EMPTY_DANGLING: number[] = [];
 
@@ -147,6 +146,7 @@ function GraphCanvas({
   const fgRef = useRef<ForceGraphMethods | undefined>(undefined);
   const router = useRouter();
   const [size, setSize] = useState({ width: 0, height: 0 });
+  const [nearViewport, setNearViewport] = useState(false);
   const [ready, setReady] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [cameraAction, setCameraAction] = useState("initial");
@@ -178,15 +178,9 @@ function GraphCanvas({
   }, [featuredLabelIds, hovered, selected]);
   const visibleLabelIdsRef = useRef(visibleLabelIds);
   visibleLabelIdsRef.current = visibleLabelIds;
-  const nodeThreeObject = useCallback((node: unknown) => {
+  const nodeLabelSprite = useCallback((node: unknown) => {
     const typed = node as GraphRecordNode;
-    const sprite = new SpriteText(graphNodeLabel(typed), 4, "rgba(244, 241, 232, 0.88)");
-    sprite.fontFace = "IBM Plex Mono, ui-monospace, monospace";
-    sprite.position.set(0, 7, 0);
-    sprite.userData.zipGraphLabel = true;
-    sprite.userData.zipGraphLabelId = typed.id;
-    sprite.visible = visibleLabelIdsRef.current.has(typed.id);
-    return sprite;
+    return { id: typed.id, text: graphNodeLabel(typed), visible: visibleLabelIdsRef.current.has(typed.id) };
   }, []);
   const onNodeHover = useCallback(
     (node: unknown) => {
@@ -385,6 +379,27 @@ function GraphCanvas({
     return () => observer.disconnect();
   }, []);
 
+  // Defer loading the WebGL bundle until the graph is close to being scrolled into view.
+  useEffect(() => {
+    const element = wrapRef.current;
+    if (!element) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setNearViewport(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setNearViewport(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "600px 0px" },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     const element = wrapRef.current;
     if (!element) return;
@@ -524,7 +539,7 @@ function GraphCanvas({
             <RotateCcw aria-hidden="true" />
           </button>
         </div>
-        {size.width > 0 && size.height > 0 ? (
+        {nearViewport && size.width > 0 && size.height > 0 ? (
           <ForceGraphImpl
             ref={fgRef}
             width={size.width}
@@ -535,7 +550,7 @@ function GraphCanvas({
             nodeLabel={nodeLabel}
             nodeColor={nodeColor}
             nodeRelSize={5}
-            nodeThreeObject={nodeThreeObject}
+            nodeLabelSprite={nodeLabelSprite}
             nodeThreeObjectExtend
             linkColor={linkColor}
             linkWidth={0.8}

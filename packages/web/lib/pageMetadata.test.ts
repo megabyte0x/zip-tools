@@ -44,6 +44,29 @@ test("zipPageDescription tolerates missing category and owners", () => {
   );
 });
 
+test("zipPageDescription leads with the proposal's abstract when it has one", () => {
+  const html = makeZip({
+    status: [{ label: "Final" }], statusRaw: "Final", category: "Wallet", bodyFormat: "html",
+    body: '<h1 id="motivation">Motivation</h1><p>Not this.</p><h1 id="abstract">Abstract</h1>\n<p>Extends BIP 32 <a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a> to Zcash&#39;s <em>shielded</em> addresses &amp; keys.</p><p>Second paragraph.</p>',
+  });
+  assert.equal(zipPageDescription(html), "Final Wallet ZIP: Extends BIP 32 to Zcash's shielded addresses & keys.");
+
+  const markdown = makeZip({
+    status: [{ label: "Draft" }], statusRaw: "Draft", category: "Consensus", bodyFormat: "markdown",
+    body: "# Abstract\n\nDefines version 6 of the *transaction format*, activated at\nNU6.3 [^zip-0258] per [ZIP 200](https://zips.z.cash/zip-0200).\n\n# Motivation\n\nLater text.",
+  });
+  assert.equal(zipPageDescription(markdown), "Draft Consensus ZIP: Defines version 6 of the transaction format, activated at NU6.3 per ZIP 200.");
+
+  const long = zipPageDescription(makeZip({ bodyFormat: "markdown", body: `# Abstract\n\n${"word ".repeat(80)}` }));
+  assert.ok(long.length <= 200);
+  assert.match(long, /word…$/);
+});
+
+test("zipPageDescription ignores an Abstract heading with no paragraph after it", () => {
+  const zip = makeZip({ status: [], statusRaw: "Reserved", category: null, owners: [], bodyFormat: "markdown", body: "# Abstract\n\n## Details\n\nText." });
+  assert.equal(zipPageDescription(zip), "Reserved ZIP. Read the full text and citation graph on ZIP.tools.");
+});
+
 test("pageMetadata mirrors title and description into Open Graph and Twitter", () => {
   const meta = pageMetadata({ title: "ZIP 318: Orchard to Ironwood Migration", description: "D" });
   assert.equal(meta.title, "ZIP 318: Orchard to Ironwood Migration");

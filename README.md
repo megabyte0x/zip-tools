@@ -26,6 +26,10 @@ return 400. API failures use RFC 9457 problem details while retaining existing e
 codes; successful response bodies remain unchanged. No account or payment is needed
 for reference access. Generated summaries are currently disabled.
 
+`pnpm --filter @zip-tools/web build` first writes one Open Graph card per proposal to
+`packages/web/public/og/` (generated, not committed), which the Worker serves as static assets.
+Fonts come from the `@fontsource` packages, so the build needs no network access.
+
 The Worker implements Markdown negotiation and API response handling. Deploying only
 the Next.js server does not provide these Worker endpoints. Build the index before
 running the corpus tests, and package the Next.js build with OpenNext for Cloudflare.
