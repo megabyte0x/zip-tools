@@ -331,13 +331,65 @@ test('reader body identifies its surface', async ({ page }) => {
   await expect(page.getByTestId('reader-body')).toBeVisible();
 });
 
-test('desktop article keeps a readable measure', async ({ page }) => {
+test('desktop reader uses the available width while keeping a readable article', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/zip/312');
 
   const width = await page.locator('article').evaluate((node) => node.getBoundingClientRect().width);
+  expect(width).toBeGreaterThanOrEqual(720);
   expect(width).toBeLessThanOrEqual(800);
+  const contents = await page.getByRole('navigation', { name: 'Contents', exact: true }).boundingBox();
+  const metadata = await page.locator('aside').boundingBox();
+  expect(contents!.x).toBeLessThanOrEqual(32);
+  expect(1440 - metadata!.x - metadata!.width).toBeLessThanOrEqual(32);
 });
+
+for (const width of [900, 1440]) {
+  test(`focus reading keeps the proposal and its tools accessible at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/zip/259');
+
+    const focus = page.getByRole('button', { name: 'Focus reading', exact: true });
+    const body = page.getByTestId('reader-body');
+    const prose = await body.innerText();
+    const sidebar = page.locator('aside');
+    const metadata = page.getByText('Proposal metadata', { exact: true });
+    const contents = page.locator('summary').filter({ hasText: /^Contents$/ });
+    await expect(sidebar).toBeVisible();
+    await expect(metadata).toBeHidden();
+
+    await expect(focus).toHaveAttribute('aria-pressed', 'false');
+    await focus.click();
+    await expect(focus).toHaveAttribute('aria-pressed', 'true');
+    await expect(sidebar).toBeHidden();
+    await expect(page.getByRole('navigation', { name: 'Contents', exact: true })).toBeHidden();
+    await expect(metadata).toBeVisible();
+    await expect(contents).toBeVisible();
+    expect(await body.innerText()).toBe(prose);
+    const article = await page.locator('article').boundingBox();
+    expect(article!.x + article!.width / 2).toBeCloseTo(width / 2, 0);
+
+    await metadata.click();
+    const disclosure = metadata.locator('..');
+    await expect(disclosure.getByRole('link', { name: 'Official', exact: true })).toBeVisible();
+    await expect(disclosure.getByRole('link', { name: 'GitHub', exact: true })).toBeVisible();
+    await metadata.click();
+
+    await contents.click();
+    const tocLink = contents.locator('..').getByRole('link', { name: 'Abstract', exact: true });
+    await tocLink.click();
+    await expect(page).toHaveURL(/#abstract$/);
+    await expect(body.getByRole('heading', { name: 'Abstract', exact: true })).toBeInViewport();
+
+    await focus.focus();
+    await focus.press('Space');
+    await expect(focus).toHaveAttribute('aria-pressed', 'false');
+    await expect(sidebar).toBeVisible();
+    await expect(metadata).toBeHidden();
+    expect(await body.innerText()).toBe(prose);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+}
 
 for (const width of [390, 1280]) {
   test(`ZIP 317 scopes horizontal scrolling to its structured formula at ${width}px`, async ({ page }) => {
@@ -444,7 +496,7 @@ test('mobile reader navigation exposes destinations', async ({ page }) => {
     const title = article.querySelector('h1');
     const status = article.querySelector('[aria-label="Status"]');
     const metadata = Array.from(article.querySelectorAll('summary')).find((node) => node.textContent?.trim() === 'Proposal metadata');
-    const bookmark = article.querySelector('button[aria-pressed]');
+    const bookmark = article.querySelector('button[aria-label^="Bookmark"]');
     const contents = Array.from(article.querySelectorAll('summary')).find((node) => node.textContent?.trim() === 'Contents');
     const bodyHeading = article.querySelector('[data-testid="reader-body"] h2');
     const ordered = [title, status, metadata, bookmark, contents, bodyHeading];

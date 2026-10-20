@@ -6,6 +6,7 @@ import { tocFromHtml, tocFromMarkdown, type TocEntry } from "../lib/toc";
 import type { ZipRecord } from "../lib/types";
 import type { PreparedReader } from "../lib/workbenchContracts";
 import { zipHref } from "../lib/zipHref";
+import { FocusReadingButton } from "./FocusReadingButton";
 import { GeneratedSummary } from "./GeneratedSummary";
 import { ReadingListButton } from "./ReadingListButton";
 import { StatusPill } from "./StatusPill";
@@ -64,36 +65,39 @@ export function ReaderShell({
         {tocNav}
       </nav>
       <article className={styles.article}>
-        {zip.number != null ? (
-          <nav className={styles.prevNext} aria-label="Adjacent ZIPs">
-            {prev?.number != null ? (
-              <Link
-                aria-label={`Previous ZIP ${prev.number}: ${prev.title}`}
-                className={styles.navBtn}
-                href={zipHref(prev)}
-                title={`ZIP ${prev.number}: ${prev.title}`}
-              >
-                <Chevron dir="prev" />
-                <span className={styles.navLabel}>ZIP {prev.number}</span>
-              </Link>
-            ) : (
-              <span className={styles.navBtnPlaceholder} />
-            )}
-            {next?.number != null ? (
-              <Link
-                aria-label={`Next ZIP ${next.number}: ${next.title}`}
-                className={styles.navBtn}
-                href={zipHref(next)}
-                title={`ZIP ${next.number}: ${next.title}`}
-              >
-                <Chevron dir="next" />
-                <span className={styles.navLabel}>ZIP {next.number}</span>
-              </Link>
-            ) : (
-              <span className={styles.navBtnPlaceholder} />
-            )}
-          </nav>
-        ) : null}
+        <div className={styles.readerTools}>
+          <FocusReadingButton />
+          {zip.number != null ? (
+            <nav className={styles.prevNext} aria-label="Adjacent ZIPs">
+              {prev?.number != null ? (
+                <Link
+                  aria-label={`Previous ZIP ${prev.number}: ${prev.title}`}
+                  className={styles.navBtn}
+                  href={zipHref(prev)}
+                  title={`ZIP ${prev.number}: ${prev.title}`}
+                >
+                  <Chevron dir="prev" />
+                  <span className={styles.navLabel}>ZIP {prev.number}</span>
+                </Link>
+              ) : (
+                <span className={styles.navBtnPlaceholder} />
+              )}
+              {next?.number != null ? (
+                <Link
+                  aria-label={`Next ZIP ${next.number}: ${next.title}`}
+                  className={styles.navBtn}
+                  href={zipHref(next)}
+                  title={`ZIP ${next.number}: ${next.title}`}
+                >
+                  <Chevron dir="next" />
+                  <span className={styles.navLabel}>ZIP {next.number}</span>
+                </Link>
+              ) : (
+                <span className={styles.navBtnPlaceholder} />
+              )}
+            </nav>
+          ) : null}
+        </div>
         <p className={styles.kicker}>
           {zip.number != null ? `ZIP ${zip.number}` : zip.slug}
         </p>

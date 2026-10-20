@@ -19,10 +19,10 @@
   --space-8: 2rem;
   --header-height: 4rem;
   --focus-ring: 2px solid var(--color-accent);
-  --measure-prose: 65ch;
+  --measure-prose: 60ch;
   --font-size-app: 1rem;
-  --font-size-prose: 1.125rem;
-  --line-height-prose: 1.7;
+  --font-size-prose: 1.25rem;
+  --line-height-prose: 1.8;
   --control-height: 44px;
   --font-sans: var(--font-plex-sans, "IBM Plex Sans"), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-plex-serif, "IBM Plex Serif"), "Iowan Old Style", Palatino, serif;
@@ -35,6 +35,6 @@
 
 @media (max-width: 767px) {
   :root {
-    --font-size-prose: 1rem;
+    --font-size-prose: 1.125rem;
   }
 }

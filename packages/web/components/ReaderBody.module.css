@@ -1,7 +1,8 @@
 .body {
-  font-family: var(--font-serif);
-  font-size: 1rem;
-  line-height: 1.7;
+  color: color-mix(in srgb, var(--color-fg) 92%, var(--color-bg));
+  font-family: var(--font-sans);
+  font-size: var(--font-size-prose);
+  line-height: var(--line-height-prose);
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -46,19 +47,20 @@
 }
 
 .body :is(h1, h2, h3, h4) {
+  color: var(--color-fg);
   font-family: var(--font-sans);
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.25;
-  margin: 1.75rem 0 0.65rem;
+  margin: 2.5rem 0 0.9rem;
 }
 
 .body h2 {
-  font-size: 1.35rem;
+  font-size: 1.5rem;
 }
 
 .body h3 {
-  font-size: 1.12rem;
+  font-size: 1.25rem;
 }
 
 .body :is(h1, h2, h3) {
@@ -200,12 +202,6 @@
   .body :is(th, td) {
     max-width: calc(100vw - 5rem);
     overflow-wrap: anywhere;
-  }
-}
-
-@media (min-width: 768px) {
-  .body {
-    font-size: 1.125rem;
   }
 }
 
