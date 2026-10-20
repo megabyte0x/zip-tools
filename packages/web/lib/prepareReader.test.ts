@@ -232,7 +232,7 @@ test("prepareReader formats transferred-issue chrome instead of printing it", as
   assert.doesNotMatch(doc.html, /<img|Issue by|Originally opened as|align=/);
 });
 
-test("prepareReader formats a markdown ZIP preamble instead of printing it", async () => {
+test("prepareReader removes the ZIP preamble from the proposal body", async () => {
   const doc = await prepareReader(makeZip({
     bodyFormat: "markdown",
     bodyKind: "md",
@@ -254,14 +254,17 @@ test("prepareReader formats a markdown ZIP preamble instead of printing it", asy
     ].join("\n"),
   }));
 
-  assert.match(doc.html, /^<details class="zip-preamble"><summary>Preamble<\/summary><dl>/);
-  assert.match(doc.html, /<dt>Owners<\/dt><dd><ul><li><a href="mailto:daira@jacaranda.org">Daira-Emma Hopwood<\/a><\/li><li><a href="mailto:kris@nutty.land">Kris Nuttycombe<\/a><\/li><\/ul><\/dd>/);
-  assert.match(doc.html, /<dt>Credits<\/dt><dd>Sean Bowe<\/dd>/);
-  assert.match(doc.html, /<dt>License<\/dt><dd>CC BY-SA 4.0 <a href="https:\/\/creativecommons.org\/licenses\/by-sa\/4.0\/">https:\/\/creativecommons.org\/licenses\/by-sa\/4.0\/<\/a><\/dd>/);
-  assert.match(doc.html, /<dt>Discussions-To<\/dt><dd><a href="https:\/\/github.com\/zcash\/zips\/issues\/1326">https:\/\/github.com\/zcash\/zips\/issues\/1326<\/a><\/dd>/);
-  assert.match(doc.html, /<a href="https:\/\/github.com\/zcash\/zips\/pull\/1014">/);
-  assert.doesNotMatch(doc.html, /<pre>|<code>ZIP:|Original header|&lt;daira@|&lt;https:/);
-  assert.ok(doc.html.includes("Body text."));
+  assert.doesNotMatch(doc.html, /Preamble|ZIP:|Version 6 Transaction Format|Sean Bowe|daira@|pull\/1014/);
+  assert.match(doc.html, /<h2 id="terminology">Terminology<\/h2>/);
+  assert.match(doc.html, /<p>Body text\.<\/p>/);
+
+  const rst = await prepareReader(makeZip({
+    bodyFormat: "html",
+    bodyKind: "rst",
+    body: '<pre><code>ZIP: 32\nTitle: Shielded Wallets\nCredits: Sean Bowe</code></pre>\n<h1>Abstract</h1><p>RST body.</p>',
+  }));
+  assert.doesNotMatch(rst.html, /Preamble|ZIP:|Shielded Wallets|Sean Bowe/);
+  assert.match(rst.html, /<h2 id="abstract">Abstract<\/h2><p>RST body\.<\/p>/);
 });
 
 test("prepareReader renders an RST definition list as definitions, not a run-on paragraph", async () => {
@@ -326,14 +329,14 @@ test("prepareReader leaves ordinary code blocks alone", async () => {
     bodyKind: "md",
     body: "## Intro\n\n    ZIP: not a header, it is prose code\n",
   }));
-  assert.ok(!doc.html.includes("zip-preamble"));
+  assert.match(doc.html, /<pre><code>ZIP: not a header, it is prose code\n<\/code><\/pre>/);
 
   const plain = await prepareReader(makeZip({
     bodyFormat: "markdown",
     bodyKind: "md",
     body: "    let x = 1;\n\n## Intro\n",
   }));
-  assert.ok(!plain.html.includes("zip-preamble"));
+  assert.match(plain.html, /<pre><code>let x = 1;\n<\/code><\/pre>/);
 });
 
 test("prepareReader demotes body h1 sections so the page keeps one h1 and the TOC sees them", async () => {

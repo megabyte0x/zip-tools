@@ -416,6 +416,10 @@ test('mobile metadata is a closed disclosure after the title', async ({ page }) 
   await metadata.click();
   await expect(disclosure.getByRole('link', { name: 'Official', exact: true })).toBeVisible();
   await expect(disclosure.getByRole('link', { name: 'GitHub', exact: true })).toBeVisible();
+  await expect(disclosure.getByText('Pull Request', { exact: true })).toBeVisible();
+  await expect(disclosure.locator('a[href="https://github.com/zcash/zips/pull/662"]')).toBeVisible();
+  await expect(page.getByText('Preamble', { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('reader-body')).not.toContainText('ZIP: 312');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
@@ -502,4 +506,22 @@ test('owner emails are not printed in the metadata sidebar', async ({ page }) =>
   const sidebar = page.locator('aside');
   await expect(sidebar.getByText('Jack Grigg', { exact: true })).toBeVisible();
   expect(await sidebar.innerText()).not.toMatch(/@|<[^>]+>/);
+});
+
+test('proposal headers appear only as metadata, with extra fields retained', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/zip/259');
+  await expect(page.getByText('Preamble', { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('reader-body')).not.toContainText('ZIP: 259');
+  await expect(page.getByTestId('reader-body').getByRole('heading', { name: 'Terminology', exact: true })).toBeVisible();
+  await expect(page.locator('aside a[href="mailto:dev@valargroup.dev"]')).toHaveText('Dev Ojha');
+
+  await page.goto('/zip/32');
+  await expect(page.getByText('Preamble', { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('reader-body')).not.toContainText('ZIP: 32');
+  const credits = page.locator('aside dl > div').filter({ has: page.locator('dt', { hasText: /^Credits$/ }) });
+  await expect(credits.locator('li')).toHaveText([
+    'Sean Bowe', 'Kris Nuttycombe', 'Ying Tong Lai', 'Pieter Wuille', 'Marek Palatinus', 'Pavol Rusnak',
+  ]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

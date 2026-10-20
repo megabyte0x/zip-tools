@@ -49,6 +49,7 @@ export type ZipRecord = {
   created: string | null;
   license: string | null;
   discussionsTo: string | null;
+  extraMetadata?: { name: string; values: string[] }[];
   nuIds: string[];
   citations: number[];
   citedBy: number[];

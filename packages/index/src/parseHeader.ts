@@ -9,6 +9,7 @@ export type ParsedHeader = {
   created: string | null;
   license: string | null;
   discussionsTo: string | null;
+  extraMetadata: { name: string; values: string[] }[];
   requires: number[];
   warnings: string[];
 };
@@ -46,6 +47,7 @@ export function parseHeader(text: string): ParsedHeader {
 
   const fields = new Map<string, string[]>();
   let currentKey: string | null = null;
+  let fieldIndent: number | null = null;
 
   for (let i = start; i < headerLines.length; i++) {
     const line = headerLines[i];
@@ -56,8 +58,11 @@ export function parseHeader(text: string): ParsedHeader {
     }
 
     const colonIdx = trimmed.indexOf(":");
-    const isKeyValue = colonIdx > 0 && !trimmed.slice(0, colonIdx).includes(" ");
+    const indent = line.length - line.trimStart().length;
+    const isKeyValue = /^[A-Za-z][\w-]*:/.test(trimmed) &&
+      (fieldIndent === null || indent <= fieldIndent);
     if (isKeyValue) {
+      fieldIndent = indent;
       currentKey = trimmed.slice(0, colonIdx).trim();
       const value = trimmed.slice(colonIdx + 1).trim();
       const parts = fields.get(currentKey) ?? [];
@@ -102,6 +107,13 @@ export function parseHeader(text: string): ParsedHeader {
           .map((s) => parseIntOrNull(s))
           .filter((n): n is number => n !== null);
 
+  const displayedFields = new Set([
+    "ZIP", "Title", "Owners", "Status", "Category", "Created", "License", "Discussions-To",
+  ]);
+  const extraMetadata = [...fields]
+    .filter(([name, values]) => !displayedFields.has(name) && values.length > 0)
+    .map(([name, values]) => ({ name, values }));
+
   return {
     number,
     title,
@@ -111,6 +123,7 @@ export function parseHeader(text: string): ParsedHeader {
     created,
     license,
     discussionsTo,
+    extraMetadata,
     requires,
     warnings,
   };

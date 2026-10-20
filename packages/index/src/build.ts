@@ -118,6 +118,7 @@ function recordFromFile(
     created: header.created,
     license: header.license,
     discussionsTo: header.discussionsTo,
+    extraMetadata: header.extraMetadata,
     nuIds: [],
     citations: extractCitations(text, header.number),
     citedBy: [],

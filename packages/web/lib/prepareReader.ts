@@ -210,35 +210,6 @@ function wrapTables(node: HastNode): void {
   });
 }
 
-const LIST_FIELDS = new Set(["Owners", "Credits", "Original-Authors", "Discussions-To", "Pull-Request"]);
-
-type PreambleField = { name: string; values: string[] };
-
-/** RFC 822 ZIP preamble, as indented or fenced source, not a prose code block. */
-function parseZipPreamble(text: string): PreambleField[] | null {
-  if (!/^\s*ZIP:\s*\S/m.test(text) || !/^\s*Title:/m.test(text)) return null;
-  const raw = text.replace(/\r\n/g, "\n").split("\n");
-  const indents = raw.filter((line) => line.trim() !== "").map((line) => line.length - line.trimStart().length);
-  const cut = indents.length > 0 ? Math.min(...indents) : 0;
-  const lines = raw.map((line) => (line.trim() === "" ? "" : line.slice(Math.min(cut, line.length))));
-  const fields: PreambleField[] = [];
-  for (const line of lines) {
-    if (line.trim() === "") continue;
-    const field = /^([A-Za-z][\w-]*)\s*:\s*(.*)$/.exec(line);
-    if (field && !/^\s/.test(line)) {
-      fields.push({ name: field[1], values: field[2].trim() === "" ? [] : [field[2].trim()] });
-      continue;
-    }
-    if (fields.length === 0) return null;
-    const last = fields[fields.length - 1];
-    const value = line.trim();
-    if (LIST_FIELDS.has(last.name) || last.values.length === 0) last.values.push(value);
-    else last.values[last.values.length - 1] = `${last.values[last.values.length - 1]} ${value}`;
-  }
-  const kept = fields.filter((field) => field.values.some((value) => value.trim() !== ""));
-  return kept.length > 0 ? kept : null;
-}
-
 function textNode(value: string): HastNode {
   return { type: "text", value };
 }
@@ -247,91 +218,20 @@ function linkNode(href: string, label: string): HastNode {
   return { type: "element", tagName: "a", properties: { href }, children: [textNode(label)] };
 }
 
-function httpHref(value: string): string | null {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
-  } catch {
-    return null;
-  }
-}
-
-function preambleValueNodes(value: string): HastNode[] {
-  const person = /^(.*?)\s*<([^>\s]+@[^>\s]+)>\s*$/.exec(value.trim());
-  if (person && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(person[2])) {
-    const name = person[1].trim();
-    return [linkNode(`mailto:${person[2]}`, name || person[2])];
-  }
-  const nodes: HastNode[] = [];
-  const pattern = /<(https?:\/\/[^>\s]+)>|(https?:\/\/[^\s<]+)/g;
-  const source = value.trim();
-  let last = 0;
-  let match: RegExpExecArray | null;
-  while ((match = pattern.exec(source)) !== null) {
-    const href = httpHref(match[1] ?? match[2]);
-    if (href === null) continue;
-    if (match.index > last) nodes.push(textNode(source.slice(last, match.index)));
-    nodes.push(linkNode(href, href));
-    last = match.index + match[0].length;
-  }
-  if (last < source.length) nodes.push(textNode(source.slice(last)));
-  return nodes.length > 0 ? nodes : [textNode(source)];
-}
-
-function preambleFieldNodes(field: PreambleField): HastNode {
-  const values = field.values.map(preambleValueNodes);
-  const ddChildren = values.length > 1
-    ? [{
-        type: "element",
-        tagName: "ul",
-        properties: {},
-        children: values.map((nodes) => ({
-          type: "element",
-          tagName: "li",
-          properties: {},
-          children: nodes,
-        })),
-      }]
-    : values[0];
-  return {
-    type: "element",
-    tagName: "div",
-    properties: {},
-    children: [
-      { type: "element", tagName: "dt", properties: {}, children: [textNode(field.name)] },
-      { type: "element", tagName: "dd", properties: {}, children: ddChildren },
-    ],
-  };
-}
-
 /**
- * Markdown ZIPs open with their RFC 822 preamble ("ZIP: 229", "Owners: ...") as a
- * code block. That block is the document header, already partly in the sidebar;
- * show the fields, including credits and pull requests the sidebar omits.
+ * Markdown and converted RST ZIPs open with an RFC 822 header code block.
+ * Metadata belongs in ZipMeta, not a second copy in the proposal body.
  */
-function collapseRawHeader(tree: HastNode): void {
+function removeRawHeader(tree: HastNode): void {
   const children = tree.children ?? [];
   const index = children.findIndex(
     (child) => child.type === "element" || (child.type === "text" && (child.value ?? "").trim() !== ""),
   );
   const first = children[index];
   if (!first || first.tagName !== "pre") return;
-  const fields = parseZipPreamble(textContent(first));
-  if (fields === null) return;
-  children[index] = {
-    type: "element",
-    tagName: "details",
-    properties: { className: ["zip-preamble"] },
-    children: [
-      { type: "element", tagName: "summary", properties: {}, children: [textNode("Preamble")] },
-      {
-        type: "element",
-        tagName: "dl",
-        properties: {},
-        children: fields.map(preambleFieldNodes),
-      },
-    ],
-  };
+  const text = textContent(first);
+  if (!/^\s*ZIP:\s*\S/m.test(text) || !/^\s*Title:/m.test(text)) return;
+  children.splice(index, 1);
 }
 
 const HEADING = /^h([1-6])$/;
@@ -498,7 +398,7 @@ function formatIssueChrome(node: HastNode): void {
 }
 
 function prepareTree(tree: HastNode, zip: ZipRecord): ReaderHeading[] {
-  collapseRawHeader(tree);
+  removeRawHeader(tree);
   foldDefinitionLists(tree);
   formatIssueChrome(tree);
   demoteHeadings(elements(tree));

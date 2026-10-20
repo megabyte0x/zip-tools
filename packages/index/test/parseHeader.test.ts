@@ -8,6 +8,8 @@ const rst = `::
   Title: ZIP Process
   Owners: Jack Grigg <thestr4d@gmail.com>
           Arya <arya@zfnd.org>
+  Credits: Sean Bowe
+           Kris Nuttycombe
   Status: Active
   Category: Process
   Created: 2019-02-16
@@ -25,7 +27,11 @@ const md = `    ZIP: 229
     Created: 2026-06-13
     License: MIT
     Discussions-To: <https://github.com/zcash/zips/issues/1326>
+    Pull-Request: <https://github.com/zcash/zips/pull/989>
+                  https://github.com/zcash/zips/pull/1014
     Requires: 224, 225
+    Original-Authors: Alice <alice@example.com>
+    Comment:
 
 # Terminology
 `;
@@ -39,6 +45,9 @@ test("parses RST :: header", () => {
   assert.equal(h.created, "2019-02-16");
   assert.equal(h.owners.length, 2);
   assert.equal(h.owners[0].email, "thestr4d@gmail.com");
+  assert.deepEqual(h.extraMetadata, [
+    { name: "Credits", values: ["Sean Bowe", "Kris Nuttycombe"] },
+  ]);
 });
 
 test("parses indented markdown header and Discussions-To", () => {
@@ -46,6 +55,11 @@ test("parses indented markdown header and Discussions-To", () => {
   assert.equal(h.number, 229);
   assert.equal(h.discussionsTo, "https://github.com/zcash/zips/issues/1326");
   assert.deepEqual(h.requires, [224, 225]);
+  assert.deepEqual(h.extraMetadata, [
+    { name: "Pull-Request", values: ["<https://github.com/zcash/zips/pull/989>", "https://github.com/zcash/zips/pull/1014"] },
+    { name: "Requires", values: ["224, 225"] },
+    { name: "Original-Authors", values: ["Alice <alice@example.com>"] },
+  ]);
 });
 
 test("missing Title warns, does not throw", () => {
