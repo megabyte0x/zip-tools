@@ -3,11 +3,12 @@ import type { ZipRecord } from "./types.ts";
 import { zipIdentityLabel } from "./zipIdentity.ts";
 import { SITE_URL } from "./siteInfo";
 
-export const SITE_NAME = "ZIP.tools";
+export const SITE_NAME = "zips.tools";
 export const SITE_DESCRIPTION =
   "Read, search, and map Zcash Improvement Proposals from a pinned snapshot of the ZIP repository.";
 const DESCRIPTION_LIMIT = 200;
-const READ_MORE = "Read the full text and citation graph on ZIP.tools.";
+const READ_MORE = `Read the full text and citation graph on ${SITE_NAME}.`;
+export const DEFAULT_IMAGE = { url: "/og/site.png", width: 1200, height: 630, alt: `${SITE_NAME} — Zcash Improvement Proposals` };
 
 export function rootMetadata(): Metadata {
   return {
@@ -16,7 +17,8 @@ export function rootMetadata(): Metadata {
     description: SITE_DESCRIPTION,
     alternates: { canonical: "/", types: { "text/markdown": "/index.md" } },
     other: { "is-agentic-site-type": "content" },
-    openGraph: { siteName: SITE_NAME, type: "website", title: SITE_NAME, description: SITE_DESCRIPTION, url: SITE_URL, images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: "ZIP.tools — Zcash Improvement Proposals" }] },
+    openGraph: { siteName: SITE_NAME, type: "website", title: SITE_NAME, description: SITE_DESCRIPTION, url: SITE_URL, images: [DEFAULT_IMAGE] },
+    twitter: { card: "summary_large_image", title: SITE_NAME, description: SITE_DESCRIPTION, images: [DEFAULT_IMAGE] },
   };
 }
 
@@ -89,8 +91,6 @@ export function ogImagePath(zip: Pick<ZipRecord, "id">): string {
   return `/og/${encodeURIComponent(zip.id)}.png`;
 }
 
-const DEFAULT_IMAGE = { url: "/opengraph-image.png", width: 1200, height: 630, alt: "ZIP.tools — Zcash Improvement Proposals" };
-
 export function pageMetadata({ title, description, path = "/", image }: { title: string; description: string; path?: string; image?: string }): Metadata {
   const url = new URL(path, SITE_URL);
   const markdown = `${url.pathname === "/" ? "/index" : url.pathname}.md${url.search}`;
@@ -99,6 +99,6 @@ export function pageMetadata({ title, description, path = "/", image }: { title:
     description,
     alternates: { canonical: path, types: { "text/markdown": markdown } },
     openGraph: { siteName: SITE_NAME, type: "article", title, description, url: path, images: [image ? { url: image, width: 1200, height: 630, alt: title } : DEFAULT_IMAGE] },
-    twitter: image ? { card: "summary_large_image", title, description, images: [image] } : { card: "summary", title, description },
+    twitter: { card: "summary_large_image", title, description, images: [image ?? DEFAULT_IMAGE.url] },
   };
 }

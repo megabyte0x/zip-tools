@@ -1,10 +1,10 @@
-// Writes one social preview card per proposal into public/og/ at build time, so the
+// Writes the site card and one card per proposal into public/og/ at build time, so the
 // Worker serves static PNGs instead of bundling an image renderer.
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { loadIndex } from "../lib/loadIndex";
-import { type OgFont, zipOgImage } from "../lib/ogCard";
-import { ogImagePath } from "../lib/pageMetadata";
+import { type OgFont, siteOgImage, zipOgImage } from "../lib/ogCard";
+import { DEFAULT_IMAGE, ogImagePath } from "../lib/pageMetadata";
 
 const out = fileURLToPath(new URL("../public", import.meta.url));
 await rm(`${out}/og`, { recursive: true, force: true });
@@ -22,9 +22,10 @@ async function plexFonts(): Promise<OgFont[]> {
 }
 
 const fonts = await plexFonts();
+await writeFile(`${out}${DEFAULT_IMAGE.url}`, Buffer.from(await siteOgImage(fonts).arrayBuffer()));
 const { zips } = loadIndex();
 for (const zip of zips) {
   const png = Buffer.from(await zipOgImage(zip, fonts).arrayBuffer());
   await writeFile(`${out}${ogImagePath(zip)}`, png);
 }
-console.log(`Wrote ${zips.length} Open Graph images to public/og`);
+console.log(`Wrote ${zips.length + 1} Open Graph images to public/og (site + ${zips.length} proposals)`);

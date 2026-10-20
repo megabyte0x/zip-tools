@@ -26,9 +26,11 @@ return 400. API failures use RFC 9457 problem details while retaining existing e
 codes; successful response bodies remain unchanged. No account or payment is needed
 for reference access. Generated summaries are currently disabled.
 
-`pnpm --filter @zip-tools/web build` first writes one Open Graph card per proposal to
-`packages/web/public/og/` (generated, not committed), which the Worker serves as static assets.
+`pnpm --filter @zip-tools/web build` first writes the site-wide Open Graph card and one
+card per proposal to `packages/web/public/og/` (generated, not committed), which the Worker serves as static assets.
 Fonts come from the `@fontsource` packages, so the build needs no network access.
+For local preview cards without a production build, run
+`pnpm --filter @zip-tools/web exec tsx scripts/og-images.tsx` after `pnpm index`.
 
 The Worker implements Markdown negotiation and API response handling. Deploying only
 the Next.js server does not provide these Worker endpoints. Build the index before

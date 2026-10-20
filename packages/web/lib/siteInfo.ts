@@ -1,4 +1,4 @@
-export const SITE_URL = "https://zip-tools-web.harpocrates.workers.dev";
+export const SITE_URL = "https://zips.tools";
 export const REPOSITORY = "https://github.com/megabyte0x/zip-tools";
 export const INFO_PAGES: Record<string, { title: string; paragraphs: string[] }> = {
   about: {

@@ -7,9 +7,15 @@ import { makeZip } from "./test-zip.ts";
 
 test("root metadata uses a title template so child routes are distinct", () => {
   const meta = rootMetadata();
-  assert.deepEqual(meta.title, { default: "ZIP.tools — Zcash Improvement Proposals", template: "%s · ZIP.tools" });
+  assert.deepEqual(meta.title, { default: "zips.tools — Zcash Improvement Proposals", template: "%s · zips.tools" });
   assert.equal(meta.description, SITE_DESCRIPTION);
   assert.equal((meta.openGraph as { siteName?: string }).siteName, SITE_NAME);
+  assert.equal(meta.metadataBase?.origin, "https://zips.tools");
+  assert.deepEqual(meta.openGraph?.images, [{ url: "/og/site.png", width: 1200, height: 630, alt: "zips.tools — Zcash Improvement Proposals" }]);
+  assert.deepEqual(meta.twitter, {
+    card: "summary_large_image", title: SITE_NAME, description: SITE_DESCRIPTION,
+    images: [{ url: "/og/site.png", width: 1200, height: 630, alt: "zips.tools — Zcash Improvement Proposals" }],
+  });
 });
 
 test("zipPageTitle names numbered ZIPs and drafts", () => {
@@ -30,7 +36,7 @@ test("zipPageDescription summarizes metadata and stays within 200 characters", (
   });
   assert.equal(
     zipPageDescription(zip),
-    "Draft Consensus ZIP by Daira-Emma Hopwood, Jack Grigg. Read the full text and citation graph on ZIP.tools.",
+    "Draft Consensus ZIP by Daira-Emma Hopwood, Jack Grigg. Read the full text and citation graph on zips.tools.",
   );
   const long = zipPageDescription(makeZip({ owners: Array.from({ length: 30 }, (_, i) => ({ name: `Owner Number ${i}` })) }));
   assert.ok(long.length <= 200);
@@ -40,7 +46,7 @@ test("zipPageDescription summarizes metadata and stays within 200 characters", (
 test("zipPageDescription tolerates missing category and owners", () => {
   assert.equal(
     zipPageDescription(makeZip({ status: [], statusRaw: "Reserved", category: null, owners: [] })),
-    "Reserved ZIP. Read the full text and citation graph on ZIP.tools.",
+    "Reserved ZIP. Read the full text and citation graph on zips.tools.",
   );
 });
 
@@ -69,14 +75,17 @@ test("zipPageDescription keeps out-of-range numeric entities as text", () => {
 
 test("zipPageDescription ignores an Abstract heading with no paragraph after it", () => {
   const zip = makeZip({ status: [], statusRaw: "Reserved", category: null, owners: [], bodyFormat: "markdown", body: "# Abstract\n\n## Details\n\nText." });
-  assert.equal(zipPageDescription(zip), "Reserved ZIP. Read the full text and citation graph on ZIP.tools.");
+  assert.equal(zipPageDescription(zip), "Reserved ZIP. Read the full text and citation graph on zips.tools.");
 });
 
 test("pageMetadata mirrors title and description into Open Graph and Twitter", () => {
   const meta = pageMetadata({ title: "ZIP 318: Orchard to Ironwood Migration", description: "D" });
   assert.equal(meta.title, "ZIP 318: Orchard to Ironwood Migration");
   assert.deepEqual({ ...(meta.openGraph as object), url: undefined, images: undefined }, {
-    url: undefined, images: undefined, siteName: "ZIP.tools", type: "article", title: "ZIP 318: Orchard to Ironwood Migration", description: "D",
+    url: undefined, images: undefined, siteName: "zips.tools", type: "article", title: "ZIP 318: Orchard to Ironwood Migration", description: "D",
   });
-  assert.deepEqual(meta.twitter, { card: "summary", title: "ZIP 318: Orchard to Ironwood Migration", description: "D" });
+  assert.deepEqual(meta.twitter, { card: "summary_large_image", title: "ZIP 318: Orchard to Ironwood Migration", description: "D", images: ["/og/site.png"] });
+  const proposal = pageMetadata({ title: "ZIP 318", description: "D", path: "/zip/318", image: "/og/318.png" });
+  assert.deepEqual(proposal.openGraph?.images, [{ url: "/og/318.png", width: 1200, height: 630, alt: "ZIP 318" }]);
+  assert.deepEqual(proposal.twitter, { card: "summary_large_image", title: "ZIP 318", description: "D", images: ["/og/318.png"] });
 });
