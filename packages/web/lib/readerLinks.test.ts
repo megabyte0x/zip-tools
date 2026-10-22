@@ -10,6 +10,12 @@ test("readerProposalHref normalizes numbered and draft proposal references with 
     readerProposalHref("https://zips.z.cash/draft-example.md#motivation"),
     "/draft/draft-example#motivation",
   );
+  // ZIPs also link rendered pages and the spec PDFs that only the official site publishes.
+  assert.equal(readerProposalHref("zip-0226.html#circuit-statement"), "/zip/226#circuit-statement");
+  assert.equal(
+    readerProposalHref("protocol/protocol.pdf#networks"),
+    "https://zips.z.cash/protocol/protocol.pdf#networks",
+  );
 });
 
 test("readerProposalHref preserves fragments and safe external URLs but blocks unsafe schemes", () => {
@@ -29,6 +35,11 @@ test("readerAssetUrl resolves nested relative assets against the pinned GitHub s
   assert.equal(
     readerAssetUrl(zip, "../images/diagram.svg#layer"),
     "https://raw.githubusercontent.com/zcash/zips/deadbeef/zips/images/diagram.svg#layer",
+  );
+  // Upstream builds rendered/ by copying the tracked static/ directory.
+  assert.equal(
+    readerAssetUrl(zip, "../../rendered/assets/images/zip-0227-key-components-zsa.png"),
+    "https://raw.githubusercontent.com/zcash/zips/deadbeef/static/assets/images/zip-0227-key-components-zsa.png",
   );
 });
 

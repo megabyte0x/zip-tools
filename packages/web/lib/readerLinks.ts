@@ -46,11 +46,16 @@ export function readerProposalHref(href: string): string {
   }
 
   const name = path.split("/").filter(Boolean).at(-1) ?? "";
-  const numbered = /^zip-(\d+)(?:\.(?:rst|md))?$/i.exec(name);
+  const numbered = /^zip-(\d+)(?:\.(?:rst|md|html))?$/i.exec(name);
   if (numbered) return `/zip/${Number(numbered[1])}${fragment}`;
 
-  const draft = /^(draft-[a-z0-9][a-z0-9-]*)(?:\.(?:rst|md))?$/i.exec(name);
+  const draft = /^(draft-[a-z0-9][a-z0-9-]*)(?:\.(?:rst|md|html))?$/i.exec(name);
   if (draft) return `/draft/${draft[1]}${fragment}`;
+
+  // The protocol specification PDFs are published next to the official rendered ZIPs.
+  if (/^(?:\.\.?\/)*protocol\/[^/]+\.pdf$/i.test(path)) {
+    return `https://zips.z.cash/${path.replace(/^(?:\.\.?\/)*/, "")}${fragment}`;
+  }
 
   return value;
 }
@@ -88,6 +93,10 @@ export function readerAssetUrl(zip: ZipRecord, href: string): string {
     );
     const resolved = new URL(value, rawSource);
     const repositoryPrefix = `/${owner}/${repo}/${revision}/`;
+    // ZIPs link figures under rendered/, which upstream's Makefile copies from the tracked static/.
+    if (resolved.pathname.startsWith(`${repositoryPrefix}rendered/`)) {
+      resolved.pathname = `${repositoryPrefix}static/${resolved.pathname.slice(repositoryPrefix.length + "rendered/".length)}`;
+    }
     return resolved.pathname.startsWith(repositoryPrefix) ? resolved.href : "";
   } catch {
     return "";
