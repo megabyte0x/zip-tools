@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { basename } from "node:path";
+import { prepareRstFootnotes } from "./rstFootnotes.ts";
 import { protectRstMath } from "./rstMath.ts";
 import type { ZipRecord } from "./types.ts";
 
@@ -12,15 +13,44 @@ export type RenderBodyResult = {
 
 export type RstConverter = (source: string) => { body: string | null; warning?: string };
 
+/**
+ * Pandoc does not support `.. |name| raw:: html` substitution definitions: it drops every
+ * `|name|` and prints the definition body as a block quote (ZIP 317's `|br|`). Rewrite them
+ * as the equivalent raw role, which pandoc honors (its role names allow only letters and `-`).
+ */
+function expandRawSubstitutions(source: string): string {
+  const references = new Map<string, string>();
+  const defined = source.replace(
+    /^\.\. \|([^|\n]+)\| raw:: ([a-z]+)[ \t]*\n((?:[ \t]*\n|[ \t]+\S.*(?:\n|$))*)/gm,
+    (_, name: string, format: string, body: string) => {
+      references.set(`|${name}|`, `:raw-${format}:\`${body.trim().split(/\s*\n\s*/).join(" ")}\``);
+      return `.. role:: raw-${format}(raw)\n   :format: ${format}\n\n`;
+    },
+  );
+  let expanded = defined;
+  for (const [reference, role] of references) expanded = expanded.replaceAll(reference, role);
+  return expanded;
+}
+
+/** Where pandoc's reader is laxer than docutils, rewrite the source to read as docutils does. */
+function matchDocutils(source: string): string {
+  return source
+    // `.. name::arg` without a space is a comment to docutils, hiding its indented body (ZIP 68).
+    .replace(/^\.\. [\w-]+::\S.*\n(?:[ \t]*\n|[ \t]+\S.*(?:\n|$))*/gm, "")
+    // Docutils starts no inline markup right after `_`, so `_might_` is literal text (ZIP 315).
+    .replace(/(^|[\s(])_([A-Za-z][\w-]*)_(?=[\s.,;:)]|$)/gm, "$1_$2\\_");
+}
+
 function rstToHtml(text: string): ReturnType<RstConverter> {
   try {
+    // RST cannot nest code backticks in a citation link title; retain the label as plain text.
+    const footnotes = prepareRstFootnotes(expandRawSubstitutions(matchDocutils(text)).replace(
+      /^(\.\. \[[^\]\n]+\][ \t]+)`(.*?) <([^>\n]+)>`_/gm,
+      (_, prefix: string, label: string, target: string) => `${prefix}\`${label.replaceAll("`", "")} <${target}>\`_`,
+    ));
     // --mathjax keeps TeX in \( \) and \[ \] spans; the reader renders them with KaTeX.
     const result = spawnSync("pandoc", ["-f", "rst", "-t", "html", "--mathjax", "--wrap=none"], {
-      // RST cannot nest code backticks in a citation link title; retain the label as plain text.
-      input: protectRstMath(text.replace(
-        /^(\.\. \[[^\]\n]+\][ \t]+)`(.*?) <([^>\n]+)>`_/gm,
-        (_, prefix: string, label: string, target: string) => `${prefix}\`${label.replaceAll("`", "")} <${target}>\`_`,
-      )),
+      input: protectRstMath(footnotes.source),
       encoding: "utf8",
       timeout: 15_000,
       maxBuffer: 16 * 1024 * 1024,
@@ -40,7 +70,7 @@ function rstToHtml(text: string): ReturnType<RstConverter> {
       return { body: null, warning };
     }
 
-    return { body: result.stdout };
+    return { body: footnotes.place(result.stdout) };
   } catch (err) {
     const warning = err instanceof Error ? err.message : String(err);
     return { body: null, warning };
