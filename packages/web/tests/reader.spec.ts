@@ -531,12 +531,9 @@ test('reader body restores prose spacing and list markers under the CSS reset', 
 
   const body = page.getByTestId('reader-body');
   const style = await body.evaluate((node) => {
-    const prose = node.querySelector('[class*="ReaderBody_body"]');
-    const list = prose
-      ? [...prose.querySelectorAll('ul')].find((element) => getComputedStyle(element).listStyleType === 'disc')
-      : null;
+    const list = [...node.querySelectorAll('ul')].find((element) => element.querySelector('ul'));
     const nested = list?.querySelector('ul');
-    const paragraph = prose?.querySelector('p');
+    const paragraph = node.querySelector('p');
     if (!list || !nested || !paragraph) throw new Error('fixture lost its lists');
     return {
       listStyle: getComputedStyle(list).listStyleType,

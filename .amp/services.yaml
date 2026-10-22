@@ -2,7 +2,7 @@ services:
   web:
     command: >-
       pnpm index &&
-      pnpm --filter @zip-tools/web exec next dev --hostname 0.0.0.0 --port "$PORT"
+      pnpm --filter @zip-tools/web dev --hostname 0.0.0.0 --port "$PORT"
     health: /
     portal:
       url: /

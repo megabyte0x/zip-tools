@@ -125,7 +125,7 @@ test("rail metadata separates identity date and status", async ({ page }) => {
       expect(dateBox!.y).toBeGreaterThan(identityBox!.y);
     }
 
-    const status = draft.locator('[class*="StatusPill_pill"]');
+    const status = draft.getByText(/^(Active|Draft|Final|Withdrawn|Reserved|Proposed)$/);
     await expect(status).toContainText(/Active|Draft|Final|Withdrawn|Reserved|Proposed/);
   }
 
@@ -142,7 +142,7 @@ test("upgrade preview status is visible", async ({ page }) => {
   const row = title.locator("xpath=ancestor::li[1]");
   const card = title.locator("xpath=ancestor::li[2]");
   const number = row.locator('[class*="upgradeNumber"]');
-  const pill = row.locator('[class*="StatusPill_pill"]');
+  const pill = row.getByText("Withdrawn", { exact: true });
 
   await expect(title).toBeVisible();
   await expect(number).toHaveText("230");
