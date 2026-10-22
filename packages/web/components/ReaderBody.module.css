@@ -12,6 +12,13 @@
   max-width: 100%;
 }
 
+/* ZIP diagrams are drawn for the official white page, often with transparent backgrounds and black text. */
+.body img {
+  background: #fff;
+  border-radius: var(--radius-control);
+  padding: 0.5rem;
+}
+
 .body :is(pre, :global(.katex-display)),
 .body p:has(math mtable) {
   max-width: 100%;
