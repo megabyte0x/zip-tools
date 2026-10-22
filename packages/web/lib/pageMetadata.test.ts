@@ -10,7 +10,8 @@ test("root metadata uses a title template so child routes are distinct", () => {
   assert.deepEqual(meta.title, { default: "zips.tools — Zcash Improvement Proposals", template: "%s · zips.tools" });
   assert.equal(meta.description, SITE_DESCRIPTION);
   assert.equal((meta.openGraph as { siteName?: string }).siteName, SITE_NAME);
-  assert.equal(meta.metadataBase?.origin, "https://zips.tools");
+  assert.ok(meta.metadataBase instanceof URL);
+  assert.equal(meta.metadataBase.origin, "https://zips.tools");
   assert.deepEqual(meta.openGraph?.images, [{ url: "/og/site.png", width: 1200, height: 630, alt: "zips.tools — Zcash Improvement Proposals" }]);
   assert.deepEqual(meta.twitter, {
     card: "summary_large_image", title: SITE_NAME, description: SITE_DESCRIPTION,

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "tsx scripts/og-images.tsx && next build",
+    "build": "tsx scripts/og-images.tsx && next build --webpack",
     "preview": "opennextjs-cloudflare build && wrangler dev",
     "start": "next start",
     "test": "tsx --test lib/*.test.ts",
@@ -19,7 +19,7 @@
     "cn": "^0.3.0",
     "katex": "^0.16.47",
     "lucide-react": "^1.47.0",
-    "next": "^15.5.4",
+    "next": "^16.4.2",
     "radix-ui": "^1.6.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -40,7 +40,7 @@
     "unified": "^11.0.5"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.20.6",
+    "@opennextjs/cloudflare": "^1.20.13",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22.13.10",
@@ -51,6 +51,6 @@
     "tailwindcss": "^4.3.3",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
-    "wrangler": "^4.135.0"
+    "wrangler": "^4.152.0"
   }
 }
