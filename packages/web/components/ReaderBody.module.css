@@ -262,6 +262,31 @@
   text-transform: uppercase;
 }
 
+.body :is(:global(.note), :global(.warning)) {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-accent-line);
+  border-radius: var(--radius-control);
+  margin: 0 0 1.25rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.body :global(.warning) {
+  border-left-color: var(--color-destructive);
+}
+
+.body :is(:global(.note), :global(.warning)) > :last-child {
+  margin-bottom: 0;
+}
+
+.body :is(:global(.note), :global(.warning)) > :global(.title) p {
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.35rem;
+  text-transform: uppercase;
+}
+
 .body :global(.zip-process) ul {
   margin: 0.35rem 0 0;
   padding-left: 1.1rem;

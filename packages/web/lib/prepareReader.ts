@@ -49,7 +49,8 @@ const sanitizeSchema = {
     ],
     div: [
       ...(defaultSchema.attributes?.div ?? []),
-      ["className", /^(?:katex-display)$/],
+      // pandoc's RST admonitions: <div class="note"><div class="title"><p>Note</p></div>…
+      ["className", /^(?:katex-display|note|warning|title)$/],
     ],
     math: ["xmlns", "display"],
     annotation: ["encoding"],
