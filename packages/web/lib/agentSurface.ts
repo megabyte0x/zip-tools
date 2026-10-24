@@ -5,6 +5,7 @@ import { resolveZip, resolveDraft } from "./resolve";
 import { zipHref } from "./zipHref";
 import { INFO_PAGES, getInfoPage, infoMarkdown, REPOSITORY } from "./siteInfo";
 import { openApiDocument } from "./apiContract";
+import { crawlPolicy } from "./seo";
 
 const escapeXml = (value: string) => value.replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" })[c]!);
 const quality = (accept: string, type: string) => Math.max(0, ...accept.split(",").filter((item) => item.split(";")[0].trim().toLowerCase() === type).map((item) => Number(/;\s*q=([\d.]+)/i.exec(item)?.[1] ?? 1)));
@@ -15,9 +16,12 @@ export function withRepresentationHeaders(request: Request, response: Response, 
   for (const name of ["accept", "cookie", "authorization", "rsc", "next-action"]) vary.add(name);
   headers.set("Vary", [...vary].join(", "));
   const url = new URL(path, request.url);
+  const policy = crawlPolicy(url);
+  const canonical = new URL(policy.canonical, url);
+  if (policy.noindex) headers.set("X-Robots-Tag", "noindex, follow");
   const alternate = /^(?:text\/html|text\/markdown|text\/x-component)/i.test(headers.get("Content-Type") ?? "")
     ? `, <${url.origin}${url.pathname === "/" ? "/index" : url.pathname}.md${url.search}>; rel="alternate"; type="text/markdown"` : "";
-  headers.set("Link", `<${url.href}>; rel="canonical"${alternate}, <${url.origin}/sitemap.xml>; rel="sitemap", <${url.origin}/docs>; rel="describedby", <${url.origin}/openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json"`);
+  headers.set("Link", `<${canonical.href}>; rel="canonical"${alternate}, <${url.origin}/sitemap.xml>; rel="sitemap", <${url.origin}/docs>; rel="describedby", <${url.origin}/openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json"`);
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -43,7 +47,7 @@ export async function agentResponse(request: Request, index: ZipIndexFile): Prom
 
   if (path === "/robots.txt") return response(`User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${origin}/sitemap.xml\n`, "text/plain");
   if (path === "/sitemap.xml") {
-    const paths = ["/", "/zips", "/graph", ...Object.keys(INFO_PAGES).map((id) => `/${id}`), ...index.zips.map(zipHref), ...index.nus.map((nu) => `/nu/${nu.id}`)];
+    const paths = ["/", "/zips", "/zips?kind=draft", "/graph", ...Object.keys(INFO_PAGES).map((id) => `/${id}`), ...index.zips.map(zipHref), ...index.nus.map((nu) => `/nu/${nu.id}`)];
     return response(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${paths.map((href) => `<url><loc>${escapeXml(origin + href)}</loc><lastmod>${index.snapshot.date.slice(0, 10)}</lastmod></url>`).join("")}</urlset>`, "application/xml");
   }
   if (path === "/llms.txt") return response(`# ZIP.tools\n\n> An independent, free reference explorer for Zcash Improvement Proposals from a pinned zcash/zips snapshot.\n\n## When to use\n\nUse this site to read ZIP specifications, inspect drafts, find upgrade proposals, and follow citations. For live protocol state, check official sources.\n\n## Reading instructions\n\nGET any public page with Accept: text/markdown, or append .md. Long proposals link all their parts with ?part=N. Follow every part for full text. Preserve source status, owners, and snapshot provenance when answering. No account, key, payment, or API integration is needed.\n\n## Resources\n\n- [Agent guide](${origin}/docs.md)\n- [Supporting API contract](${origin}/openapi.json)\n- [Proposal index](${origin}/zips.md)\n- [Citation relationships](${origin}/graph.md)\n- [Sitemap](${origin}/sitemap.xml)\n- [About](${origin}/about.md)\n- [Privacy](${origin}/privacy.md)\n- [Contact](${origin}/contact.md)\n- [Source repository](${REPOSITORY})\n\n## Limitations\n\nThis is an independent snapshot explorer, not an official authority. /list stores bookmarks only in the reader's browser. Some proposals contain only metadata; follow their official or discussion source.\n\n${snapshot}\n`, "text/plain");

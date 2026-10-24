@@ -1,8 +1,9 @@
 import { paginateReader, partHref } from "../../../lib/agentDocuments";
 import { ReaderParts } from "../../../components/ReaderParts";
+import { ProposalStructuredData } from "../../../components/ProposalStructuredData";
 import { zipHref } from "../../../lib/zipHref";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { CitationGraph } from "../../../components/CitationGraph";
 import { ReaderBody } from "../../../components/ReaderBody";
 import { ReaderShell } from "../../../components/ReaderShell";
@@ -27,7 +28,8 @@ export async function generateMetadata({
   const zip = resolveZip(loadIndex(), id);
   if (!zip) return { title: "ZIP not found" };
   const query = await searchParams;
-  return pageMetadata({ title: zipPageTitle(zip), description: zipPageDescription(zip), path: partHref(zipHref(zip), Number(query.part) || 1), image: ogImagePath(zip) });
+  const part = Number(query.part) || 1;
+  return pageMetadata({ title: zipPageTitle(zip, part), description: zipPageDescription(zip), path: partHref(zipHref(zip), part), image: ogImagePath(zip) });
 }
 
 export default async function ZipPage({
@@ -46,6 +48,7 @@ export default async function ZipPage({
   const parts = paginateReader(await prepareReader(zip), zipHref(zip));
   const selected = Number((await searchParams).part ?? 1);
   if (!Number.isInteger(selected) || selected < 1 || selected > parts.length) notFound();
+  if (id !== String(zip.number)) permanentRedirect(partHref(zipHref(zip), selected));
   const document = parts[selected - 1];
   const summaryEnabled = isSummaryEnabled(await cloudflareEnv<SummaryEnv>());
   return (
@@ -56,6 +59,7 @@ export default async function ZipPage({
       document={document}
       summaryEnabled={summaryEnabled}
     >
+      <ProposalStructuredData zip={zip} part={selected} />
       <ReaderParts href={zipHref(zip)} count={parts.length} selected={selected} />
       <ViewBeacon id={zip.id} />
       <ReaderBody

@@ -37,7 +37,10 @@ test("proposal Markdown includes its body, provenance and proper missing-page re
 
 test("sitemap lists real pages and Markdown HEAD returns no body", async () => {
   const sitemap = await agentResponse(request("/sitemap.xml"), index);
-  assert.match(await sitemap!.text(), /<loc>https:\/\/example.com\/zip\/1<\/loc>/);
+  const xml = await sitemap!.text();
+  assert.match(xml, /<loc>https:\/\/example.com\/zip\/1<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/example.com\/zips\?kind=draft<\/loc>/);
+  assert.ok(!xml.includes("/list</loc>"));
   const head = await agentResponse(request("/zip/1", { Accept: "text/markdown" }, "HEAD"), index);
   assert.equal(head?.status, 200);
   assert.equal(await head!.text(), "");

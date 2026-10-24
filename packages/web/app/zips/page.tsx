@@ -11,12 +11,15 @@ export async function generateMetadata({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
-  const drafts = (await searchParams).kind === "draft";
-  return pageMetadata(
-    drafts
-      ? { path: "/zips?kind=draft", title: "Draft ZIPs", description: "Unnumbered draft Zcash Improvement Proposals in the pinned snapshot." }
-      : { path: "/zips", title: "Browse ZIPs", description: "Search and filter every Zcash Improvement Proposal by status, category, and network upgrade." },
-  );
+  const query = await searchParams;
+  const search = searchParamsToQuery(query);
+  const drafts = new URLSearchParams(search).get("kind") === "draft";
+  return pageMetadata({
+    path: `/zips${search ? `?${search}` : ""}`,
+    ...(drafts
+      ? { title: "Draft ZIPs", description: "Unnumbered draft Zcash Improvement Proposals in the pinned snapshot." }
+      : { title: "Browse ZIPs", description: "Search and filter every Zcash Improvement Proposal by status, category, and network upgrade." }),
+  });
 }
 
 function searchParamsToQuery(searchParams: Record<string, string | string[] | undefined>): string {

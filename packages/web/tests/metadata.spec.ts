@@ -67,3 +67,40 @@ test("titles with HTML-significant characters are escaped", async ({ page }) => 
   await page.goto(href!);
   await expect(page).toHaveTitle(/Transaction Identifier Digests & Signature Validation/);
 });
+
+test("crawlers get noindex only for personal and filtered listings", async ({ request }) => {
+  for (const [path, noindex] of [
+    ["/list", true], ["/zips?q=wallet&page=2", true], ["/zips?kind=draft&q=wallet", true],
+    ["/zips", false], ["/zips?kind=draft", false], ["/zip/32", false],
+    ["/draft/draft-arya-dairaemma-disable-addition-of-transparent-chain-value", false],
+  ] as const) {
+    const response = await request.get(path, { headers: { "user-agent": "Googlebot" } });
+    expect(response.status(), path).toBe(200);
+    const html = await response.text();
+    expect(/<meta name="robots" content="noindex, follow"/.test(html), path).toBe(noindex);
+  }
+});
+
+test("proposal aliases permanently redirect with the selected part", async ({ request }) => {
+  const response = await request.get("/zip/0032?part=2", { maxRedirects: 0 });
+  expect(response.status()).toBe(308);
+  expect(response.headers().location).toMatch(/\/zip\/32\?part=2$/);
+});
+
+test("proposal and draft structured data tracks canonical URLs and distinct part titles", async ({ page }) => {
+  for (const path of ["/zip/32", "/zip/32?part=2", "/draft/draft-arya-dairaemma-disable-addition-of-transparent-chain-value"]) {
+    await page.goto(path);
+    const nodes = await page.locator('script[type="application/ld+json"]').evaluateAll((scripts) =>
+      scripts.flatMap((script) => JSON.parse(script.textContent ?? "{}")["@graph"] ?? []));
+    const article = nodes.find((node) => node["@type"] === "TechArticle");
+    const breadcrumbs = nodes.find((node) => node["@type"] === "BreadcrumbList");
+    expect(article.url).toBe(`https://zips.tools${path}`);
+    expect(article.headline + " · zips.tools").toBe(await page.title());
+    expect(breadcrumbs.itemListElement.at(-1).item).toBe(article.url);
+    if (path.includes("part=2")) {
+      expect(article.headline).toContain(" — Part 2");
+      await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", article.headline);
+      await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute("content", article.headline);
+    }
+  }
+});

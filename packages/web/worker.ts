@@ -6,9 +6,12 @@ import { agentResponse, withRepresentationHeaders } from "./lib/agentSurface";
 import bundledIndex from "./data/zip-index.json";
 import type { ZipIndexFile } from "./lib/types";
 import { apiProblemResponse, checkApiVersion, withApiVersion } from "./lib/apiContract";
+import { canonicalRedirect } from "./lib/seo";
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const redirect = canonicalRedirect(new URL(request.url));
+    if (redirect) return Response.redirect(redirect.href, 308);
     const direct = await agentResponse(request, bundledIndex as ZipIndexFile);
     if (direct) return direct;
     const url = new URL(request.url);

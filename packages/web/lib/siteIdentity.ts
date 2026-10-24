@@ -4,14 +4,14 @@ export const siteIdentity = {
   "@context": "https://schema.org",
   "@graph": [
     {
-      "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: "ZIP.tools", url: SITE_URL,
+      "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: "zips.tools", url: SITE_URL,
       description: "Read, search, and map Zcash Improvement Proposals from a pinned snapshot of the ZIP repository.",
       inLanguage: "en", isAccessibleForFree: true,
       about: { "@type": "Thing", name: "Zcash Improvement Proposals", sameAs: "https://github.com/zcash/zips" },
       author: { "@id": `${SITE_URL}/#maintainer` },
     },
     {
-      "@type": "SoftwareApplication", name: "ZIP.tools", url: SITE_URL, applicationCategory: "ReferenceApplication",
+      "@type": "SoftwareApplication", name: "zips.tools", url: SITE_URL, applicationCategory: "ReferenceApplication",
       operatingSystem: "Web browser", isAccessibleForFree: true, codeRepository: REPOSITORY,
       description: "Independent open-source explorer for Zcash proposals, drafts, network upgrades and citations.",
       author: { "@id": `${SITE_URL}/#maintainer` },

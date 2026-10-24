@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ZipRecord } from "./types.ts";
 import { zipIdentityLabel } from "./zipIdentity.ts";
 import { SITE_URL } from "./siteInfo";
+import { crawlPolicy } from "./seo";
 
 export const SITE_NAME = "zips.tools";
 export const SITE_DESCRIPTION =
@@ -22,8 +23,8 @@ export function rootMetadata(): Metadata {
   };
 }
 
-export function zipPageTitle(zip: Pick<ZipRecord, "number" | "slug" | "title">): string {
-  return `${zipIdentityLabel(zip)}: ${zip.title}`;
+export function zipPageTitle(zip: Pick<ZipRecord, "number" | "slug" | "title">, part = 1): string {
+  return `${zipIdentityLabel(zip)}: ${zip.title}${part > 1 ? ` — Part ${part}` : ""}`;
 }
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: "\"", apos: "'", nbsp: " " };
@@ -93,12 +94,14 @@ export function ogImagePath(zip: Pick<ZipRecord, "id">): string {
 
 export function pageMetadata({ title, description, path = "/", image }: { title: string; description: string; path?: string; image?: string }): Metadata {
   const url = new URL(path, SITE_URL);
+  const { canonical, noindex } = crawlPolicy(url);
   const markdown = `${url.pathname === "/" ? "/index" : url.pathname}.md${url.search}`;
   return {
     title,
     description,
-    alternates: { canonical: path, types: { "text/markdown": markdown } },
-    openGraph: { siteName: SITE_NAME, type: "article", title, description, url: path, images: [image ? { url: image, width: 1200, height: 630, alt: title } : DEFAULT_IMAGE] },
+    ...(noindex ? { robots: { index: false, follow: true } } : {}),
+    alternates: { canonical, types: { "text/markdown": markdown } },
+    openGraph: { siteName: SITE_NAME, type: "article", title, description, url: canonical, images: [image ? { url: image, width: 1200, height: 630, alt: title } : DEFAULT_IMAGE] },
     twitter: { card: "summary_large_image", title, description, images: [image ?? DEFAULT_IMAGE.url] },
   };
 }
