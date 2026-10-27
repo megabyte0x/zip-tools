@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import type { ZipRecord } from "./types.ts";
 import { zipIdentityLabel } from "./zipIdentity.ts";
-import { SITE_URL } from "./siteInfo";
+import { SITE_NAME, SITE_URL } from "./siteInfo";
 import { crawlPolicy } from "./seo";
 
-export const SITE_NAME = "zips.tools";
+export { SITE_NAME } from "./siteInfo";
 export const SITE_DESCRIPTION =
   "Read, search, and map Zcash Improvement Proposals from a pinned snapshot of the ZIP repository.";
 const DESCRIPTION_LIMIT = 200;
@@ -18,6 +18,7 @@ export function rootMetadata(): Metadata {
     description: SITE_DESCRIPTION,
     alternates: { canonical: "/", types: { "text/markdown": "/index.md" } },
     other: { "is-agentic-site-type": "content" },
+    robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } },
     openGraph: { siteName: SITE_NAME, type: "website", title: SITE_NAME, description: SITE_DESCRIPTION, url: SITE_URL, images: [DEFAULT_IMAGE] },
     twitter: { card: "summary_large_image", title: SITE_NAME, description: SITE_DESCRIPTION, images: [DEFAULT_IMAGE] },
   };
@@ -101,7 +102,7 @@ export function pageMetadata({ title, description, path = "/", image }: { title:
     description,
     ...(noindex ? { robots: { index: false, follow: true } } : {}),
     alternates: { canonical, types: { "text/markdown": markdown } },
-    openGraph: { siteName: SITE_NAME, type: "article", title, description, url: canonical, images: [image ? { url: image, width: 1200, height: 630, alt: title } : DEFAULT_IMAGE] },
-    twitter: { card: "summary_large_image", title, description, images: [image ?? DEFAULT_IMAGE.url] },
+    openGraph: { siteName: SITE_NAME, type: image ? "article" : "website", title, description, url: canonical, images: [image ? { url: image, width: 1200, height: 630, alt: title } : DEFAULT_IMAGE] },
+    twitter: { card: "summary_large_image", title, description, images: [{ url: image ?? DEFAULT_IMAGE.url, alt: image ? title : DEFAULT_IMAGE.alt }] },
   };
 }

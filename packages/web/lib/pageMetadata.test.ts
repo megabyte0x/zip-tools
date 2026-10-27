@@ -17,6 +17,10 @@ test("root metadata uses a title template so child routes are distinct", () => {
     card: "summary_large_image", title: SITE_NAME, description: SITE_DESCRIPTION,
     images: [{ url: "/og/site.png", width: 1200, height: 630, alt: "zips.tools — Zcash Improvement Proposals" }],
   });
+  assert.deepEqual(meta.robots, {
+    index: true, follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
+  });
 });
 
 test("zipPageTitle names numbered ZIPs and drafts", () => {
@@ -83,10 +87,13 @@ test("pageMetadata mirrors title and description into Open Graph and Twitter", (
   const meta = pageMetadata({ title: "ZIP 318: Orchard to Ironwood Migration", description: "D" });
   assert.equal(meta.title, "ZIP 318: Orchard to Ironwood Migration");
   assert.deepEqual({ ...(meta.openGraph as object), url: undefined, images: undefined }, {
-    url: undefined, images: undefined, siteName: "zips.tools", type: "article", title: "ZIP 318: Orchard to Ironwood Migration", description: "D",
+    url: undefined, images: undefined, siteName: "zips.tools", type: "website", title: "ZIP 318: Orchard to Ironwood Migration", description: "D",
   });
-  assert.deepEqual(meta.twitter, { card: "summary_large_image", title: "ZIP 318: Orchard to Ironwood Migration", description: "D", images: ["/og/site.png"] });
+  assert.deepEqual(meta.twitter, { card: "summary_large_image", title: "ZIP 318: Orchard to Ironwood Migration", description: "D", images: [{ url: "/og/site.png", alt: "zips.tools — Zcash Improvement Proposals" }] });
   const proposal = pageMetadata({ title: "ZIP 318", description: "D", path: "/zip/318", image: "/og/318.png" });
-  assert.deepEqual(proposal.openGraph?.images, [{ url: "/og/318.png", width: 1200, height: 630, alt: "ZIP 318" }]);
-  assert.deepEqual(proposal.twitter, { card: "summary_large_image", title: "ZIP 318", description: "D", images: ["/og/318.png"] });
+  assert.deepEqual(proposal.openGraph, {
+    siteName: "zips.tools", type: "article", title: "ZIP 318", description: "D", url: "/zip/318",
+    images: [{ url: "/og/318.png", width: 1200, height: 630, alt: "ZIP 318" }],
+  });
+  assert.deepEqual(proposal.twitter, { card: "summary_large_image", title: "ZIP 318", description: "D", images: [{ url: "/og/318.png", alt: "ZIP 318" }] });
 });

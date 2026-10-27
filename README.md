@@ -36,6 +36,27 @@ The Worker implements Markdown negotiation and API response handling. Deploying 
 the Next.js server does not provide these Worker endpoints. Build the index before
 running the corpus tests, and package the Next.js build with OpenNext for Cloudflare.
 
+## Production SEO and analytics
+
+The canonical origin is `https://zips.tools` (`packages/web/lib/siteInfo.ts`). The
+Worker permanently redirects its old `workers.dev` hostname and numbered-proposal
+aliases, preserving document parts and query parameters. HTML metadata and HTTP
+canonical headers share the same policy. Public proposals, drafts, upgrades, and
+reference pages are indexable; browser-local reading lists and filtered search
+results are `noindex, follow`. Do not block those pages in robots.txt: crawlers need
+to see their noindex directives. Long proposals have separate canonical URLs for
+their parts.
+
+Google Search Console should use the `zips.tools` Domain property and the sitemap
+`https://zips.tools/sitemap.xml`. A successful crawl or sitemap submission is not
+evidence of indexing. Review indexed and excluded counts, exclusion reasons, URL
+inspections, and search performance with their report dates; data can lag.
+
+Cloudflare Web Analytics is configured with automatic script injection. Do not add a
+second manual beacon. It is separate from the proposal popularity counter and is
+described on the privacy page. Check the deployed page and browser requests for the
+beacon; an enabled dashboard setting alone does not prove data is being collected.
+
 ## GitHub issue-body snapshots
 
 Some ZIP source files contain only metadata and an explicit `Discussions-To` link to a

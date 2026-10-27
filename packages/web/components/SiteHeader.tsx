@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { showHeaderSearch } from "../lib/headerModel";
 import type { BrowserZip } from "../lib/browserZip";
+import { SITE_NAME } from "../lib/siteInfo";
 import { HeaderSearch } from "./HeaderSearch";
 import { ReadingListBadge } from "./ReadingListButton";
 import styles from "./SiteHeader.module.css";
@@ -50,7 +51,7 @@ export function SiteHeader({
       </a>
       <header className={styles.header}>
         <Link className={styles.wordmark} href="/" aria-current={current("/")}>
-          ZIP.tools
+          {SITE_NAME}
         </Link>
         <button
           className={styles.menuButton}

@@ -51,6 +51,8 @@ test("social preview images use the public domain and serve full-size PNGs", asy
     expect(head).toContain(`<link rel="canonical" href="https://zips.tools${path === "/" ? "" : path}"`);
     expect(head).toContain(`<meta property="og:image" content="https://zips.tools${imagePath}"`);
     expect(head).toContain(`<meta name="twitter:image" content="https://zips.tools${imagePath}"`);
+    expect(head).toMatch(/<meta name="twitter:image:alt" content="[^"]+"/);
+    expect(head).toContain(`<meta property="og:type" content="${path.startsWith("/zip/") || path.startsWith("/draft/") ? "article" : "website"}"`);
     expect(head).toContain('<meta name="twitter:card" content="summary_large_image"');
     const image = await request.get(imagePath);
     expect(image.status()).toBe(200);
@@ -96,6 +98,7 @@ test("proposal and draft structured data tracks canonical URLs and distinct part
     const breadcrumbs = nodes.find((node) => node["@type"] === "BreadcrumbList");
     expect(article.url).toBe(`https://zips.tools${path}`);
     expect(article.headline + " · zips.tools").toBe(await page.title());
+    expect(article.image).toBe(`https://zips.tools/og/${path.split("/").at(-1)!.split("?")[0]}.png`);
     expect(breadcrumbs.itemListElement.at(-1).item).toBe(article.url);
     if (path.includes("part=2")) {
       expect(article.headline).toContain(" — Part 2");

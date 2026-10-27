@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("primary navigation links to every discovery destination", async ({ page }) => {
   await page.goto("/zip/312");
 
-  await expect(page.getByRole("link", { name: "ZIP.tools", exact: true })).toHaveAttribute("href", "/");
+  await expect(page.getByRole("link", { name: "zips.tools", exact: true })).toHaveAttribute("href", "/");
   await expect(page.getByRole("link", { name: "Skip to content" })).toHaveAttribute(
     "href",
     "#main-content",
@@ -90,7 +90,7 @@ test("keyboard skip link moves focus to main without adding it to ordinary tab o
   await page.reload();
   await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("link", { name: "ZIP.tools", exact: true })).toBeFocused();
+  await expect(page.getByRole("link", { name: "zips.tools", exact: true })).toBeFocused();
 });
 
 test("keyboard path moves through the header search into a reader", async ({ page }) => {
@@ -98,7 +98,7 @@ test("keyboard path moves through the header search into a reader", async ({ pag
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("link", { name: "ZIP.tools", exact: true })).toBeFocused();
+  await expect(page.getByRole("link", { name: "zips.tools", exact: true })).toBeFocused();
   await page.keyboard.press("Tab");
   const search = page.getByRole("combobox", { name: "Search ZIPs" });
   await expect(search).toBeFocused();

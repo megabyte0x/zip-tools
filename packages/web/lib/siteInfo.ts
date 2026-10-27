@@ -1,10 +1,11 @@
 export const SITE_URL = "https://zips.tools";
+export const SITE_NAME = "zips.tools";
 export const REPOSITORY = "https://github.com/megabyte0x/zip-tools";
 export const INFO_PAGES: Record<string, { title: string; paragraphs: string[] }> = {
   about: {
-    title: "About ZIP.tools",
+    title: "About zips.tools",
     paragraphs: [
-      "ZIP.tools is an independent, open-source reference explorer for Zcash Improvement Proposals. It helps readers find proposals by number, title, owner, status, and network upgrade, then follow the citations between them. It is maintained in the megabyte0x/zip-tools GitHub repository. ZIP.tools is not the official Zcash ZIP repository and does not decide whether proposals are accepted or activated.",
+      "zips.tools is an independent, open-source reference explorer for Zcash Improvement Proposals. It helps readers find proposals by number, title, owner, status, and network upgrade, then follow the citations between them. It is maintained in the megabyte0x/zip-tools GitHub repository. zips.tools is not the official Zcash ZIP repository and does not decide whether proposals are accepted or activated.",
       "The site serves a pinned snapshot of zcash/zips. Each proposal links to its official publication and the exact source revision used by this explorer. The footer identifies the snapshot commit and date. Some drafts come from saved GitHub issue descriptions; those are identified as issue snapshots. Long documents are divided into linked parts without summarizing or omitting the original proposal text. Always check the official source for changes after the snapshot.",
       "Public reference pages can be read as HTML or Markdown. Use the same URL with Accept: text/markdown, or append .md. The agent guide explains how to retrieve proposals, follow references, and identify source limitations. Reading the public site is free and requires no account, API key, subscription, or payment.",
     ],
@@ -12,21 +13,22 @@ export const INFO_PAGES: Record<string, { title: string; paragraphs: string[] }>
   contact: {
     title: "Contact and corrections",
     paragraphs: [
-      "The public contact route for ZIP.tools is the issue tracker in the megabyte0x/zip-tools GitHub repository. Open an issue there to report a broken page, missing proposal text, an incorrect citation, a rendering problem, or a problem with the Markdown representation. Include the page URL, the proposal number or draft slug, the snapshot commit shown in the footer, and enough detail to reproduce the problem. GitHub may require an account to submit an issue; reading existing public issues does not require contacting a maintainer.",
-      "Use the ZIP.tools tracker for problems with this explorer. Questions about the substance, acceptance, or deployment of a Zcash proposal belong in the proposal's official discussion link or the zcash/zips repository. Every proposal page links to its official source and, when supplied by its source metadata, its discussion. This distinction helps corrections reach the people who can resolve them.",
+      "The public contact route for zips.tools is the issue tracker in the megabyte0x/zip-tools GitHub repository. Open an issue there to report a broken page, missing proposal text, an incorrect citation, a rendering problem, or a problem with the Markdown representation. Include the page URL, the proposal number or draft slug, the snapshot commit shown in the footer, and enough detail to reproduce the problem. GitHub may require an account to submit an issue; reading existing public issues does not require contacting a maintainer.",
+      "Use the zips.tools tracker for problems with this explorer. Questions about the substance, acceptance, or deployment of a Zcash proposal belong in the proposal's official discussion link or the zcash/zips repository. Every proposal page links to its official source and, when supplied by its source metadata, its discussion. This distinction helps corrections reach the people who can resolve them.",
       "Do not include private keys, seed phrases, passwords, personal wallet information, or other secrets in a public issue. For sensitive reports, first ask the maintainer in the public tracker for an appropriate private contact channel without disclosing the sensitive material. No support email, office location, or response-time commitment is published by this site.",
     ],
   },
   privacy: {
     title: "Privacy and local storage",
     paragraphs: [
-      "ZIP.tools provides public reference material without a user account. Reading-list bookmarks are stored in your browser's localStorage and are not uploaded as a reading list. Sharing the /list URL does not share your saved proposals. Use Copy list links to share the individual public proposal links. You can remove bookmarks through the reading-list controls or clear the site's local storage in your browser settings.",
+      "zips.tools provides public reference material without a user account. Reading-list bookmarks are stored in your browser's localStorage and are not uploaded as a reading list. Sharing the /list URL does not share your saved proposals. Use Copy list links to share the individual public proposal links. You can remove bookmarks through the reading-list controls or clear the site's local storage in your browser settings.",
+      "Cloudflare Web Analytics measures visits, referrers, browser and device categories, and page performance on zips.tools through a JavaScript beacon automatically added by Cloudflare. It does not use cookies or localStorage to track visitors, and does not collect your reading-list contents. This is separate from the proposal popularity counter below. See https://developers.cloudflare.com/web-analytics/about/ for Cloudflare's description of this service and its data handling.",
       "Opening a proposal in a JavaScript-enabled browser sends its proposal ID to /api/views to count readership. The service hashes the connecting IP address with SHA-256, truncates that hash, and uses it with the proposal ID to suppress repeated counts for approximately 30 minutes in Cloudflare KV. The hash is derived from an IP address and should not be treated as anonymous. Aggregate daily proposal counts are stored in Cloudflare D1 and proposal-count events may be sent to Cloudflare Analytics Engine. These are used for trending proposals. Reading-list contents are not included in this request.",
       "Cloudflare hosts this site and processes network requests. Infrastructure logging and retention depend on Cloudflare and the deployment settings; this page does not promise that infrastructure logs are absent. Links to GitHub and official proposal sites take you to services with their own privacy practices. The optional generated-summary feature is currently disabled in this deployment. Questions about this site's data handling can be raised through the public repository's issue tracker without including personal or sensitive information.",
     ],
   },
   docs: {
-    title: "Agent guide: reading ZIP.tools",
+    title: "Agent guide: reading zips.tools",
     paragraphs: [
       "When to use this site: retrieve a numbered Zcash Improvement Proposal, inspect a draft, find the proposals grouped under a network upgrade, or follow proposal citations from a pinned source snapshot. Use /zips for the proposal index, /zip/NUMBER for numbered proposals, /draft/SLUG for drafts, and /nu/ID for an upgrade. This is a reference service, not a wallet, transaction broadcaster, consensus authority, or live blockchain-data source.",
       "Send GET with Accept: text/markdown to any public reference URL for Markdown. Appending .md also selects Markdown without a special header. Requests for HTML keep the normal website. Long documents have numbered parts: follow the part links in the response and preserve the ?part=N query when citing a part. These are parts of the same proposal, not different source revisions. Follow citation and footnote links across parts to collect the whole context.",
