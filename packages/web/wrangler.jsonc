@@ -4,6 +4,10 @@
   "account_id": "1378ab230486e0367cbcb49a0f4cec1d",
   "main": "./worker.ts",
   "cache": { "enabled": true },
+  "exports": {
+    "default": { "type": "worker", "cache": { "enabled": false } },
+    "CachedSite": { "type": "worker", "cache": { "enabled": true } }
+  },
   "compatibility_date": "2024-12-30",
   "compatibility_flags": [
     // Enable Node.js API
@@ -11,11 +15,13 @@
     "nodejs_compat",
     // Allow to fetch URLs in your app
     // see https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public
-    "global_fetch_strictly_public"
+    "global_fetch_strictly_public",
+    "enable_ctx_exports"
   ],
   "assets": {
     "directory": ".open-next/assets",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    "run_worker_first": true
   },
   "d1_databases": [
     {

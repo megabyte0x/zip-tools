@@ -407,7 +407,11 @@ function prepareTree(tree: HastNode, zip: ZipRecord): ReaderHeading[] {
   const all = elements(tree);
   for (const node of all) {
     if (node.tagName === "a" && typeof node.properties?.href === "string") {
-      node.properties.href = readerProposalHref(issueRelativeHref(zip, node.properties.href));
+      const href = readerProposalHref(issueRelativeHref(zip, node.properties.href));
+      if (href === null) {
+        node.tagName = "span";
+        delete node.properties.href;
+      } else node.properties.href = href;
     }
     if (node.tagName === "img" && typeof node.properties?.src === "string") {
       const src = readerAssetUrl(zip, node.properties.src);

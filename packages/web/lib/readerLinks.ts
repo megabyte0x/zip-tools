@@ -13,7 +13,7 @@ function safeAbsoluteUrl(value: string): string | null {
   }
 }
 
-export function readerProposalHref(href: string): string {
+export function readerProposalHref(href: string): string | null {
   const value = href.trim();
   if (value === "" || UNSAFE_SCHEME.test(value)) return "#";
   if (value.startsWith("#")) return value;
@@ -48,6 +48,13 @@ export function readerProposalHref(href: string): string {
   const name = path.split("/").filter(Boolean).at(-1) ?? "";
   const numbered = /^zip-(\d+)(?:\.(?:rst|md|html))?$/i.exec(name);
   if (numbered) return `/zip/${Number(numbered[1])}${fragment}`;
+
+  // Upstream renamed ZIP 318 and assigned ZIP 326 before creating its proposed draft file.
+  const oldDraft = name.replace(/\.(?:rst|md|html)$/i, "").toLowerCase();
+  if (oldDraft === "draft-schell-ironwood-migration") return `/zip/318${fragment}`;
+  if (oldDraft === "draft-dairaemma-nu6.3-consequences-for-wallets") return `/zip/326${fragment}`;
+  // This unpublished draft has no verified replacement for its NU6.2 citation.
+  if (oldDraft === "draft-zodl-valargroup-action-circuit-update") return null;
 
   const draft = /^(draft-[a-z0-9][a-z0-9-]*)(?:\.(?:rst|md|html))?$/i.exec(name);
   if (draft) return `/draft/${draft[1]}${fragment}`;

@@ -62,6 +62,14 @@ test("parses indented markdown header and Discussions-To", () => {
   ]);
 });
 
+test("invalid discussion placeholders remain text instead of URLs", () => {
+  for (const value of ["<URL TBD>", "javascript:alert(1)", "relative/path"]) {
+    const header = parseHeader(`Title: Example\nStatus: Draft\nDiscussions-To: ${value}\n`);
+    assert.equal(header.discussionsTo, null);
+    assert.deepEqual(header.extraMetadata, [{ name: "Discussions-To", values: [value] }]);
+  }
+});
+
 test("missing Title warns, does not throw", () => {
   const h = parseHeader("::\n\n  ZIP: 1\n  Status: Draft\n");
   assert.equal(h.number, 1);

@@ -4,7 +4,7 @@
   "packageManager": "pnpm@9.12.0",
   "scripts": {
     "test": "pnpm --filter @zip-tools/index test && pnpm --filter @zip-tools/web test",
-    "index": "pnpm --filter @zip-tools/index build-index",
+    "index": "pnpm --filter @zip-tools/index build-index && pnpm --filter @zip-tools/web exec tsx scripts/sitemap-parts.ts",
     "issues:refresh": "pnpm --filter @zip-tools/index refresh-issues",
     "dev": "pnpm index && pnpm --filter @zip-tools/web dev",
     "build": "pnpm index && pnpm --filter @zip-tools/web build",

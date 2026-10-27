@@ -87,6 +87,17 @@ test("prepareReader renders markdown headings from visible links images and code
   assert.match(doc.html, /src="https:\/\/raw\.githubusercontent\.com\/zcash\/zips\/deadbeef\/zips\/images\/logo\.svg"/);
 });
 
+test("historical references use verified replacements or remain plain text", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "markdown", bodyKind: "md",
+    body: "[Migration](draft-schell-ironwood-migration.md#section) [Wallets](draft-dairaemma-nu6.3-consequences-for-wallets.md) [Circuit update](draft-zodl-valargroup-action-circuit-update.md)",
+  }));
+  assert.match(doc.html, /href="\/zip\/318#section"/);
+  assert.match(doc.html, /href="\/zip\/326"/);
+  assert.match(doc.html, /<span>Circuit update<\/span>/);
+  assert.ok(!doc.html.includes("draft-zodl-valargroup-action-circuit-update"));
+});
+
 test("prepareReader preserves safe markdown HTML while sanitizing unsafe raw HTML", async () => {
   const doc = await prepareReader(makeZip({
     bodyFormat: "markdown",

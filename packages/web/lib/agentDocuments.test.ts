@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { htmlToMarkdown, paginateReader } from "./agentDocuments.ts";
+import { htmlToMarkdown, paginateReader, partHref } from "./agentDocuments.ts";
 import { readFileSync } from "node:fs";
 import { prepareReader } from "./prepareReader.ts";
 import { zipHref } from "./zipHref.ts";
@@ -45,15 +45,19 @@ test("Markdown retains numbered-list start values and nested list structure", ()
 
 test("every corpus document keeps all text and each HTML part fits the reading budget", async () => {
   const index = JSON.parse(readFileSync(new URL("../data/zip-index.json", import.meta.url), "utf8")) as ZipIndexFile;
+  const sitemapParts = JSON.parse(readFileSync(new URL("../data/sitemap-parts.json", import.meta.url), "utf8")) as string[];
+  const expectedParts: string[] = [];
   type Node = { value?: string; children?: Node[] };
   const text = (node: Node): string => node.value ?? (node.children ?? []).map(text).join("");
   const parser = unified().use(rehypeParse, { fragment: true });
   for (const zip of index.zips) {
     const document = await prepareReader(zip);
     const parts = paginateReader(document, zipHref(zip));
+    for (let part = 2; part <= parts.length; part++) expectedParts.push(partHref(zipHref(zip), part));
     const original = text(parser.parse(document.html) as Node);
     const reconstructed = parts.map((part) => text(parser.parse(part.html) as Node));
     assert.equal(reconstructed.join(""), original, `text lost or duplicated: ${zip.id}`);
     for (const [i, body] of reconstructed.entries()) assert.ok(body.length < 80000, `${zip.id} part ${i + 1} is too long: ${body.length}`);
   }
+  assert.deepEqual(sitemapParts, expectedParts);
 });

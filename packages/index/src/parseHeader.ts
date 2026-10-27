@@ -95,8 +95,16 @@ export function parseHeader(text: string): ParsedHeader {
   const license = get("License") ?? null;
 
   const discussionsRaw = get("Discussions-To");
-  const discussionsTo =
-    discussionsRaw === undefined ? null : discussionsRaw.replace(/^<|>$/g, "");
+  const discussionsValue = discussionsRaw?.replace(/^<|>$/g, "");
+  let discussionsTo: string | null = null;
+  if (discussionsValue) {
+    try {
+      const url = new URL(discussionsValue);
+      if (url.protocol === "http:" || url.protocol === "https:") discussionsTo = url.href;
+    } catch {
+      // Keep non-URL placeholders as metadata, not links.
+    }
+  }
 
   const requiresRaw = get("Requires");
   const requires =
@@ -108,8 +116,9 @@ export function parseHeader(text: string): ParsedHeader {
           .filter((n): n is number => n !== null);
 
   const displayedFields = new Set([
-    "ZIP", "Title", "Owners", "Status", "Category", "Created", "License", "Discussions-To",
+    "ZIP", "Title", "Owners", "Status", "Category", "Created", "License",
   ]);
+  if (discussionsTo) displayedFields.add("Discussions-To");
   const extraMetadata = [...fields]
     .filter(([name, values]) => !displayedFields.has(name) && values.length > 0)
     .map(([name, values]) => ({ name, values }));

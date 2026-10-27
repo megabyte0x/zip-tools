@@ -3,6 +3,7 @@ node_modules
 dist
 *.tsbuildinfo
 packages/web/data/zip-index.json
+packages/web/data/sitemap-parts.json
 packages/web/data/rendered/
 packages/web/.wrangler/
 packages/web/.open-next/

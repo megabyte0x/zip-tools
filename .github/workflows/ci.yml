@@ -16,7 +16,7 @@ jobs:
           sudo dpkg -i /tmp/pandoc.deb
       - run: pnpm install
       - run: pnpm --filter @zip-tools/index test
-      - run: pnpm --filter @zip-tools/index build-index
+      - run: pnpm index
       - run: pnpm --filter @zip-tools/web test
       - run: node -e "const d=require('./packages/web/data/zip-index.json'); const ids=new Set(d.zips.map(z=>z.id)); if(!ids.has('0')||!ids.has('32')||!ids.has('317')) process.exit(1); if(!d.zips.some(z=>String(z.id).startsWith('draft-'))) process.exit(1); for (const nu of d.nus) { if(!nu.id) process.exit(1); } "
       - run: pnpm --filter @zip-tools/web build

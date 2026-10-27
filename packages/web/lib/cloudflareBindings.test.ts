@@ -6,6 +6,10 @@ import { fileURLToPath } from "node:url";
 
 type WranglerConfig = {
   main: string;
+  cache: { enabled: boolean };
+  exports: Record<string, { type: string; cache: { enabled: boolean } }>;
+  assets: { binding: string; run_worker_first: boolean };
+  compatibility_flags: string[];
   d1_databases: { binding: string }[];
   kv_namespaces: { binding: string }[];
   ai: { binding: string };
@@ -35,4 +39,14 @@ test("wrangler cron entrypoint calls handleScheduledRollup", () => {
   const worker = readFileSync(join(dirname(wranglerPath), "worker.ts"), "utf8");
   assert.match(worker, /handleScheduledRollup/);
   assert.match(worker, /async scheduled/);
+});
+
+test("legacy-host gateway runs before cached pages and static assets", () => {
+  const wrangler = parseJsonc(readFileSync(wranglerPath, "utf8"));
+  assert.equal(wrangler.cache.enabled, true);
+  assert.equal(wrangler.exports.default.cache.enabled, false);
+  assert.equal(wrangler.exports.CachedSite.cache.enabled, true);
+  assert.equal(wrangler.assets.binding, "ASSETS");
+  assert.equal(wrangler.assets.run_worker_first, true);
+  assert.ok(wrangler.compatibility_flags.includes("enable_ctx_exports"));
 });
