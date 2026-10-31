@@ -46,3 +46,17 @@ test("reader references and discussion placeholder do not point to missing pages
   await expect(page.getByRole("complementary").getByText("<URL TBD>")).toBeVisible();
   await expect(page.locator('a[href*="URL%20TBD"], a[href="URL TBD"]')).toHaveCount(0);
 });
+
+test("proposal pages link to the verified historical sources", async ({ page }) => {
+  const citations = [
+    ["/zip/315", "ZIP 316: Unified Addresses and Unified Viewing Keys — Deriving a Unified Address from a UIVK", "https://zips.z.cash/zip-0316#deriving-a-unified-address-from-a-uivk"],
+    ["/draft/draft-ecc-onchain-accountable-voting", "draft-ecc-zbloc: Zcash Governance Bloc", "https://github.com/zcash/zips/blob/9dd3b2cefcf82ac98426c897fafcf9e4e7726278/zips/draft-ecc-zbloc.md"],
+    ["/zip/230", "draft-arya-deploy-nu7: Deployment of the NU7 Network Upgrade", "https://github.com/zcash/zips/blob/a2fbe6c5883ec8ea035eda0decc5850347dec600/zips/draft-arya-deploy-nu7.md"],
+    ["/draft/draft-arya-jvff-p2p-quic-transport?part=3", "Draft ZIP: Block Chain Synchronization", "https://github.com/zcash/zips/blob/8c15df4fc23046d13aa430a1af14e86eafd9d089/zips/draft-arya-block-chain-sync.md"],
+  ];
+  for (const [path, label, href] of citations) {
+    const response = await page.goto(path);
+    expect(response?.status(), path).toBe(200);
+    await expect(page.getByRole("link", { name: label, exact: true })).toHaveAttribute("href", href);
+  }
+});

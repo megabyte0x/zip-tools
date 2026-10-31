@@ -98,6 +98,22 @@ test("historical references use verified replacements or remain plain text", asy
   assert.ok(!doc.html.includes("draft-zodl-valargroup-action-circuit-update"));
 });
 
+test("reader preserves the destinations of historical proposal citations", async () => {
+  const doc = await prepareReader(makeZip({
+    bodyFormat: "markdown", bodyKind: "md",
+    body: [
+      "[Address](zip-0316-deriving-a-unified-address-from-a-uivk.rst)",
+      "[Governance](draft-ecc-zbloc.md#motivation)",
+      "[NU7](draft-arya-deploy-nu7.md)",
+      "[Sync](draft-arya-block-chain-sync.md)",
+    ].join(" "),
+  }));
+  assert.ok(doc.html.includes('href="https://zips.z.cash/zip-0316#deriving-a-unified-address-from-a-uivk"'));
+  assert.ok(doc.html.includes('href="https://github.com/zcash/zips/blob/9dd3b2cefcf82ac98426c897fafcf9e4e7726278/zips/draft-ecc-zbloc.md#motivation"'));
+  assert.ok(doc.html.includes('href="https://github.com/zcash/zips/blob/a2fbe6c5883ec8ea035eda0decc5850347dec600/zips/draft-arya-deploy-nu7.md"'));
+  assert.ok(doc.html.includes('href="https://github.com/zcash/zips/blob/8c15df4fc23046d13aa430a1af14e86eafd9d089/zips/draft-arya-block-chain-sync.md"'));
+});
+
 test("prepareReader preserves safe markdown HTML while sanitizing unsafe raw HTML", async () => {
   const doc = await prepareReader(makeZip({
     bodyFormat: "markdown",

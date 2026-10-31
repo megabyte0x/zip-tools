@@ -46,6 +46,10 @@ export function readerProposalHref(href: string): string | null {
   }
 
   const name = path.split("/").filter(Boolean).at(-1) ?? "";
+  // The reference names a section, not a separate ZIP file; the official document is unpaginated.
+  if (name.toLowerCase() === "zip-0316-deriving-a-unified-address-from-a-uivk.rst") {
+    return `https://zips.z.cash/zip-0316${fragment || "#deriving-a-unified-address-from-a-uivk"}`;
+  }
   const numbered = /^zip-(\d+)(?:\.(?:rst|md|html))?$/i.exec(name);
   if (numbered) return `/zip/${Number(numbered[1])}${fragment}`;
 
@@ -53,6 +57,10 @@ export function readerProposalHref(href: string): string | null {
   const oldDraft = name.replace(/\.(?:rst|md|html)$/i, "").toLowerCase();
   if (oldDraft === "draft-schell-ironwood-migration") return `/zip/318${fragment}`;
   if (oldDraft === "draft-dairaemma-nu6.3-consequences-for-wallets") return `/zip/326${fragment}`;
+  // These drafts are absent from the current index; retain their exact historical sources.
+  if (oldDraft === "draft-ecc-zbloc") return `https://github.com/zcash/zips/blob/9dd3b2cefcf82ac98426c897fafcf9e4e7726278/zips/draft-ecc-zbloc.md${fragment}`;
+  if (oldDraft === "draft-arya-deploy-nu7") return `https://github.com/zcash/zips/blob/a2fbe6c5883ec8ea035eda0decc5850347dec600/zips/draft-arya-deploy-nu7.md${fragment}`;
+  if (oldDraft === "draft-arya-block-chain-sync") return `https://github.com/zcash/zips/blob/8c15df4fc23046d13aa430a1af14e86eafd9d089/zips/draft-arya-block-chain-sync.md${fragment}`;
   // This unpublished draft has no verified replacement for its NU6.2 citation.
   if (oldDraft === "draft-zodl-valargroup-action-circuit-update") return null;
 
