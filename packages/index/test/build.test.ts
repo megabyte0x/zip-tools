@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildIndex } from "../src/build.ts";
+import { readSourceDates } from "../src/snapshot.ts";
 import type { NuOverlay, ZipIndexFile, ZipRecord } from "../src/types.ts";
 
 const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
@@ -127,5 +128,33 @@ test("cli build writes parseable zip-index.json", () => {
     JSON.parse(readFileSync(outFile, "utf8"));
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+// Catches sitemap dates taken from a side-branch commit or an older edit instead of the main-line change that published the file.
+test("readSourceDates reports each file's latest main-line change, dating merged work at its merge", () => {
+  const dir = mkdtempSync(join(tmpdir(), "zip-index-dates-"));
+  const git = (date: string, ...args: string[]) => {
+    const result = spawnSync("git", ["-C", dir, "-c", "user.name=t", "-c", "user.email=t@example.com", ...args], {
+      encoding: "utf8",
+      env: { ...process.env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date },
+    });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  try {
+    git("2026-01-01T00:00:00Z", "init", "-q", "-b", "main");
+    writeFileSync(join(dir, "a.md"), "a1");
+    writeFileSync(join(dir, "b.md"), "b1");
+    git("2026-01-01T00:00:00Z", "add", ".");
+    git("2026-01-01T00:00:00Z", "commit", "-q", "-m", "first");
+    git("2026-02-01T00:00:00Z", "checkout", "-q", "-b", "side");
+    writeFileSync(join(dir, "b.md"), "b2");
+    git("2026-02-01T00:00:00Z", "commit", "-q", "-am", "edit b on a branch");
+    git("2026-03-01T00:00:00Z", "checkout", "-q", "main");
+    git("2026-03-01T00:00:00Z", "merge", "-q", "--no-ff", "-m", "merge side", "side");
+    assert.deepEqual(readSourceDates(dir), { "b.md": "2026-03-01T00:00:00Z", "a.md": "2026-01-01T00:00:00Z" });
+    assert.deepEqual(readSourceDates(join(dir, "missing")), {});
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });

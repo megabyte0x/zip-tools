@@ -43,6 +43,11 @@ test("sitemap lists real pages and Markdown HEAD returns no body", async () => {
   assert.match(xml, /<loc>https:\/\/example.com\/zip\/1\?part=2<\/loc>/);
   assert.match(xml, /<loc>https:\/\/example.com\/zips\?kind=draft<\/loc>/);
   assert.ok(!xml.includes("/list</loc>"));
+  const dated = await agentResponse(request("/sitemap.xml"), { ...index, zips: [makeZip({ id: "1", lastModified: "2026-02-03T04:05:06Z" })] }, ["/zip/1?part=2"]);
+  const datedXml = await dated!.text();
+  assert.match(datedXml, /<loc>https:\/\/example.com\/zip\/1<\/loc><lastmod>2026-02-03<\/lastmod>/);
+  assert.match(datedXml, /<loc>https:\/\/example.com\/zip\/1\?part=2<\/loc><lastmod>2026-02-03<\/lastmod>/);
+  assert.match(datedXml, /<loc>https:\/\/example.com\/zips<\/loc><lastmod>2026-10-07<\/lastmod>/);
   const head = await respond(request("/zip/1", { Accept: "text/markdown" }, "HEAD"));
   assert.equal(head?.status, 200);
   assert.equal(await head!.text(), "");

@@ -40,6 +40,12 @@ jobs:
           echo "caa7e0410f9e2cb1da2eb8db13cc97b5548fe455985e2c944e3929d22f99bcdc  /tmp/pandoc.deb" | sha256sum -c -
           sudo dpkg -i /tmp/pandoc.deb
       - run: pnpm install
+      - name: Fetch zcash/zips history for sitemap lastmod dates
+        # Checkout clones the submodule at depth 1, which would date every proposal at the snapshot commit.
+        run: |
+          if [ "$(git -C submodule/zips rev-parse --is-shallow-repository)" = true ]; then
+            git -C submodule/zips fetch --quiet --unshallow --filter=blob:none origin
+          fi
       - name: Require the Cloudflare API token
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

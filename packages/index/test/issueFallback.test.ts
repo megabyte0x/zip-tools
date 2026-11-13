@@ -619,6 +619,8 @@ function sourceMetadata(record: ZipRecord) {
     bodyKind: _bodyKind,
     bodyFormat: _bodyFormat,
     bodySource: _bodySource,
+    // An issue-backed body is dated by the issue's last update.
+    lastModified: _lastModified,
     ...metadata
   } = record;
   return metadata;
@@ -730,6 +732,11 @@ test("normal CLI build call graph permits only local metadata and RST-converter 
       file: "src/renderBody.ts",
       command: "pandoc",
       args: ["-f", "rst", "-t", "html", "--mathjax", "--wrap=none"],
+    },
+    {
+      file: "src/snapshot.ts",
+      command: "git",
+      args: ["-C", "$sourceDir", "log", "--first-parent", "--diff-merges=first-parent", "--no-renames", "--relative", "--name-only", "--format=@%cI"],
     },
     {
       file: "src/snapshot.ts",

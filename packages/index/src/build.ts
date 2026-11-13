@@ -16,6 +16,8 @@ export type BuildIndexOpts = {
   sha: string;
   date: string;
   issueSnapshots?: IssueSnapshotFile;
+  /** Last-changed time per source path, from readSourceDates. */
+  sourceDates?: Record<string, string>;
 };
 
 function snapshotUrl(sha: string): string {
@@ -68,6 +70,7 @@ function recordFromFile(
   sourceDir: string,
   sha: string,
   snapshots: IssueSnapshotFile,
+  sourceDates: Record<string, string>,
 ): ZipRecord {
   const text = readFileSync(path, "utf8");
   const header = parseHeader(text);
@@ -106,6 +109,11 @@ function recordFromFile(
           bodySource: { kind: "none" as const },
         };
 
+  // An issue-backed body changes with the issue, not the source file.
+  const lastModified = [sourceDates[sourcePath], selection.bodySource.kind === "github-issue" ? selection.bodySource.updatedAt : undefined]
+    .filter((date): date is string => Boolean(date))
+    .sort((a, b) => Date.parse(b) - Date.parse(a))[0];
+
   return {
     id,
     number: header.number,
@@ -129,6 +137,7 @@ function recordFromFile(
     bodyFormat: selection.bodyFormat,
     body: selection.body,
     bodySource: selection.bodySource,
+    lastModified,
     parseWarnings,
   };
 }
@@ -163,7 +172,7 @@ export function buildIndex(opts: BuildIndexOpts): ZipIndexFile {
   );
   const files = listSourceFiles(opts.sourceDir);
   const raw = files.map((f) =>
-    recordFromFile(f, opts.sourceDir, opts.sha, snapshots),
+    recordFromFile(f, opts.sourceDir, opts.sha, snapshots, opts.sourceDates ?? {}),
   );
   const { zips, missing } = applyOverlay(raw, opts.overlay);
   if (missing.length > 0) {

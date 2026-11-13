@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { buildIndex, writeIndex } from "./build.ts";
 import { parseIssueRef, readIssueSnapshots, writeIssueSnapshots } from "./issueSnapshots.ts";
 import { refreshIssueSnapshots } from "./refreshIssues.ts";
-import { readSnapshotMeta } from "./snapshot.ts";
+import { readSnapshotMeta, readSourceDates } from "./snapshot.ts";
 import type { NuOverlay } from "./types.ts";
 import { degradedSummary } from "./degraded.ts";
 
@@ -67,6 +67,7 @@ async function main(): Promise<void> {
         sha: meta.sha,
         date: meta.date,
         issueSnapshots,
+        sourceDates: readSourceDates(sourceDir),
       });
       writeIndex(outDir, index);
       const degraded = degradedSummary(index.zips);

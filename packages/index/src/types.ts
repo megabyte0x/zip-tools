@@ -60,6 +60,8 @@ export type ZipRecord = {
   bodyFormat?: BodyFormat;
   body: string | null;
   bodySource?: BodySource;
+  /** ISO time the proposal's source content last changed; absent without git history. */
+  lastModified?: string;
   parseWarnings: string[];
 };
 
